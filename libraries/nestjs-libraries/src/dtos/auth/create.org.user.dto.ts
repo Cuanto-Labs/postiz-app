@@ -1,6 +1,7 @@
 import {
   IsDefined,
   IsEmail,
+  IsOptional,
   IsString,
   MaxLength,
   MinLength,
@@ -38,6 +39,7 @@ export class CreateOrgUserDto {
 
   datafast_visitor_id: string;
 
+  @IsOptional()
   @IsString()
-  inviteCode: string;
+  inviteCode?: string;
 }
