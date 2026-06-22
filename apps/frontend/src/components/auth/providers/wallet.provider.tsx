@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -32,7 +32,7 @@ import {
   TrustWalletAdapter,
   XDEFIWalletAdapter,
   TokenPocketWalletAdapter,
-} from '@postiz/wallets';
+} from '@Cuanto Socials/wallets';
 import {
   WalletModalProvider,
   useWalletModal,

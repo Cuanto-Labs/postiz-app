@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -36,6 +36,7 @@ type Inputs = {
   company: string;
   providerToken: string;
   provider: string;
+  inviteCode: string;
 };
 export function Register() {
   const getQuery = useSearchParams();
@@ -121,6 +122,12 @@ export function RegisterAfter({
     })
       .then(async (response) => {
         setLoading(false);
+        if (response.status === 403) {
+          form.setError('inviteCode', {
+            message: await response.text(),
+          });
+          return;
+        }
         if (response.status === 200) {
           fireEvents('register');
           return track(TrackEnum.CompleteRegistration).then(() => {
@@ -211,6 +218,16 @@ export function RegisterAfter({
                   type="text"
                   placeholder={t('label_company', 'Company')}
                 />
+                {process.env.NEXT_PUBLIC_REGISTRATION_CODE_REQUIRED === 'true' && (
+                  <Input
+                    label="Invite Code"
+                    translationKey="label_invite_code"
+                    {...form.register('inviteCode')}
+                    autoComplete="off"
+                    type="text"
+                    placeholder={t('label_invite_code', 'Invite Code')}
+                  />
+                )}
               </div>
               <div className={clsx('text-[12px]')}>
                 {t(
@@ -219,7 +236,7 @@ export function RegisterAfter({
                 )}
                 &nbsp;
                 <a
-                  href={`https://postiz.com/terms`}
+                  href={`https://cuantolabs.com/terms`}
                   className="underline hover:font-bold"
                   rel="nofollow"
                 >
@@ -228,7 +245,7 @@ export function RegisterAfter({
                 &nbsp;
                 {t('and', 'and')}&nbsp;
                 <a
-                  href={`https://postiz.com/privacy`}
+                  href={`https://cuantolabs.com/privacy`}
                   rel="nofollow"
                   className="underline hover:font-bold"
                 >

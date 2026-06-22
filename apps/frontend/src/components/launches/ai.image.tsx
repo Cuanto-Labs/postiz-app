@@ -1,4 +1,4 @@
-import { Button } from '@gitroom/react/form/button';
+﻿import { Button } from '@gitroom/react/form/button';
 import { FC, useCallback, useState } from 'react';
 import clsx from 'clsx';
 import Loading from '@gitroom/frontend/components/layout/loading';
@@ -99,7 +99,7 @@ ${style}
               className={clsx(
                 'cursor-pointer rounded-[4px] px-[10px] h-[30px] flex items-center text-[12px] border',
                 style === p
-                  ? 'bg-[#612BD3] border-[#612BD3] text-white'
+                  ? 'bg-[#10b981] border-[#10b981] text-white'
                   : 'bg-newColColor border-newBgLineColor'
               )}
             >

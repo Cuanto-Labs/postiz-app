@@ -1,0 +1,21 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm run build:frontend",
+  "outputDirectory": "apps/frontend/.next",
+  "installCommand": "pnpm install",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.socials.cuantolabs.com/api/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://socials.cuantolabs.com" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+      ]
+    }
+  ]
+}

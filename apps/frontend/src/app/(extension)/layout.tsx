@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+﻿export const dynamic = 'force-dynamic';
 import '../global.scss';
 import 'react-tooltip/dist/react-tooltip.css';
 import '@copilotkit/react-ui/styles.css';

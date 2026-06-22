@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { uniqBy } from 'lodash';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
@@ -59,7 +59,7 @@ export const SelectCustomer: FC<{
         onClick={openClose}
         className={clsx(
           'relative z-[20] cursor-pointer h-[42px] rounded-[8px] pl-[16px] pr-[12px] gap-[8px] border flex items-center',
-          open ? 'border-[#612BD3]' : 'border-newColColor'
+          open ? 'border-[#10b981]' : 'border-newColColor'
         )}
       >
         <div>

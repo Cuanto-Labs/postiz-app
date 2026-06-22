@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useCallback } from 'react';
 import { useSWRConfig } from 'swr';
@@ -41,46 +41,46 @@ const getMcpConfig = (
     switch (client) {
       case 'Claude Code':
         return {
-          config: `claude mcp add postiz --transport http "${urlWithKey}"`,
+          config: `claude mcp add Cuanto Socials --transport http "${urlWithKey}"`,
           hint: 'Run this command in your terminal.',
         };
       case 'Cursor':
         return {
-          config: json({ mcpServers: { postiz: { url: urlWithKey } } }),
+          config: json({ mcpServers: { Cuanto Socials: { url: urlWithKey } } }),
           hint: 'Add to .cursor/mcp.json in your project root.',
         };
       case 'VS Code / Copilot':
         return {
           config: json({
-            servers: { postiz: { type: 'http', url: urlWithKey } },
+            servers: { Cuanto Socials: { type: 'http', url: urlWithKey } },
           }),
           hint: 'Add to .vscode/mcp.json in your project root.',
         };
       case 'Windsurf':
         return {
           config: json({
-            mcpServers: { postiz: { serverUrl: urlWithKey } },
+            mcpServers: { Cuanto Socials: { serverUrl: urlWithKey } },
           }),
           hint: 'Add to ~/.codeium/windsurf/mcp_config.json',
         };
       case 'Amp':
         return {
-          config: `amp mcp add postiz ${urlWithKey}`,
+          config: `amp mcp add Cuanto Socials ${urlWithKey}`,
           hint: 'Run this command in your terminal.',
         };
       case 'Codex':
         return {
-          config: `# ~/.codex/config.toml\n\n[mcp_servers.postiz]\nurl = "${urlWithKey}"`,
+          config: `# ~/.codex/config.toml\n\n[mcp_servers.Cuanto Socials]\nurl = "${urlWithKey}"`,
           hint: 'Add to ~/.codex/config.toml',
         };
       case 'Gemini CLI':
         return {
-          config: json({ mcpServers: { postiz: { url: urlWithKey } } }),
+          config: json({ mcpServers: { Cuanto Socials: { url: urlWithKey } } }),
           hint: 'Add to ~/.gemini/settings.json',
         };
       case 'Warp':
         return {
-          config: json({ postiz: { url: urlWithKey } }),
+          config: json({ Cuanto Socials: { url: urlWithKey } }),
           hint: 'Settings > MCP Servers > + Add, then paste this config.',
         };
     }
@@ -89,14 +89,14 @@ const getMcpConfig = (
   switch (client) {
     case 'Claude Code':
       return {
-        config: `claude mcp add --transport http postiz ${urlBase} --header "Authorization: ${bearer}"`,
+        config: `claude mcp add --transport http Cuanto Socials ${urlBase} --header "Authorization: ${bearer}"`,
         hint: 'Run this command in your terminal.',
       };
     case 'Cursor':
       return {
         config: json({
           mcpServers: {
-            postiz: { url: urlBase, headers: { Authorization: bearer } },
+            Cuanto Socials: { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
         hint: 'Add to .cursor/mcp.json in your project root.',
@@ -105,7 +105,7 @@ const getMcpConfig = (
       return {
         config: json({
           servers: {
-            postiz: {
+            Cuanto Socials: {
               type: 'http',
               url: urlBase,
               headers: { Authorization: bearer },
@@ -118,7 +118,7 @@ const getMcpConfig = (
       return {
         config: json({
           mcpServers: {
-            postiz: {
+            Cuanto Socials: {
               serverUrl: urlBase,
               headers: { Authorization: bearer },
             },
@@ -130,21 +130,21 @@ const getMcpConfig = (
       return {
         config: json({
           'amp.mcpServers': {
-            postiz: { url: urlBase, headers: { Authorization: bearer } },
+            Cuanto Socials: { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
         hint: 'Add to your Amp settings.json',
       };
     case 'Codex':
       return {
-        config: `# ~/.codex/config.toml\n\n[mcp_servers.postiz]\nurl = "${urlBase}"\nhttp_headers = { "Authorization" = "${bearer}" }`,
+        config: `# ~/.codex/config.toml\n\n[mcp_servers.Cuanto Socials]\nurl = "${urlBase}"\nhttp_headers = { "Authorization" = "${bearer}" }`,
         hint: 'Add to ~/.codex/config.toml',
       };
     case 'Gemini CLI':
       return {
         config: json({
           mcpServers: {
-            postiz: { url: urlBase, headers: { Authorization: bearer } },
+            Cuanto Socials: { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
         hint: 'Add to ~/.gemini/settings.json',
@@ -152,7 +152,7 @@ const getMcpConfig = (
     case 'Warp':
       return {
         config: json({
-          postiz: { url: urlBase, headers: { Authorization: bearer } },
+          Cuanto Socials: { url: urlBase, headers: { Authorization: bearer } },
         }),
         hint: 'Settings > MCP Servers > + Add, then paste this config.',
       };
@@ -233,15 +233,15 @@ const McpSection = ({
           </div>
           <div className="text-[13px] text-customColor18 mt-[2px]">
             {t(
-              'connect_your_mcp_client_to_postiz_to_schedule_your_posts_faster',
-              'Connect Postiz MCP server to your client (Http streaming) to schedule your posts faster.'
+              'connect_your_mcp_client_to_Cuanto Socials_to_schedule_your_posts_faster',
+              'Connect Cuanto Socials MCP server to your client (Http streaming) to schedule your posts faster.'
             )}
           </div>
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
           <a
-            className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            href="https://docs.postiz.com/mcp/introduction"
+            className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+            href="https://docs.cuantolabs.com/mcp/introduction"
             target="_blank"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
@@ -262,7 +262,7 @@ const McpSection = ({
                 className={clsx(
                   'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
                   method === m
-                    ? 'bg-[#612BD3] text-white'
+                    ? 'bg-[#10b981] text-white'
                     : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
                 )}
                 onClick={() => setMethod(m)}
@@ -287,7 +287,7 @@ const McpSection = ({
                   className={clsx(
                     'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
                     activeClient === client
-                      ? 'bg-[#612BD3] text-white'
+                      ? 'bg-[#10b981] text-white'
                       : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
                   )}
                   onClick={() => setActiveClient(client)}
@@ -361,30 +361,30 @@ const McpSection = ({
 const localCliSteps = [
   {
     label: 'Install the CLI',
-    code: 'npm install -g postiz',
+    code: 'npm install -g Cuanto Socials',
   },
   {
-    label: 'Run: postiz auth:login',
-    code: 'postiz auth:login',
+    label: 'Run: Cuanto Socials auth:login',
+    code: 'Cuanto Socials auth:login',
   },
   {
-    label: 'Install the Postiz skill for your AI agent',
-    code: 'npx skills add gitroomhq/postiz-agent',
+    label: 'Install the Cuanto Socials skill for your AI agent',
+    code: 'npx skills add gitroomhq/Cuanto Socials-agent',
   },
 ] as const;
 
 const ciCliSteps = [
   {
     label: 'Install the CLI',
-    code: 'npm install -g postiz',
+    code: 'npm install -g Cuanto Socials',
   },
   {
     label: 'Set your API key as an environment variable',
-    code: 'export POSTIZ_API_KEY="{API_KEY}"',
+    code: 'export CUANTO_API_KEY="{API_KEY}"',
   },
   {
-    label: 'Install the Postiz skill for your AI agent',
-    code: 'npx skills add gitroomhq/postiz-agent',
+    label: 'Install the Cuanto Socials skill for your AI agent',
+    code: 'npx skills add gitroomhq/Cuanto Socials-agent',
   },
 ] as const;
 
@@ -422,14 +422,14 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
           <div className="text-[13px] text-customColor18 mt-[2px]">
             {t(
               'cli_description',
-              'Use the Postiz CLI to automate posting from your terminal, or install the skill to let your AI agent schedule posts for you.'
+              'Use the Cuanto Socials CLI to automate posting from your terminal, or install the skill to let your AI agent schedule posts for you.'
             )}
           </div>
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
           <a
-            className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            href="https://docs.postiz.com/cli/introduction"
+            className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+            href="https://docs.cuantolabs.com/cli/introduction"
             target="_blank"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
@@ -446,7 +446,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
               className={clsx(
                 'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
                 mode === m
-                  ? 'bg-[#612BD3] text-white'
+                  ? 'bg-[#10b981] text-white'
                   : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
               )}
               onClick={() => setMode(m)}
@@ -556,7 +556,7 @@ const PublicApiContent = () => {
         <br />
         {t(
           'api_auth_note_line2',
-          'If you are building a product that schedules posts on behalf of other Postiz users,'
+          'If you are building a product that schedules posts on behalf of other Cuanto Socials users,'
         )}
         <br />
         {t(
@@ -577,23 +577,23 @@ const PublicApiContent = () => {
             </div>
             <div className="text-[13px] text-customColor18 mt-[2px]">
               {t(
-                'use_postiz_api_to_integrate_with_your_tools',
-                'Use Postiz API to integrate with your tools.'
+                'use_Cuanto Socials_api_to_integrate_with_your_tools',
+                'Use Cuanto Socials API to integrate with your tools.'
               )}
             </div>
           </div>
           <div className="flex gap-[6px] shrink-0 pt-[2px]">
             <a
-              className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://docs.postiz.com/public-api"
+              className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              href="https://docs.cuantolabs.com/public-api"
               target="_blank"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
             {t('read_the_docs', 'Docs')}
             </a>
             <a
-              className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://www.npmjs.com/package/n8n-nodes-postiz"
+              className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              href="https://www.npmjs.com/package/n8n-nodes-Cuanto Socials"
               target="_blank"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
@@ -721,7 +721,7 @@ export const PublicComponent = () => {
             className={clsx(
               'cursor-pointer px-[20px] h-[44px] text-[15px] font-[600] rounded-[8px] transition-colors',
               subTab === tab
-                ? 'bg-[#612BD3] text-white'
+                ? 'bg-[#10b981] text-white'
                 : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
             )}
             onClick={() => setSubTab(tab)}

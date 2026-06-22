@@ -1,4 +1,4 @@
-import React, { FC, SVGProps, useEffect } from 'react';
+﻿import React, { FC, SVGProps, useEffect } from 'react';
 import clsx from 'clsx';
 import useCookie from 'react-use-cookie';
 import { modeEmitter } from '@gitroom/frontend/components/layout/mode.component';
@@ -32,11 +32,11 @@ export const SettingsIcon: FC<IconProps> = ({
     />
     <path
       d="M9.99961 12.4993C11.3803 12.4993 12.4996 11.3801 12.4996 9.99935C12.4996 8.61864 11.3803 7.49935 9.99961 7.49935C8.6189 7.49935 7.49961 8.61864 7.49961 9.99935C7.49961 11.3801 8.6189 12.4993 9.99961 12.4993Z"
-      stroke="#612BD3"
+      stroke="#10b981"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ fill: '#612BD3' }}
+      style={{ fill: '#10b981' }}
     />
   </svg>
 );

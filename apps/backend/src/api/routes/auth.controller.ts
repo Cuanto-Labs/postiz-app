@@ -48,6 +48,13 @@ export class AuthController {
     @UserAgent() userAgent: string
   ) {
     try {
+      if (
+        process.env.REGISTRATION_CODE &&
+        body.inviteCode !== process.env.REGISTRATION_CODE
+      ) {
+        return response.status(403).send('Invalid invite code');
+      }
+
       const getOrgFromCookie = this._authService.getOrgFromCookie(
         req?.cookies?.org
       );

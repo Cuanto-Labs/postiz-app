@@ -1,4 +1,4 @@
-import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
+﻿import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 
 export const dynamic = 'force-dynamic';
 import '../global.scss';

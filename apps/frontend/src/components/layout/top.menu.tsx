@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { FC, ReactNode, useCallback } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -246,7 +246,7 @@ export const useMenuItem = () => {
           />
         </svg>
       ),
-      path: 'https://affiliate.postiz.com',
+      path: 'https://affiliate.cuantolabs.com',
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
     },

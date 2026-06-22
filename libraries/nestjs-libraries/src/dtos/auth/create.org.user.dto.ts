@@ -37,4 +37,7 @@ export class CreateOrgUserDto {
   company: string;
 
   datafast_visitor_id: string;
+
+  @IsString()
+  inviteCode: string;
 }

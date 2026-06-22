@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { Analytics as DubAnalyticsIn } from '@dub/analytics/react';
@@ -10,7 +10,7 @@ export const DubAnalytics = () => {
   return (
     <DubAnalyticsIn
       domainsConfig={{
-        refer: 'postiz.pro',
+        refer: 'Cuanto Socials.pro',
       }}
     />
   );
