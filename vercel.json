@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.socials.cuantolabs.com/api/:path*"
+      "destination": "https://api.socials.cuantolabs.com/:path*"
     }
   ],
   "headers": [
