@@ -24,14 +24,18 @@ export class TemporalRegister implements OnModuleInit {
     );
 
     if (missingAttributes.length > 0) {
-      await connection.operatorService.addSearchAttributes({
-        namespace: process.env.TEMPORAL_NAMESPACE || 'default',
-        searchAttributes: missingAttributes.reduce((all, current) => {
-          // @ts-ignore
-          all[current] = 1;
-          return all;
-        }, {}),
-      });
+      try {
+        await connection.operatorService.addSearchAttributes({
+          namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+          searchAttributes: missingAttributes.reduce((all, current) => {
+            // @ts-ignore
+            all[current] = 1;
+            return all;
+          }, {}),
+        });
+      } catch {
+        // non-fatal — search attribute registration failures don't affect core functionality
+      }
     }
   }
 }
