@@ -12,7 +12,6 @@ import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 import { CopyClient } from '@gitroom/frontend/components/preview/copy.client';
 import { getT } from '@gitroom/react/translation/get.translation.service.backend';
 import { RenderPreviewDateClient } from '@gitroom/frontend/components/preview/render.preview.date.client';
-import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 
 dayjs.extend(utc);
 export const metadata: Metadata = {
@@ -143,12 +142,6 @@ export default async function Auth(
                       <span className="text-sm text-gray-500">
                         {post[0].integration?.profile ? `@${post[0].integration.profile}` : null}
                       </span>
-                      {index === 0 && (
-                        <CreationMethodBadge
-                          creationMethod={p.creationMethod}
-                          size="md"
-                        />
-                      )}
                     </div>
                     <div className="flex flex-col gap-[20px]">
                       <div
