@@ -35,9 +35,15 @@ export default async function Auth(
     id
   } = params;
 
-  const post = await (await internalFetch(`/public/posts/${id}`)).json();
+  let post: any[] = [];
+  try {
+    const res = await internalFetch(`/public/posts/${id}`);
+    post = await res.json();
+  } catch {
+    // network error fetching post
+  }
   const t = await getT();
-  if (!post.length) {
+  if (!Array.isArray(post) || !post.length) {
     return (
       <div className="text-white fixed start-0 top-0 w-full h-full flex justify-center items-center text-[20px]">
         {t('post_not_found', 'Post not found')}
@@ -151,14 +157,16 @@ export default async function Auth(
                         }}
                       />
                       <div className="flex w-full gap-[10px]">
-                        {JSON.parse(p?.image || '[]').map((p: any) => (
+                        {(() => {
+                          try { return JSON.parse(p?.image || '[]'); } catch { return []; }
+                        })().map((img: any) => (
                           <div
-                            key={p.name}
+                            key={img.id || img.path}
                             className="flex-1 rounded-[10px] max-h-[500px] overflow-hidden"
                           >
                             <VideoOrImage
                               isContain={true}
-                              src={p.path}
+                              src={img.path}
                               autoplay={true}
                             />
                           </div>
