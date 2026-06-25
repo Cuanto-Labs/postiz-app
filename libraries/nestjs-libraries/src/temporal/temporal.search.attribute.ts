@@ -10,5 +10,5 @@ export const organizationId = defineSearchAttributeKey(
 
 export const postId = defineSearchAttributeKey(
   'postId',
-  SearchAttributeType.TEXT
+  SearchAttributeType.KEYWORD
 );
