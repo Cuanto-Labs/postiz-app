@@ -384,6 +384,8 @@ export const AddProviderComponent: FC<{
   isMobile?: boolean;
 }> = (props) => {
   const { update, social, article, onboarding, isMobile } = props;
+  // Only these channels are live for now; the rest render disabled ("Coming Soon").
+  const ENABLED_PROVIDERS = ['x', 'linkedin'];
   const { isGeneral, extensionId } = useVariables();
   const toaster = useToaster();
   const router = useRouter();
@@ -670,18 +672,29 @@ export const AddProviderComponent: FC<{
                 !item.customFields
               );
             })
-            .map((item) => (
+            .map((item) => {
+              const enabled = ENABLED_PROVIDERS.includes(item.identifier);
+              return (
               <div
                 key={item.identifier}
-                onClick={getSocialLink(
-                  props.invite,
-                  item.identifier,
-                  item.isExternal,
-                  item.isWeb3,
-                  item.isChromeExtension,
-                  item.customFields
-                )}
-                {...(!!item.toolTip
+                onClick={
+                  enabled
+                    ? getSocialLink(
+                        props.invite,
+                        item.identifier,
+                        item.isExternal,
+                        item.isWeb3,
+                        item.isChromeExtension,
+                        item.customFields
+                      )
+                    : undefined
+                }
+                {...(!enabled
+                  ? {
+                      'data-tooltip-id': 'tooltip',
+                      'data-tooltip-content': t('coming_soon', 'Coming Soon'),
+                    }
+                  : !!item.toolTip
                   ? {
                       'data-tooltip-id': 'tooltip',
                       'data-tooltip-content': item.toolTip,
@@ -691,7 +704,10 @@ export const AddProviderComponent: FC<{
                   isMobile
                     ? 'flex-row h-[72px] p-[16px]'
                     : 'flex-col p-[10px] h-[100px] justify-center',
-                  'w-full text-[14px] rounded-[8px] bg-newTableHeader text-textColor relative items-center flex gap-[10px] cursor-pointer'
+                  'w-full text-[14px] rounded-[8px] bg-newTableHeader text-textColor relative items-center flex gap-[10px]',
+                  enabled
+                    ? 'cursor-pointer'
+                    : 'cursor-not-allowed grayscale opacity-40'
                 )}
               >
                 <div>
@@ -715,7 +731,7 @@ export const AddProviderComponent: FC<{
                   )}
                 >
                   {item.name}
-                  {!!item.toolTip && !isMobile && (
+                  {enabled && !!item.toolTip && !isMobile && (
                     <svg
                       width="15"
                       height="15"
@@ -732,7 +748,8 @@ export const AddProviderComponent: FC<{
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
         </div>
       </div>
     </div>
