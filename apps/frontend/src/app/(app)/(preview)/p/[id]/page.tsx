@@ -28,6 +28,7 @@ export default async function Auth(
     }>;
   }
 ) {
+  try {
   const searchParams = await props.searchParams;
   const params = await props.params;
 
@@ -187,4 +188,11 @@ export default async function Auth(
       </div>
     </div>
   );
+  } catch (e: any) {
+    return (
+      <pre style={{ color: '#fff', whiteSpace: 'pre-wrap', padding: '20px', fontSize: '12px' }}>
+        {'PREVIEW_DEBUG\n' + (e?.stack || String(e))}
+      </pre>
+    );
+  }
 }
