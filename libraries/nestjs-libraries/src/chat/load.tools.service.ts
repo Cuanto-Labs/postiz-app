@@ -3,9 +3,13 @@ import { Agent } from '@mastra/core/agent';
 import { createOpenAI } from '@ai-sdk/openai';
 import { Memory } from '@mastra/memory';
 
+// Provider pool — swap via Railway env vars, zero code change:
+//   AGENT_BASE_URL  = https://opencode.ai/zen/v1 | https://api.openai.com/v1 | any OAI-compat endpoint
+//   AGENT_API_KEY   = key for that endpoint
+//   AGENT_MODEL     = model name (e.g. mimo-v2.5-free, gpt-4o, gpt-5.5, claude-sonnet-4-6)
 const agentProvider = createOpenAI({
-  baseURL: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
-  apiKey: process.env.OPENCODE_API_KEY || process.env.OPENAI_API_KEY || '',
+  baseURL: process.env.AGENT_BASE_URL || 'https://opencode.ai/zen/v1',
+  apiKey: process.env.AGENT_API_KEY || process.env.OPENCODE_API_KEY || process.env.OPENAI_API_KEY || '',
 });
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { array, object, string } from 'zod';
@@ -92,7 +96,7 @@ export class LoadToolsService {
       )}
 `;
       },
-      model: agentProvider(process.env.OPENAI_MODEL || 'mimo-v2.5-free'),
+      model: agentProvider(process.env.AGENT_MODEL || 'mimo-v2.5-free'),
       tools,
       memory: new Memory({
         storage: pStore,
