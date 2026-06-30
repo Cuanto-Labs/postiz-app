@@ -25,8 +25,6 @@ import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { AGENT_PROVIDERS, activeProviderConfig } from '@gitroom/nestjs-libraries/chat/load.tools.service';
-import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
-import { REDIS_KEY_AGENT_MODEL } from './admin.controller';
 
 // Shared OAI-compatible client for copilot adapters — follows provider pool.
 const copilotOpenAI = new OpenAI({
@@ -53,16 +51,13 @@ export class CopilotController {
       return;
     }
 
-    const redisModel = await ioRedis.get(REDIS_KEY_AGENT_MODEL);
-    const effectiveModel = redisModel || process.env.AGENT_MODEL || activeProviderConfig.defaultModel;
-
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
       serviceAdapter: new OpenAIAdapter({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         openai: copilotOpenAI as any,
-        model: effectiveModel,
+        model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
       }),
     });
 
@@ -100,9 +95,6 @@ export class CopilotController {
       agents,
     });
 
-    const redisModel = await ioRedis.get(REDIS_KEY_AGENT_MODEL);
-    const effectiveModel = redisModel || process.env.AGENT_MODEL || activeProviderConfig.defaultModel;
-
     const copilotRuntimeHandler = copilotRuntimeNextJSAppRouterEndpoint({
       endpoint: '/copilot/agent',
       runtime,
@@ -110,7 +102,7 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         openai: copilotOpenAI as any,
-        model: effectiveModel,
+        model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
       }),
     });
 
