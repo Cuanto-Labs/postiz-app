@@ -37,7 +37,19 @@ import { SkoolProvider } from '@gitroom/nestjs-libraries/integrations/social/sko
 import { WhopProvider } from '@gitroom/nestjs-libraries/integrations/social/whop.provider';
 import { MeweProvider } from '@gitroom/nestjs-libraries/integrations/social/mewe.provider';
 
-export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
+// ENABLED_INTEGRATIONS — comma-separated list of provider identifiers to activate.
+// When set, only those providers are instantiated and Temporal workers are registered for them.
+// Unset = all 33 providers (default, full feature set).
+//
+// Example Railway env: ENABLED_INTEGRATIONS=x,linkedin,linkedin-page
+//
+// Boot time impact: each Temporal worker = one Cloud task-queue connection (~100-200ms).
+// 33 workers → ~8s boot. 2 workers → ~2-3s boot.
+const ENABLED_IDS: Set<string> | null = process.env.ENABLED_INTEGRATIONS
+  ? new Set(process.env.ENABLED_INTEGRATIONS.split(',').map((s) => s.trim()))
+  : null;
+
+const ALL_PROVIDERS: Array<SocialAbstract & SocialProvider> = [
   new XProvider(),
   new LinkedinProvider(),
   new LinkedinPageProvider(),
@@ -71,8 +83,11 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
   new WhopProvider(),
   new SkoolProvider(),
   new MeweProvider(),
-  // new MastodonCustomProvider(),
 ];
+
+export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = ENABLED_IDS
+  ? ALL_PROVIDERS.filter((p) => ENABLED_IDS!.has(p.identifier))
+  : ALL_PROVIDERS;
 
 @Injectable()
 export class IntegrationManager {
