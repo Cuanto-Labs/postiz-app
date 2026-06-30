@@ -55,7 +55,8 @@ export class CopilotController {
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
       serviceAdapter: new OpenAIAdapter({
-        openai: copilotOpenAI,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        openai: copilotOpenAI as any,
         model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
       }),
     });
@@ -99,7 +100,8 @@ export class CopilotController {
       runtime,
       // properties: req.body.variables.properties,
       serviceAdapter: new OpenAIAdapter({
-        openai: copilotOpenAI,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        openai: copilotOpenAI as any,
         model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
       }),
     });
