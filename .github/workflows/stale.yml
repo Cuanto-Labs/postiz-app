@@ -3,7 +3,9 @@ name: Close inactive issues
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"
+    # Daily at 01:00 UTC. Was "*/30 * * * *" (every 30 min = 48 runs/day) —
+    # stale-issue sweeps only need to run once a day.
+    - cron: "0 1 * * *"
 
 jobs:
   close-issues:
