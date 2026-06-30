@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Agent } from '@mastra/core/agent';
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { Memory } from '@mastra/memory';
+
+const agentProvider = createOpenAI({
+  baseURL: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
+  apiKey: process.env.OPENCODE_API_KEY || process.env.OPENAI_API_KEY || '',
+});
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { array, object, string } from 'zod';
 import { ModuleRef } from '@nestjs/core';
@@ -87,7 +92,7 @@ export class LoadToolsService {
       )}
 `;
       },
-      model: openai(process.env.OPENAI_MODEL || 'gpt-4o'),
+      model: agentProvider(process.env.OPENAI_MODEL || 'mimo-v2.5-free'),
       tools,
       memory: new Memory({
         storage: pStore,
