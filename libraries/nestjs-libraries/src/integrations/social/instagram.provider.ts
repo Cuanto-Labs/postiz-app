@@ -38,7 +38,7 @@ export class InstagramProvider
     'instagram_manage_comments',
     'instagram_manage_insights',
   ];
-  override maxConcurrentJob = 400;
+  override maxConcurrentJob = 10;
   editor = 'normal' as const;
   dto = InstagramDto;
   maxLength() {

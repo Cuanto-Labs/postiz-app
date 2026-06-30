@@ -33,7 +33,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     'pages_read_engagement',
     'read_insights',
   ];
-  override maxConcurrentJob = 500; // Facebook has reasonable rate limits
+  override maxConcurrentJob = 10;
   editor = 'normal' as const;
   maxLength() {
     return 63206;

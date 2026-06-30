@@ -19,7 +19,7 @@ export const getTemporalModule = (
     ...(isWorkers
       ? {
           workers: [
-            { identifier: 'main', maxConcurrentJob: undefined },
+            { identifier: 'main', maxConcurrentJob: 5 },
             ...socialIntegrationList,
           ]
             .filter((f) => f.identifier.indexOf('-') === -1)
