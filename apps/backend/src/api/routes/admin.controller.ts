@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   Put,
@@ -81,6 +82,16 @@ export class AdminController {
     }
     await ioRedis.set(REDIS_KEY_ENABLED, filtered.join(','));
     return { enabled: filtered };
+  }
+
+  @Delete('/integrations/enabled')
+  async resetEnabledIntegrations(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    await ioRedis.del(REDIS_KEY_ENABLED);
+    return {
+      enabled: socialIntegrationList.map((p) => p.identifier),
+      source: 'boot',
+    };
   }
 
   @Get('/stats')
