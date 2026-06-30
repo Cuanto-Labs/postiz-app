@@ -223,8 +223,8 @@ export class AdminController {
           _count: {
             select: {
               users: true,
-              Integration: { where: { deletedAt: null } },
-              post: { where: { state: 'PUBLISHED', deletedAt: null } },
+              Integration: true,
+              post: true,
             },
           },
           users: {
