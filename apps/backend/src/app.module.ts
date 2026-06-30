@@ -35,8 +35,16 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
     ThrottlerModule.forRoot({
       throttlers: [
         {
+          // Public API posts limit (per org, per hour)
+          name: 'default',
           ttl: 3600000,
           limit: process.env.API_LIMIT ? Number(process.env.API_LIMIT) : 90,
+        },
+        {
+          // AI agent calls limit — tighter cap to control LLM spend (per org, per hour)
+          name: 'ai',
+          ttl: 3600000,
+          limit: process.env.AI_LIMIT ? Number(process.env.AI_LIMIT) : 20,
         },
       ],
       storage: new ThrottlerStorageRedisService(ioRedis),

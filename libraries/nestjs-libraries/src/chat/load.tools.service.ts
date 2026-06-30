@@ -3,13 +3,35 @@ import { Agent } from '@mastra/core/agent';
 import { createOpenAI } from '@ai-sdk/openai';
 import { Memory } from '@mastra/memory';
 
-// Provider pool — swap via Railway env vars, zero code change:
-//   AGENT_BASE_URL  = https://opencode.ai/zen/v1 | https://api.openai.com/v1 | any OAI-compat endpoint
-//   AGENT_API_KEY   = key for that endpoint
-//   AGENT_MODEL     = model name (e.g. mimo-v2.5-free, gpt-4o, gpt-5.5, claude-sonnet-4-6)
+// Provider pool — two named providers, select via AGENT_PROVIDER env var.
+// Each has its own base URL + API key so both can be configured simultaneously.
+// Swap at runtime by changing AGENT_PROVIDER in Railway (no redeploy needed on next restart).
+//
+//   AGENT_PROVIDER = opencode (default) | openai
+//   AGENT_MODEL    = model name — fetched dynamically from /v1/models of active provider
+//
+// OpenCode:  OPENCODE_BASE_URL (default https://opencode.ai/zen/v1) + OPENCODE_API_KEY
+// OpenAI:    OPENAI_BASE_URL   (default https://api.openai.com/v1)   + OPENAI_API_KEY
+
+export const AGENT_PROVIDERS = {
+  opencode: {
+    baseURL: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
+    apiKey: process.env.OPENCODE_API_KEY || '',
+    defaultModel: 'mimo-v2.5-free',
+  },
+  openai: {
+    baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY || '',
+    defaultModel: 'gpt-4o',
+  },
+} as const;
+
+const activeProviderKey = (process.env.AGENT_PROVIDER || 'opencode') as keyof typeof AGENT_PROVIDERS;
+export const activeProviderConfig = AGENT_PROVIDERS[activeProviderKey] ?? AGENT_PROVIDERS.opencode;
+
 const agentProvider = createOpenAI({
-  baseURL: process.env.AGENT_BASE_URL || 'https://opencode.ai/zen/v1',
-  apiKey: process.env.AGENT_API_KEY || process.env.OPENCODE_API_KEY || process.env.OPENAI_API_KEY || '',
+  baseURL: activeProviderConfig.baseURL,
+  apiKey: activeProviderConfig.apiKey,
 });
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { array, object, string } from 'zod';
@@ -96,7 +118,7 @@ export class LoadToolsService {
       )}
 `;
       },
-      model: agentProvider(process.env.AGENT_MODEL || 'mimo-v2.5-free'),
+      model: agentProvider(process.env.AGENT_MODEL || activeProviderConfig.defaultModel),
       tools,
       memory: new Memory({
         storage: pStore,

@@ -14,6 +14,7 @@ import {
   copilotRuntimeNodeHttpEndpoint,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from '@copilotkit/runtime';
+import OpenAI from 'openai';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
@@ -23,6 +24,13 @@ import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { AGENT_PROVIDERS, activeProviderConfig } from '@gitroom/nestjs-libraries/chat/load.tools.service';
+
+// Shared OAI-compatible client for copilot adapters — follows provider pool.
+const copilotOpenAI = new OpenAI({
+  baseURL: activeProviderConfig.baseURL,
+  apiKey: activeProviderConfig.apiKey,
+});
 
 export type ChannelsContext = {
   integrations: string;
@@ -38,11 +46,8 @@ export class CopilotController {
   ) {}
   @Post('/chat')
   chatAgent(@Req() req: Request, @Res() res: Response) {
-    if (
-      process.env.OPENAI_API_KEY === undefined ||
-      process.env.OPENAI_API_KEY === ''
-    ) {
-      Logger.warn('OpenAI API key not set, chat functionality will not work');
+    if (!activeProviderConfig.apiKey) {
+      Logger.warn(`No API key for provider ${process.env.AGENT_PROVIDER || 'opencode'}`);
       return;
     }
 
@@ -50,7 +55,8 @@ export class CopilotController {
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
       serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
+        openai: copilotOpenAI,
+        model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
       }),
     });
 
@@ -64,11 +70,8 @@ export class CopilotController {
     @Res() res: Response,
     @GetOrgFromRequest() organization: Organization
   ) {
-    if (
-      process.env.OPENAI_API_KEY === undefined ||
-      process.env.OPENAI_API_KEY === ''
-    ) {
-      Logger.warn('OpenAI API key not set, chat functionality will not work');
+    if (!activeProviderConfig.apiKey) {
+      Logger.warn(`No API key for provider ${process.env.AGENT_PROVIDER || 'opencode'}`);
       return;
     }
     const mastra = await this._mastraService.mastra();
@@ -96,7 +99,8 @@ export class CopilotController {
       runtime,
       // properties: req.body.variables.properties,
       serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
+        openai: copilotOpenAI,
+        model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
       }),
     });
 
@@ -150,5 +154,34 @@ export class CopilotController {
         title: p.title,
       })),
     };
+  }
+
+  @Get('/providers')
+  listProviders() {
+    return {
+      active: process.env.AGENT_PROVIDER || 'opencode',
+      model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
+      providers: Object.entries(AGENT_PROVIDERS).map(([key, cfg]) => ({
+        key,
+        baseURL: cfg.baseURL,
+        defaultModel: cfg.defaultModel,
+      })),
+    };
+  }
+
+  @Get('/models')
+  async listModels() {
+    try {
+      const res = await fetch(`${activeProviderConfig.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${activeProviderConfig.apiKey}` },
+      });
+      const data = await res.json() as { data?: { id: string }[] };
+      return {
+        provider: process.env.AGENT_PROVIDER || 'opencode',
+        models: (data.data ?? []).map((m) => m.id),
+      };
+    } catch {
+      return { provider: process.env.AGENT_PROVIDER || 'opencode', models: [] };
+    }
   }
 }
