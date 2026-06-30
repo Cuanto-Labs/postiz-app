@@ -47,8 +47,8 @@ export class NoAuthIntegrationsController {
     @Body() body: ConnectIntegrationDto
   ) {
     if (
-      !this._integrationManager
-        .getAllowedSocialsIntegrations()
+      !(await this._integrationManager
+        .getAllowedSocialsIntegrations())
         .includes(integration)
     ) {
       throw new Error('Integration not allowed');

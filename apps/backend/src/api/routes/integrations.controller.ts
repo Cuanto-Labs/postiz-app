@@ -201,8 +201,8 @@ export class IntegrationsController {
     @GetOrgFromRequest() org: Organization
   ) {
     if (
-      !this._integrationManager
-        .getAllowedSocialsIntegrations()
+      !(await this._integrationManager
+        .getAllowedSocialsIntegrations())
         .includes(integration)
     ) {
       throw new Error('Integration not allowed');

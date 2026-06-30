@@ -1,7 +1,9 @@
 import {
+  Body,
   Controller,
   Get,
   HttpException,
+  Put,
   Query,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -9,6 +11,8 @@ import { User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { REDIS_KEY_ENABLED, socialIntegrationList } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import dayjs from 'dayjs';
 
 @ApiTags('Admin')
@@ -48,6 +52,35 @@ export class AdminController {
   async listPlatforms(@GetUserFromRequest() user: User) {
     this.assertSuperAdmin(user);
     return this._errorsService.listPlatforms();
+  }
+
+  @Get('/integrations/enabled')
+  async getEnabledIntegrations(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    const raw = await ioRedis.get(REDIS_KEY_ENABLED);
+    const active = raw
+      ? raw.split(',').map((s) => s.trim())
+      : socialIntegrationList.map((p) => p.identifier);
+    return {
+      enabled: active,
+      available: socialIntegrationList.map((p) => p.identifier),
+      source: raw ? 'redis' : 'boot',
+    };
+  }
+
+  @Put('/integrations/enabled')
+  async setEnabledIntegrations(
+    @GetUserFromRequest() user: User,
+    @Body() body: { enabled: string[] }
+  ) {
+    this.assertSuperAdmin(user);
+    const valid = socialIntegrationList.map((p) => p.identifier);
+    const filtered = (body.enabled ?? []).filter((id) => valid.includes(id));
+    if (!filtered.length) {
+      throw new HttpException('No valid integration identifiers provided', 400);
+    }
+    await ioRedis.set(REDIS_KEY_ENABLED, filtered.join(','));
+    return { enabled: filtered };
   }
 
   @Get('/stats')

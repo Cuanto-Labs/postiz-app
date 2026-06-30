@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { Injectable } from '@nestjs/common';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { XProvider } from '@gitroom/nestjs-libraries/integrations/social/x.provider';
 import { SocialProvider } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
@@ -85,16 +86,38 @@ const ALL_PROVIDERS: Array<SocialAbstract & SocialProvider> = [
   new MeweProvider(),
 ];
 
+// Boot-time list — Temporal workers registered from this at startup.
 export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = ENABLED_IDS
   ? ALL_PROVIDERS.filter((p) => ENABLED_IDS!.has(p.identifier))
   : ALL_PROVIDERS;
 
+// Redis key for live toggle — overrides boot-time filter for user-facing methods.
+// Does NOT affect Temporal workers (those are set at boot).
+// Format: comma-separated identifiers, e.g. "x,linkedin,linkedin-page"
+export const REDIS_KEY_ENABLED = 'cuanto:enabled_integrations';
+
+// Returns the active enabled set: Redis value > env var > all
+async function getEnabledIds(): Promise<Set<string> | null> {
+  try {
+    const raw = await ioRedis.get(REDIS_KEY_ENABLED);
+    if (raw) return new Set(raw.split(',').map((s) => s.trim()));
+  } catch {
+    // Redis unavailable — fall through to env fallback
+  }
+  return ENABLED_IDS; // null means "all"
+}
+
 @Injectable()
 export class IntegrationManager {
   async getAllIntegrations() {
+    const enabled = await getEnabledIds();
+    const visible = enabled
+      ? socialIntegrationList.filter((p) => enabled.has(p.identifier))
+      : socialIntegrationList;
+
     return {
       social: await Promise.all(
-        socialIntegrationList.map(async (p) => ({
+        visible.map(async (p) => ({
           name: p.name,
           identifier: p.identifier,
           toolTip: p.toolTip,
@@ -179,9 +202,16 @@ export class IntegrationManager {
     };
   }
 
-  getAllowedSocialsIntegrations() {
-    return socialIntegrationList.map((p) => p.identifier);
+  async getAllowedSocialsIntegrations() {
+    const enabled = await getEnabledIds();
+    const list = enabled
+      ? socialIntegrationList.filter((p) => enabled.has(p.identifier))
+      : socialIntegrationList;
+    return list.map((p) => p.identifier);
   }
+
+  // Sync — used by Temporal posting path. Always has access to all boot-loaded providers
+  // regardless of Redis toggle (existing integrations must remain postable after a toggle-off).
   getSocialIntegration(integration: string): SocialProvider {
     return socialIntegrationList.find((i) => i.identifier === integration)!;
   }
