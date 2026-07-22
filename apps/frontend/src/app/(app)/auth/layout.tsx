@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic';
 import { ReactNode } from 'react';
 import loadDynamic from 'next/dynamic';
-import { TestimonialComponent } from '@gitroom/frontend/components/auth/testimonial.component';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
 const ReturnUrlComponent = loadDynamic(() => import('./return.url.component'));
 export default async function AuthLayout({
@@ -23,14 +22,16 @@ export default async function AuthLayout({
           <div className="flex">{children}</div>
         </div>
       </div>
-      <div className="text-[36px] flex-1 pt-[88px] hidden lg:flex flex-col items-center">
+      <div className="text-[36px] flex-1 pt-[88px] hidden lg:flex flex-col items-center px-[40px]">
         <div className="text-center">
-          Over <span className="text-[42px] text-[#10b981]">20,000+</span>{' '}
-          Entrepreneurs use
+          Schedule and publish your social posts
           <br />
-          Cuanto Socials Management To Grow Their Social Presence
+          <span className="text-[#10b981]">from one place.</span>
         </div>
-        <TestimonialComponent />
+        <div className="text-[16px] text-white/60 text-center mt-[24px] max-w-[420px]">
+          Write once, schedule ahead, and keep every post organized in a
+          single calendar.
+        </div>
       </div>
     </div>
   );
