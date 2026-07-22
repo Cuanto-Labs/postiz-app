@@ -385,7 +385,7 @@ export const AddProviderComponent: FC<{
 }> = (props) => {
   const { update, social, article, onboarding, isMobile } = props;
   // Only these channels are live for now; the rest render disabled ("Coming Soon").
-  const ENABLED_PROVIDERS = ['x', 'linkedin'];
+  const ENABLED_PROVIDERS = ['linkedin'];
   const { isGeneral, extensionId } = useVariables();
   const toaster = useToaster();
   const router = useRouter();
@@ -661,6 +661,10 @@ export const AddProviderComponent: FC<{
         >
           {social
             .filter((item) => {
+              if (!ENABLED_PROVIDERS.includes(item.identifier)) {
+                return false;
+              }
+
               if (!props.invite) {
                 return true;
               }
@@ -671,6 +675,11 @@ export const AddProviderComponent: FC<{
                 !item.isChromeExtension &&
                 !item.customFields
               );
+            })
+            .sort((a, b) => {
+              if (a.identifier === 'linkedin') return -1;
+              if (b.identifier === 'linkedin') return 1;
+              return 0;
             })
             .map((item) => {
               const enabled = ENABLED_PROVIDERS.includes(item.identifier);

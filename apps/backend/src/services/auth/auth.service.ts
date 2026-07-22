@@ -12,6 +12,26 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 
+const activationEmailHtml = (activationUrl: string) => `
+  <p style="margin: 0 0 16px;">Welcome to Cuanto Socials — one more step and you're in.</p>
+  <a
+    href="${activationUrl}"
+    style="
+      display: inline-block;
+      background: linear-gradient(to right, #10b981, #059669);
+      color: #ffffff;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 12px 28px;
+      border-radius: 10px;
+      margin: 8px 0 16px;
+    "
+  >Activate your account</a>
+  <p style="margin: 0; font-size: 13px; color: #6b7280;">
+    Or paste this link into your browser: <a href="${activationUrl}">${activationUrl}</a>
+  </p>
+`;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -76,7 +96,9 @@ export class AuthService {
         await this._emailService.sendEmail(
           body.email,
           'Activate your account',
-          `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`,
+          activationEmailHtml(
+            `${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}`
+          ),
           'top'
         );
         return obj;
@@ -281,7 +303,7 @@ export class AuthService {
     await this._emailService.sendEmail(
       user.email,
       'Activate your account',
-      `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${jwt}">here</a> to activate your account`,
+      activationEmailHtml(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`),
       'top'
     );
 

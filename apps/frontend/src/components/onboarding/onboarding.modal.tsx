@@ -87,7 +87,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ onClose }) => {
                     step === 2 ? 'font-medium' : 'text-textColor'
                   )}
                 >
-                  {t('watch_tutorial', 'Watch Tutorial')}
+                  {t('quick_tips', 'Quick Tips')}
                 </span>
               </div>
             </div>
@@ -250,27 +250,51 @@ const OnboardingStep2: FC<{ onBack: () => void; onFinish: () => void }> = ({
     <div className="flex flex-col gap-[24px] flex-1">
       <div className="flex gap-[4px] flex-col text-center">
         <div className="text-[24px] font-semibold">
-          {t('watch_tutorial_title', 'Learn How to Use Cuanto Socials')}
+          {t('quick_tips_title', 'A Few Things to Know')}
         </div>
         <div className="text-[14px] text-customColor18">
           {t(
-            'watch_tutorial_description',
-            'Watch this short video to learn how to get the most out of Cuanto Socials'
+            'quick_tips_description',
+            'A quick rundown before you schedule your first post'
           )}
         </div>
       </div>
 
-      {/* YouTube Video Embed */}
-      <div className="relative flex-1 rounded-[12px] overflow-hidden">
-        <div className="absolute left-0 top-0 w-full h-full flex justify-center">
-          <iframe
-            className="h-full aspect-video"
-            src="https://www.youtube.com/embed/BdsCVvEYgHU?si=vvhaZJ8I5oXXvVJS?autoplay=1"
-            title="Cuanto Socials Tutorial"
-            allow="autoplay"
-            allowFullScreen
-          />
-        </div>
+      {/* Quick tips */}
+      <div className="relative flex-1 rounded-[12px] flex flex-col gap-[16px] justify-center">
+        {[
+          {
+            title: t('tip_schedule_title', 'Schedule ahead'),
+            body: t(
+              'tip_schedule_body',
+              'Pick a date and time for each post, or publish immediately — your call.'
+            ),
+          },
+          {
+            title: t('tip_channels_title', 'One post, every channel'),
+            body: t(
+              'tip_channels_body',
+              'Write once and tailor the content per connected channel before it goes out.'
+            ),
+          },
+          {
+            title: t('tip_calendar_title', 'Everything in one calendar'),
+            body: t(
+              'tip_calendar_body',
+              'Track drafts, scheduled, and published posts across all your channels in one view.'
+            ),
+          },
+        ].map((tip) => (
+          <div
+            key={tip.title}
+            className="bg-newTableHeader rounded-[8px] p-[16px]"
+          >
+            <div className="text-[15px] font-medium mb-[4px]">
+              {tip.title}
+            </div>
+            <div className="text-[13px] text-customColor18">{tip.body}</div>
+          </div>
+        ))}
       </div>
 
       {/* Action buttons */}
