@@ -53,11 +53,11 @@ export default function TermsPage() {
 
       <LegalSection title="1. Acceptance of Terms">
         <p>
-          By accessing or using {name} (the &ldquo;Service&rdquo;) operated
-          by {companyName} (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or
-          &ldquo;our&rdquo;), you agree to be bound by these Terms of
-          Service (&ldquo;Terms&rdquo;). If you do not agree, do not use the
-          Service.
+          By accessing or using {name}{' '}
+          (the &ldquo;Service&rdquo;) operated by {companyName}{' '}
+          (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you
+          agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;).
+          If you do not agree, do not use the Service.
         </p>
         <p>
           We may update these Terms at any time. Continued use after changes
@@ -68,8 +68,9 @@ export default function TermsPage() {
 
       <LegalSection title="2. Description of Service">
         <p>
-          {name} is a social media scheduling and publishing platform
-          accessible at{' '}
+          {name}{' '}
+          is a social media scheduling and publishing platform accessible
+          at{' '}
           <a href={url} className="underline underline-offset-2 hover:text-white">
             {url}
           </a>
@@ -145,9 +146,10 @@ export default function TermsPage() {
       <LegalSection title="7. Intellectual Property">
         <p>
           The Service and its content (excluding your data) are owned by{' '}
-          {companyName} and protected by copyright, trademark, and other
-          laws. You are granted a limited, non-exclusive, non-transferable
-          license to use the Service for its intended purpose.
+          {companyName}{' '}
+          and protected by copyright, trademark, and other laws. You are
+          granted a limited, non-exclusive, non-transferable license to use
+          the Service for its intended purpose.
         </p>
         <p>
           You retain ownership of all data and content you submit to the
@@ -183,10 +185,11 @@ export default function TermsPage() {
       <LegalSection title="10. Limitation of Liability">
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW,{' '}
-          {companyName.toUpperCase()} SHALL NOT BE LIABLE FOR ANY INDIRECT,
-          INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR LOSS OF
-          PROFITS, REVENUE, DATA, OR GOODWILL, EVEN IF ADVISED OF THE
-          POSSIBILITY OF SUCH DAMAGES.
+          {companyName.toUpperCase()}{' '}
+          SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+          CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR LOSS OF PROFITS, REVENUE,
+          DATA, OR GOODWILL, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+          DAMAGES.
         </p>
         <p>
           OUR TOTAL AGGREGATE LIABILITY TO YOU FOR CLAIMS ARISING UNDER
@@ -229,10 +232,11 @@ export default function TermsPage() {
       <LegalSection title="14. Miscellaneous">
         <p>
           These Terms constitute the entire agreement between you and{' '}
-          {companyName} regarding the Service. If any provision is held
-          unenforceable, the remaining provisions remain in effect. Our
-          failure to enforce any right is not a waiver of that right. You
-          may not assign these Terms without our written consent.
+          {companyName}{' '}
+          regarding the Service. If any provision is held unenforceable, the
+          remaining provisions remain in effect. Our failure to enforce any
+          right is not a waiver of that right. You may not assign these
+          Terms without our written consent.
         </p>
       </LegalSection>
 

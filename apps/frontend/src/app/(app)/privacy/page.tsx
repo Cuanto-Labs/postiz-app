@@ -54,8 +54,9 @@ export default function PrivacyPage() {
 
       <LegalSection title="1. Who We Are">
         <p>
-          {companyName} (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or
-          &ldquo;our&rdquo;) operates {name} at{' '}
+          {companyName}{' '}
+          (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) operates{' '}
+          {name} at{' '}
           <a href={url} className="underline underline-offset-2 hover:text-white">
             {url}
           </a>{' '}
@@ -203,11 +204,12 @@ export default function PrivacyPage() {
 
       <LegalSection title="10. International Data Transfers">
         <p>
-          {companyName} is based in {jurisdiction}. If you access the
-          Service from outside this jurisdiction, your data may be
-          transferred to and processed in {jurisdiction} or other countries.
-          We ensure appropriate safeguards are in place for such transfers as
-          required by applicable law.
+          {companyName}{' '}
+          is based in {jurisdiction}. If you access the Service from outside
+          this jurisdiction, your data may be transferred to and processed
+          in {jurisdiction}{' '}
+          or other countries. We ensure appropriate safeguards are in place
+          for such transfers as required by applicable law.
         </p>
       </LegalSection>
 
