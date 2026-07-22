@@ -97,7 +97,9 @@ export class AuthService {
           body.email,
           'Activate your account',
           activationEmailHtml(
-            `${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}`
+            `${process.env.FRONTEND_URL}/auth/activate/${this.activationJwt(
+              create.users[0].user
+            )}`
           ),
           'top'
         );
@@ -298,7 +300,7 @@ export class AuthService {
       throw new Error('Account is already activated');
     }
 
-    const jwt = await this.jwt(user);
+    const jwt = this.activationJwt(user);
 
     await this._emailService.sendEmail(
       user.email,
@@ -338,5 +340,15 @@ export class AuthService {
       delete user.password;
     }
     return AuthChecker.signJWT(user);
+  }
+
+  // Activation links only need id/email/activated (that's all `activate()` reads) —
+  // signing the full user row here made the emailed link absurdly long.
+  private activationJwt(user: Pick<User, 'id' | 'email'>) {
+    return AuthChecker.signJWT({
+      id: user.id,
+      email: user.email,
+      activated: false,
+    });
   }
 }
