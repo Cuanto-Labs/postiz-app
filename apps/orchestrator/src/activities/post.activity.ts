@@ -22,6 +22,7 @@ import {
   organizationId,
   postId as postIdSearchParam,
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
+import { activityTaskQueue } from '@gitroom/nestjs-libraries/temporal/temporal.queues';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 
 // Drops fields the workflow and downstream activities never read — biggest wins are `error` (grows per retry) and `childrenPost` (Prisma side-loads it on every recursive row).
@@ -84,9 +85,9 @@ export class PostActivity {
           signalArgs: [],
           args: [
             {
-              taskQueue: post.integration.providerIdentifier
-                .split('-')[0]
-                .toLowerCase(),
+              taskQueue: activityTaskQueue(
+                post.integration.providerIdentifier
+              ),
               postId: post.id,
               organizationId: post.organizationId,
             },

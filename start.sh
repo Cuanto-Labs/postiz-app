@@ -49,8 +49,27 @@ process.stdin.on('end',function(){
   fi
 fi
 
-node --experimental-require-module apps/backend/dist/apps/backend/src/main.js &
+# Heap ceilings are set here rather than via NODE_OPTIONS so each process gets
+# its own. V8 tunes GC aggressiveness to the ceiling it is given: a ceiling far
+# above what the app needs means old-space is allowed to grow and major GC is
+# deferred, and the container host bills the resulting resident memory. These
+# flags override any --max-old-space-size inherited from NODE_OPTIONS, since
+# command-line options are applied after it.
+BACKEND_HEAP_MB="${BACKEND_HEAP_MB:-448}"
+ORCHESTRATOR_HEAP_MB="${ORCHESTRATOR_HEAP_MB:-320}"
+
+if [ "$RUN_ORCHESTRATOR_IN_PROCESS" = "true" ]; then
+  # One process hosting both the API and the Temporal workers.
+  exec node \
+    --max-old-space-size="$BACKEND_HEAP_MB" \
+    --experimental-require-module \
+    apps/backend/dist/apps/backend/src/main.js
+fi
+
+node --max-old-space-size="$BACKEND_HEAP_MB" \
+  --experimental-require-module apps/backend/dist/apps/backend/src/main.js &
 BACKEND_PID=$!
-node --experimental-require-module apps/orchestrator/dist/apps/orchestrator/src/main.js &
+node --max-old-space-size="$ORCHESTRATOR_HEAP_MB" \
+  --experimental-require-module apps/orchestrator/dist/apps/orchestrator/src/main.js &
 ORCHESTRATOR_PID=$!
 wait $BACKEND_PID $ORCHESTRATOR_PID

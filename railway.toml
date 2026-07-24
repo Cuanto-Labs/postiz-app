@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install && pnpm run build:backend && pnpm run build:orchestrator"
+buildCommand = "pnpm install && pnpm run build:backend && pnpm run build:orchestrator && pnpm run build:workflows"
 
 [deploy]
 startCommand = "bash start.sh"

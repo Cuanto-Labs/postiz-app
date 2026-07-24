@@ -42,6 +42,7 @@ import {
   organizationId,
   postId as postIdSearchParam,
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
+import { activityTaskQueue } from '@gitroom/nestjs-libraries/temporal/temporal.queues';
 import { AnalyticsData } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
@@ -916,7 +917,7 @@ export class PostsService {
 
       if (body.type !== 'update') {
         this.startWorkflow(
-          post.settings.__type.split('-')[0].toLowerCase(),
+          activityTaskQueue(post.settings.__type),
           posts[0].id,
           orgId,
           posts[0].state
@@ -956,7 +957,7 @@ export class PostsService {
 
     try {
       await this.startWorkflow(
-        getPostById.integration.providerIdentifier.split('-')[0].toLowerCase(),
+        activityTaskQueue(getPostById.integration.providerIdentifier),
         getPostById.id,
         orgId,
         state
@@ -987,9 +988,7 @@ export class PostsService {
     if (action === 'schedule') {
       try {
         await this.startWorkflow(
-          getPostById.integration.providerIdentifier
-            .split('-')[0]
-            .toLowerCase(),
+          activityTaskQueue(getPostById.integration.providerIdentifier),
           getPostById.id,
           orgId,
           getPostById.state === 'DRAFT' ? 'DRAFT' : 'QUEUE'
