@@ -48,8 +48,13 @@ export class AuthController {
     @UserAgent() userAgent: string
   ) {
     try {
+      // The code no longer gates signup — registration is open and every new
+      // organization gets the complimentary tier regardless. A wrong code is
+      // still rejected, so a mistyped one fails loudly instead of silently
+      // dropping whatever the code was meant to confer.
       if (
         process.env.REGISTRATION_CODE &&
+        body.inviteCode &&
         body.inviteCode !== process.env.REGISTRATION_CODE
       ) {
         return response.status(403).send('Invalid invite code');

@@ -73,6 +73,63 @@ export function Register() {
     <RegisterAfter token={code} provider={provider?.toUpperCase() || 'LOCAL'} />
   );
 }
+/**
+ * Deliberately self-contained rather than going through the app's modal
+ * provider — the auth routes render outside it, so a shared modal would throw
+ * here. The code is optional, so this stays out of the way until asked for.
+ */
+function EnterCodeModal({
+  initialValue,
+  onApply,
+  onClose,
+}: {
+  initialValue: string;
+  onApply: (code: string) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const [value, setValue] = useState(initialValue);
+  return (
+    <div
+      className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60"
+      onClick={onClose}
+    >
+      <div
+        className="bg-newBgColorInner rounded-[12px] p-[24px] w-[320px] flex flex-col gap-[16px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-[18px] font-[600]">
+          {t('enter_code', 'Enter code')}
+        </div>
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              onApply(value.trim());
+            }
+          }}
+          placeholder={t('enter_code', 'Enter code')}
+          className="bg-newColColor rounded-[8px] h-[44px] px-[12px] outline-none"
+        />
+        <div className="flex gap-[8px] justify-end">
+          <button type="button" className="text-[14px]" onClick={onClose}>
+            {t('cancel', 'Cancel')}
+          </button>
+          <button
+            type="button"
+            className="text-[14px] font-[600] bg-[#10b981] text-white rounded-[8px] h-[36px] px-[16px]"
+            onClick={() => onApply(value.trim())}
+          >
+            {t('apply', 'Apply')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getHelpfulReasonForRegistrationFailure(httpCode: number) {
   switch (httpCode) {
     case 400:
@@ -103,13 +160,21 @@ export function RegisterAfter({
   const resolver = useMemo(() => {
     return classValidatorResolver(CreateOrgUserDto);
   }, []);
+  // Landing pages can carry the code in the URL (?invite=CODE) so the visitor
+  // never sees a code field at all. Everyone else registers without one — it
+  // is optional, and the complimentary tier is granted either way.
+  const searchParams = useSearchParams();
+  const inviteFromUrl = searchParams?.get('invite') || '';
+  const [codeModalOpen, setCodeModalOpen] = useState(false);
   const form = useForm<Inputs>({
     resolver,
     defaultValues: {
       providerToken: token,
       provider: provider,
+      inviteCode: inviteFromUrl,
     },
   });
+  const inviteCode = form.watch('inviteCode');
   const fetchData = useFetch();
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
@@ -154,6 +219,16 @@ export function RegisterAfter({
   };
   return (
     <FormProvider {...form}>
+      {codeModalOpen && (
+        <EnterCodeModal
+          initialValue={inviteCode || ''}
+          onApply={(value) => {
+            form.setValue('inviteCode', value);
+            setCodeModalOpen(false);
+          }}
+          onClose={() => setCodeModalOpen(false)}
+        />
+      )}
       <form className="flex-1 flex" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="flex flex-col flex-1">
           <div>
@@ -218,15 +293,33 @@ export function RegisterAfter({
                   type="text"
                   placeholder={t('label_company', 'Company')}
                 />
-                {process.env.NEXT_PUBLIC_REGISTRATION_CODE_REQUIRED === 'true' && (
-                  <Input
-                    label="Invite Code"
-                    translationKey="label_invite_code"
-                    {...form.register('inviteCode')}
-                    autoComplete="off"
-                    type="text"
-                    placeholder={t('label_invite_code', 'Invite Code')}
-                  />
+                {/* Kept mounted but hidden — the value still submits whether it
+                    came from ?invite= or the modal below. */}
+                <input type="hidden" {...form.register('inviteCode')} />
+                {!inviteFromUrl && (
+                  <div className="text-[12px]">
+                    {inviteCode ? (
+                      <span className="text-customColor26">
+                        {t('code_applied', 'Code applied')}:{' '}
+                        <span className="font-[600]">{inviteCode}</span>{' '}
+                        <button
+                          type="button"
+                          className="underline"
+                          onClick={() => form.setValue('inviteCode', '')}
+                        >
+                          {t('remove', 'remove')}
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="underline opacity-70 hover:opacity-100"
+                        onClick={() => setCodeModalOpen(true)}
+                      >
+                        {t('have_a_code', 'Have a code?')}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className={clsx('text-[12px]')}>

@@ -5,6 +5,11 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import dayjs from 'dayjs';
 import { Organization } from '@prisma/client';
+import {
+  FREE_GRANT_TIER,
+  freeGrantExpiry,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/free.tier';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @Injectable()
 export class SubscriptionRepository {
@@ -24,6 +29,36 @@ export class SubscriptionRepository {
       select: {
         account: true,
         connectedAccount: true,
+      },
+    });
+  }
+
+  /**
+   * Issues the complimentary tier to a brand-new organization. Idempotent —
+   * `organizationId` is unique, and an org that already has a subscription
+   * (a real paid one, or a grant from an earlier attempt) is left alone.
+   *
+   * `identifier` stays null: there is no Stripe subscription behind this, and
+   * the Stripe lookups all key off that column, so a granted row can never be
+   * mistaken for a billed one.
+   */
+  async grantFreeTier(organizationId: string) {
+    const existing = await this._subscription.model.subscription.findFirst({
+      where: { organizationId },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this._subscription.model.subscription.create({
+      data: {
+        organizationId,
+        subscriptionTier: FREE_GRANT_TIER,
+        totalChannels: pricing[FREE_GRANT_TIER].channel,
+        period: 'MONTHLY',
+        cancelAt: freeGrantExpiry(),
+        isLifetime: false,
       },
     });
   }

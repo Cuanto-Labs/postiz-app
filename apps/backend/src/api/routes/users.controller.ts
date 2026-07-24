@@ -23,6 +23,7 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
 import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
+import { activeSubscriptionTier } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/free.tier';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { RealIP } from 'nestjs-real-ip';
@@ -115,8 +116,9 @@ export class UsersController {
         : // @ts-ignore
           organization?.subscription?.totalChannels || pricing.FREE.channel,
       tier:
-        // @ts-ignore
-        organization?.subscription?.subscriptionTier ||
+        // Through the helper so an expired complimentary grant drops the user
+        // back to FREE instead of keeping its tier forever.
+        activeSubscriptionTier(organization) ||
         (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE'),
       // @ts-ignore
       role: organization?.users[0]?.role,
