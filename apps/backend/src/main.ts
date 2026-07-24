@@ -7,6 +7,14 @@ import { json } from 'express';
 import { Runtime } from '@temporalio/worker';
 Runtime.install({ shutdownSignals: [] });
 
+// Only when the Temporal workers live in this process: the native worker
+// transport resolves through getaddrinfo, and the container's resolver returns
+// AAAA records it can't reach. Matches what the standalone orchestrator does.
+if (process.env.RUN_ORCHESTRATOR_IN_PROCESS === 'true') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('node:dns').setDefaultResultOrder('ipv4first');
+}
+
 process.env.TZ = 'UTC';
 
 import cookieParser from 'cookie-parser';

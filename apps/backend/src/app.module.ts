@@ -13,6 +13,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 import { FILTER } from '@gitroom/nestjs-libraries/sentry/sentry.exception';
 import { ChatModule } from '@gitroom/nestjs-libraries/chat/chat.module';
 import { getTemporalModule } from '@gitroom/nestjs-libraries/temporal/temporal.module';
+import { AppModule as OrchestratorModule } from '@gitroom/orchestrator/app.module';
 import { TemporalRegisterMissingSearchAttributesModule } from '@gitroom/nestjs-libraries/temporal/temporal.register';
 import { InfiniteWorkflowRegisterModule } from '@gitroom/nestjs-libraries/temporal/infinite.workflow.register';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
@@ -29,7 +30,15 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
     ThirdPartyModule,
     VideoModule,
     ChatModule,
-    getTemporalModule(false),
+    // Temporal, either way round. RUN_ORCHESTRATOR_IN_PROCESS folds the
+    // orchestrator's workers and activities into this process, which drops a
+    // second Node runtime, Nest DI graph, Prisma client and Rust query engine —
+    // together the largest resident-memory item on a small deployment. Left
+    // unset, the orchestrator runs as its own process and this app registers a
+    // Temporal client only, exactly as before.
+    ...(process.env.RUN_ORCHESTRATOR_IN_PROCESS === 'true'
+      ? [OrchestratorModule]
+      : [getTemporalModule(false)]),
     TemporalRegisterMissingSearchAttributesModule,
     InfiniteWorkflowRegisterModule,
     ThrottlerModule.forRoot({
