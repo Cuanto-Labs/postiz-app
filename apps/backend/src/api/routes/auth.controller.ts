@@ -49,13 +49,19 @@ export class AuthController {
   ) {
     try {
       // The code no longer gates signup — registration is open and every new
-      // organization gets the complimentary tier regardless. A wrong code is
-      // still rejected, so a mistyped one fails loudly instead of silently
-      // dropping whatever the code was meant to confer.
+      // organization gets the complimentary tier regardless. REGISTRATION_CODE
+      // is a comma-separated allow-list so each landing page can carry its own
+      // code for attribution; any of them validates. A code that matches none
+      // is still rejected, so a mistyped one fails loudly rather than silently
+      // being accepted as attribution it wasn't.
+      const validCodes = (process.env.REGISTRATION_CODE || '')
+        .split(',')
+        .map((code) => code.trim())
+        .filter(Boolean);
       if (
-        process.env.REGISTRATION_CODE &&
+        validCodes.length &&
         body.inviteCode &&
-        body.inviteCode !== process.env.REGISTRATION_CODE
+        !validCodes.includes(body.inviteCode)
       ) {
         return response.status(403).send('Invalid invite code');
       }
