@@ -15,17 +15,35 @@ import { z } from 'zod';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
+import {
+  activeProviderConfig,
+  activeProviderModel,
+} from '@gitroom/nestjs-libraries/chat/ai.provider';
 
 const tools = !process.env.TAVILY_API_KEY
   ? []
   : [new TavilySearch({ maxResults: 3 })];
 const toolNode = new ToolNode(tools);
 
+// Text generation runs on the provider AGENT_MODEL actually belongs to. Reading
+// AGENT_MODEL while hardcoding OpenAI's endpoint sent an OpenCode model name to
+// api.openai.com, which fails with model_not_found on every generation.
+//
+// Image generation below stays on OpenAI regardless — OpenCode serves chat
+// models only, and DallEAPIWrapper needs the real images endpoint.
 const model = new ChatOpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: process.env.AGENT_MODEL || 'gpt-4.1',
+  apiKey: activeProviderConfig.apiKey,
+  model: activeProviderModel(),
+  configuration: { baseURL: activeProviderConfig.baseURL },
   temperature: 0.7,
 });
+
+// Which mechanism LangChain uses to coerce the schema differs by provider, so
+// it travels with the provider config rather than being repeated per call.
+const structured = (schema: Parameters<typeof model.withStructuredOutput>[0]) =>
+  model.withStructuredOutput(schema, {
+    method: activeProviderConfig.structuredOutputMethod,
+  });
 
 const dalle = new DallEAPIWrapper({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -156,7 +174,7 @@ export class AgentGraphService {
 
   async findCategories(state: WorkflowChannelsState) {
     const allCategories = await this._postsService.findAllExistingCategories();
-    const structuredOutput = model.withStructuredOutput(category);
+    const structuredOutput = structured(category);
     const { category: outputCategory } = await ChatPromptTemplate.fromTemplate(
       `
         You are an assistant that gets a text that will be later summarized into a social media post
@@ -183,7 +201,7 @@ export class AgentGraphService {
       return { topic: null };
     }
 
-    const structuredOutput = model.withStructuredOutput(topic);
+    const structuredOutput = structured(topic);
     const { topic: outputTopic } = await ChatPromptTemplate.fromTemplate(
       `
         You are an assistant that gets a text that will be later summarized into a social media post
@@ -211,7 +229,7 @@ export class AgentGraphService {
   }
 
   async generateHook(state: WorkflowChannelsState) {
-    const structuredOutput = model.withStructuredOutput(hook);
+    const structuredOutput = structured(hook);
     const { hook: outputHook } = await ChatPromptTemplate.fromTemplate(
       `
         You are an assistant that gets content for a social media post, and generate only the hook.
@@ -253,7 +271,7 @@ export class AgentGraphService {
   }
 
   async generateContent(state: WorkflowChannelsState) {
-    const structuredOutput = model.withStructuredOutput(
+    const structuredOutput = structured(
       contentZod(!!state.isPicture, state.format)
     );
     const { content: outputContent } = await ChatPromptTemplate.fromTemplate(
