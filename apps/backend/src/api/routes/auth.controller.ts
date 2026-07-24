@@ -23,13 +23,15 @@ import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
+import { InviteCodesService } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.service';
 
 @ApiTags('Auth')
 @Controller('/auth')
 export class AuthController {
   constructor(
     private _authService: AuthService,
-    private _emailService: EmailService
+    private _emailService: EmailService,
+    private _inviteCodesService: InviteCodesService
   ) {}
 
   @Get('/can-register')
@@ -49,20 +51,11 @@ export class AuthController {
   ) {
     try {
       // The code no longer gates signup — registration is open and every new
-      // organization gets the complimentary tier regardless. REGISTRATION_CODE
-      // is a comma-separated allow-list so each landing page can carry its own
-      // code for attribution; any of them validates. A code that matches none
-      // is still rejected, so a mistyped one fails loudly rather than silently
-      // being accepted as attribution it wasn't.
-      const validCodes = (process.env.REGISTRATION_CODE || '')
-        .split(',')
-        .map((code) => code.trim())
-        .filter(Boolean);
-      if (
-        validCodes.length &&
-        body.inviteCode &&
-        !validCodes.includes(body.inviteCode)
-      ) {
+      // organization gets the complimentary tier regardless. Codes now live in
+      // the DB (managed from the admin panel), so this is a lookup rather than
+      // an env comparison. An absent code is fine; a non-empty code that
+      // matches no active row is rejected so a mistyped one fails loudly.
+      if (!(await this._inviteCodesService.isAcceptable(body.inviteCode))) {
         return response.status(403).send('Invalid invite code');
       }
 
