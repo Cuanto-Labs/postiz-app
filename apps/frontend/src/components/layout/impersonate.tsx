@@ -441,6 +441,21 @@ const ViewStats = () => {
   );
 };
 
+const ViewCodes = () => {
+  const t = useT();
+  const handleClick = useCallback(() => {
+    window.location.href = '/admin/codes';
+  }, []);
+  return (
+    <div
+      className="px-[10px] rounded-[4px] bg-emerald-700 text-white cursor-pointer whitespace-nowrap"
+      onClick={handleClick}
+    >
+      {t('invite_codes', 'Invite Codes')}
+    </div>
+  );
+};
+
 const ImportDebugPost = () => {
   const { openModal } = useModals();
   const t = useT();
@@ -560,6 +575,7 @@ export const Impersonate = () => {
                 <AddAnnouncement />
                 <ViewErrors />
                 <ViewStats />
+                <ViewCodes />
               </div>
             )}
           </div>

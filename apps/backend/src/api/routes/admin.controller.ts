@@ -4,6 +4,8 @@ import {
   Delete,
   Get,
   HttpException,
+  Param,
+  Post,
   Put,
   Query,
 } from '@nestjs/common';
@@ -12,6 +14,7 @@ import { User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
+import { InviteCodesService } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { REDIS_KEY_ENABLED, socialIntegrationList } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import dayjs from 'dayjs';
@@ -21,7 +24,8 @@ import dayjs from 'dayjs';
 export class AdminController {
   constructor(
     private _errorsService: ErrorsService,
-    private _adminStatsService: AdminStatsService
+    private _adminStatsService: AdminStatsService,
+    private _inviteCodesService: InviteCodesService
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -111,5 +115,56 @@ export class AdminController {
       to: toDate.endOf('day').toDate(),
       unknownOnly: unknownOnly === 'true' || unknownOnly === '1',
     });
+  }
+
+  @Get('/invite-codes')
+  async listInviteCodes(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    return this._inviteCodesService.list();
+  }
+
+  @Post('/invite-codes')
+  async createInviteCode(
+    @GetUserFromRequest() user: User,
+    @Body() body: { code?: string; label?: string; expiresAt?: string }
+  ) {
+    this.assertSuperAdmin(user);
+    const code = (body.code || '').trim();
+    if (!code) {
+      throw new HttpException('Code is required', 400);
+    }
+    return this._inviteCodesService.create({
+      code,
+      label: body.label?.trim() || undefined,
+      expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+    });
+  }
+
+  @Put('/invite-codes/:id')
+  async updateInviteCode(
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string,
+    @Body() body: { label?: string; active?: boolean; expiresAt?: string | null }
+  ) {
+    this.assertSuperAdmin(user);
+    return this._inviteCodesService.update(id, {
+      label: body.label,
+      active: body.active,
+      expiresAt:
+        body.expiresAt === undefined
+          ? undefined
+          : body.expiresAt
+          ? new Date(body.expiresAt)
+          : null,
+    });
+  }
+
+  @Delete('/invite-codes/:id')
+  async deleteInviteCode(
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string
+  ) {
+    this.assertSuperAdmin(user);
+    return this._inviteCodesService.delete(id);
   }
 }

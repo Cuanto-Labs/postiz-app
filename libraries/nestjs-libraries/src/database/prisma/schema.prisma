@@ -133,6 +133,22 @@ model UsedCodes {
   @@index([code])
 }
 
+// Registration invite codes, managed at runtime rather than through an env
+// var. A code is accepted at signup when a row exists, is active, and is not
+// past expiresAt. Landing pages carry one of these as ?invite=.
+model InviteCode {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  label     String?
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  timesUsed Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([code])
+}
+
 model UserOrganization {
   id             String       @id @default(uuid())
   userId         String
