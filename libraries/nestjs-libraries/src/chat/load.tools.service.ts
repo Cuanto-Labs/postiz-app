@@ -3,31 +3,17 @@ import { Agent } from '@mastra/core/agent';
 import { createOpenAI } from '@ai-sdk/openai';
 import { Memory } from '@mastra/memory';
 
-// Provider pool — two named providers, select via AGENT_PROVIDER env var.
-// Each has its own base URL + API key so both can be configured simultaneously.
-// Swap at runtime by changing AGENT_PROVIDER in Railway (no redeploy needed on next restart).
-//
-//   AGENT_PROVIDER = opencode (default) | openai
-//   AGENT_MODEL    = model name — fetched dynamically from /v1/models of active provider
-//
-// OpenCode:  OPENCODE_BASE_URL (default https://opencode.ai/zen/v1) + OPENCODE_API_KEY
-// OpenAI:    OPENAI_BASE_URL   (default https://api.openai.com/v1)   + OPENAI_API_KEY
-
-export const AGENT_PROVIDERS = {
-  opencode: {
-    baseURL: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
-    apiKey: process.env.OPENCODE_API_KEY || '',
-    defaultModel: 'mimo-v2.5-free',
-  },
-  openai: {
-    baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-    apiKey: process.env.OPENAI_API_KEY || '',
-    defaultModel: 'gpt-4o',
-  },
-} as const;
-
-const activeProviderKey = (process.env.AGENT_PROVIDER || 'opencode') as keyof typeof AGENT_PROVIDERS;
-export const activeProviderConfig = AGENT_PROVIDERS[activeProviderKey] ?? AGENT_PROVIDERS.opencode;
+// Provider pool lives in ./ai.provider so the post generator can share it
+// without importing Mastra. Re-exported here because callers already import
+// these two names from this module.
+import {
+  activeProviderConfig,
+  activeProviderModel,
+} from '@gitroom/nestjs-libraries/chat/ai.provider';
+export {
+  AGENT_PROVIDERS,
+  activeProviderConfig,
+} from '@gitroom/nestjs-libraries/chat/ai.provider';
 
 const agentProvider = createOpenAI({
   baseURL: activeProviderConfig.baseURL,
@@ -76,7 +62,8 @@ export class LoadToolsService {
     return new Agent({
       id: 'postiz',
       name: 'postiz',
-      description: 'Agent that helps manage and schedule social media posts for users',
+      description:
+        'Agent that helps manage and schedule social media posts for users',
       instructions: ({ requestContext }) => {
         const ui: string = requestContext.get('ui' as never);
         return `
@@ -118,7 +105,7 @@ export class LoadToolsService {
       )}
 `;
       },
-      model: agentProvider(process.env.AGENT_MODEL || activeProviderConfig.defaultModel),
+      model: agentProvider(activeProviderModel()),
       tools,
       memory: new Memory({
         storage: pStore,
