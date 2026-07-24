@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 
 const activationEmailHtml = (activationUrl: string) => `
@@ -39,7 +40,8 @@ export class AuthService {
     private _organizationService: OrganizationService,
     private _notificationService: NotificationService,
     private _emailService: EmailService,
-    private _providerManager: AuthProviderManager
+    private _providerManager: AuthProviderManager,
+    private _subscriptionService: SubscriptionService
   ) {}
   async canRegister(provider: string) {
     if (
@@ -81,6 +83,15 @@ export class AuthService {
           ip,
           userAgent
         );
+
+        // Complimentary tier for every new organization. Non-fatal: a failure
+        // here must not cost the user their completed registration — they land
+        // on free and the grant can be reissued.
+        try {
+          await this._subscriptionService.grantFreeTier(create.id);
+        } catch (err) {
+          console.error('Could not grant the free tier to', create.id, err);
+        }
 
         const addedOrg =
           addToOrg && typeof addToOrg !== 'boolean'
@@ -195,6 +206,14 @@ export class AuthService {
       ip,
       userAgent
     );
+
+    // Same complimentary grant as the local path — OAuth signups create an
+    // organization too, and would otherwise land on free.
+    try {
+      await this._subscriptionService.grantFreeTier(create.id);
+    } catch (err) {
+      console.error('Could not grant the free tier to', create.id, err);
+    }
 
     this._track('register', providerUser.email, body.datafast_visitor_id).catch(
       (err) => {}

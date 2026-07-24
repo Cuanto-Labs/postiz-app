@@ -6,6 +6,7 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { Organization } from '@prisma/client';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { activeSubscriptionTier } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/free.tier';
 
 @Injectable()
 export class SubscriptionService {
@@ -31,6 +32,10 @@ export class SubscriptionService {
 
   getCode(code: string) {
     return this._subscriptionRepository.getCode(code);
+  }
+
+  grantFreeTier(organizationId: string) {
+    return this._subscriptionRepository.grantFreeTier(organizationId);
   }
 
   async deleteSubscription(customerId: string) {
@@ -217,8 +222,9 @@ export class SubscriptionService {
   }
 
   async checkCredits(organization: Organization, checkType = 'ai_images') {
-    // @ts-ignore
-    const type = organization?.subscription?.subscriptionTier || 'FREE';
+    // Through the helper so a lapsed complimentary grant stops granting credits
+    // — reading `subscriptionTier` directly ignores `cancelAt` entirely.
+    const type = activeSubscriptionTier(organization) || 'FREE';
 
     if (type === 'FREE') {
       return { credits: 0 };
