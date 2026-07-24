@@ -7,3 +7,11 @@ startCommand = "bash start.sh"
 preDeployCommand = "pnpm run prisma-db-push"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# Compute sits in the same region as the database. The workspace default is sfo
+# (US West) while Neon runs in aws-us-east-1, so every Prisma query was crossing
+# the continent — ~60-70ms round trip, many times per request. Declared here
+# rather than in the dashboard because this file overrides service settings at
+# deploy time, so a dashboard-only region would be silently ignored.
+[deploy.multiRegionConfig.us-east-1]
+numReplicas = 1
