@@ -50,9 +50,22 @@ export async function proxy(request: NextRequest) {
     nextUrl.pathname.startsWith('/icons/') ||
     nextUrl.pathname.startsWith('/join/') ||
     nextUrl.pathname === '/terms' ||
-    nextUrl.pathname === '/privacy'
+    nextUrl.pathname === '/privacy' ||
+    nextUrl.pathname === '/home'
   ) {
     return topResponse;
+  }
+
+  // Logged-out visitors hitting '/' get the public marketing page instead of
+  // being bounced to /auth. Rewrite (not redirect) so the URL bar stays '/'.
+  // Authed '/' handling further below (redirect to /launches or /analytics)
+  // is untouched — this only fires when there is no auth cookie.
+  if (nextUrl.pathname === '/' && !authCookie) {
+    return NextResponse.rewrite(new URL('/home', nextUrl.href), {
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
   if (

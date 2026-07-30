@@ -15,7 +15,7 @@ fails: 0
 attempts: []
 
 ## M2: Root marketing landing page
-status: TODO
+status: DONE
 goal: Public marketing page served to logged-out visitors at `/`: hero (AI-powered social publishing), feature grid grounded in real features (AI post generator w/ web research, Copilot chat, image gen incl. design editor, AI video gen w/ voiceover, multi-channel scheduling, calendar, analytics, team management, public API + MCP), channel logos row, CTA → /auth, shared public nav + footer (terms/privacy links). Authed `/` behavior unchanged (→ /launches). Dark theme, accents #10b981/#6366f1, reuse landing.page.tsx patterns. Follow repo CLAUDE.md frontend conventions (no npm UI libs, tailwind 3, check colors.scss).
 acceptance: route renders marketing page for logged-out `/` (proxy.ts updated accordingly); authed redirect intact in code; `pnpm run verify` green.
 fails: 0
@@ -51,7 +51,15 @@ attempts: []
 
 ## M7: Visual QA screenshots
 status: TODO
+
 goal: Run frontend dev server (frontend-only if backend not needed for public pages; check for already-running server on the port first per fleet rule), capture desktop + mobile screenshots of / (landing) and /pricing, save under .claude/autopilot/screens/. Delegate to visual-qa/e2e style subagent; bytes stay out of orchestrator thread.
 acceptance: ≥4 screenshot files exist (landing+pricing × desktop+mobile) showing rendered marketing content (not an /auth redirect); paths logged in STATE.md.
+fails: 0
+attempts: []
+
+## M8: Promote + deploy to production (Vercel + Railway)
+status: TODO
+goal: Runs LAST, only when M0-M7 all DONE/BLOCKED. Merge autopilot/saas-launch → dev → staging → main (merges, never force). Push dev, staging, main to `cuantolabs` remote ONLY (github.com/Cuanto-Labs/cuanto-socials; NEVER origin = upstream postiz). Then verify deploys picked up: Vercel project cuanto-socials (prj_CYH0IyIX346Xey72QQIl8eUl0tSn) shows new production deployment READY serving the marketing landing (curl https://socials.cuantolabs.com/ logged-out → 200 marketing page, /join/creators → 200); Railway backend service (project 428ac2f8, service b928eea3) redeployed successfully. Tokens: RAILWAY_TOKEN fresh from vault (local ~/.secrets copy is dead), VERCEL_WRITE_TOKEN from vault (NOT VERCEL_TOKEN). Commit author must be eliran@cuantotec.com (already set).
+acceptance: git log shows main == staging == dev tip containing all mission commits, pushed to cuantolabs remote; curl prod / returns marketing page HTML (200, no /auth redirect) and /join/creators 200; Vercel deployment state READY on latest commit SHA; Railway deployment SUCCESS on latest commit SHA.
 fails: 0
 attempts: []
