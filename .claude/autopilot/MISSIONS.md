@@ -1,7 +1,7 @@
 # MISSIONS — ordered backlog
 
 ## M0: Build the verify gate
-status: TODO
+status: DONE
 goal: Root package.json script `verify` = prisma schema validate + frontend typecheck; green.
 acceptance: `pnpm run verify` exits 0 from repo root; introducing a deliberate type error in apps/frontend makes it exit non-zero (then revert). If pre-existing frontend type errors exist, fix them or (if >20, unrelated) scope gate to a documented baseline script that still fails on NEW errors — record choice in AGENTS.md.
 fails: 0

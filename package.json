@@ -38,7 +38,8 @@
     "docker-build": "./var/docker/docker-build.sh",
     "docker-create": "./var/docker/docker-create.sh",
     "postinstall": "pnpm run prisma-generate",
-    "test": "jest --coverage --detectOpenHandles --reporters=default --reporters=jest-junit"
+    "test": "jest --coverage --detectOpenHandles --reporters=default --reporters=jest-junit",
+    "verify": "pnpm exec cross-env DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" prisma validate --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma && pnpm exec tsc --noEmit -p apps/frontend/tsconfig.json"
   },
   "dependencies": {
     "@ag-ui/mastra": "^1.0.1",
