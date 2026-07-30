@@ -8,7 +8,7 @@ fails: 0
 attempts: []
 
 ## M1: Unblock /join campaign pages for logged-out visitors
-status: TODO
+status: DONE
 goal: Add `/join` to the logged-out pass-through allow-list in apps/frontend/src/proxy.ts (currently only /uploads/, /p/, /provider/, /icons/, /terms, /privacy at proxy.ts:46-55) so campaign landing pages render and the invite code survives. Also fix stale doc comment in apps/frontend/src/components/landing/campaigns.ts:5-9 (claims REGISTRATION_CODE env allow-list; codes now live in DB InviteCode model).
 acceptance: proxy.ts allow-list includes /join; campaigns.ts comment describes DB invite codes; `pnpm run verify` green.
 fails: 0

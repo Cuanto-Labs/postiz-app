@@ -2,11 +2,12 @@
  * Themed acquisition landing pages, one per campaign slug, served at
  * /join/<slug>. Each carries its own `invite` code — the CTA forwards it as
  * /auth?invite=<code>, the register form prefills it and never shows the code
- * field, and the backend validates it against the REGISTRATION_CODE allow-list.
+ * field, and the backend validates it against the InviteCode table.
  *
- * For a code here to pass registration it must appear in the backend's
- * REGISTRATION_CODE (comma-separated). Keep the two in sync — an unregistered
- * code 403s at signup.
+ * For a code here to pass registration it must exist as an active InviteCode
+ * row (managed via the superadmin panel at /admin/codes; the original
+ * REGISTRATION_CODE env values were seeded in once as the initial rows).
+ * Keep the two in sync — a code with no matching row 403s at signup.
  */
 export type Campaign = {
   slug: string;
