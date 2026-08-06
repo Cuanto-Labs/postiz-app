@@ -6,6 +6,8 @@ import {
   getCampaign,
 } from '@gitroom/frontend/components/landing/campaigns';
 import { LandingPage } from '@gitroom/frontend/components/landing/landing.page';
+import { MarketingNavComponent } from '@gitroom/frontend/components/marketing/marketing-nav.component';
+import { MarketingFooterComponent } from '@gitroom/frontend/components/marketing/marketing-footer.component';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,5 +41,16 @@ export default async function JoinCampaign(props: {
     notFound();
   }
 
-  return <LandingPage campaign={campaign} />;
+  // LandingPage owns its own full-viewport layout (own header/CTA/footer) and
+  // the invite-code flow lives entirely inside it — wrap, don't rewrite, so
+  // that flow keeps working exactly as-is. The shared marketing nav/footer
+  // are added around it purely for shell consistency with the rest of the
+  // public site.
+  return (
+    <>
+      <MarketingNavComponent />
+      <LandingPage campaign={campaign} />
+      <MarketingFooterComponent />
+    </>
+  );
 }

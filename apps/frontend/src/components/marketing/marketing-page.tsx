@@ -4,6 +4,7 @@ import { HeroSection } from '@gitroom/frontend/components/marketing/sections/her
 import { SocialProofSection } from '@gitroom/frontend/components/marketing/sections/social-proof.section';
 import { FeaturesSection } from '@gitroom/frontend/components/marketing/sections/features.section';
 import { HowItWorksSection } from '@gitroom/frontend/components/marketing/sections/how-it-works.section';
+import { AudienceSplitSection } from '@gitroom/frontend/components/marketing/sections/audience-split.section';
 import { CtaBandSection } from '@gitroom/frontend/components/marketing/sections/cta-band.section';
 
 /**
@@ -20,6 +21,7 @@ export const MarketingPage = () => {
         <SocialProofSection />
         <FeaturesSection />
         <HowItWorksSection />
+        <AudienceSplitSection />
         <CtaBandSection />
       </main>
       <MarketingFooterComponent />
