@@ -29,11 +29,11 @@ fails: 0
 attempts: []
 
 ## M4: B2C/B2B segmentation on landing
-status: TODO
+status: DONE
 goal: Landing gets two audience sections — "For creators" (B2C: AI content, scheduling, growth) and "For agencies & teams" (B2B: multi-org workspaces, roles/permissions, customer grouping on channels, team invites, public API + MCP for automation) — each linking to its /join campaign (/join/creators, /join/agencies). Ensure /join pages share the public nav/footer shell for consistency.
 acceptance: both sections render with correct links; /join pages carry shared shell; `pnpm run verify` green.
-fails: 0
-attempts: []
+fails: 1
+attempts: ["route-level shell wrap around LandingPage -> REJECT doubled chrome; fixed same iter via chromeless prop (9e476039)"]
 
 ## M5: SEO + brand polish on public surfaces
 status: TODO
