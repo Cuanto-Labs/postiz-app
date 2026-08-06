@@ -1,7 +1,7 @@
 # STATE
 
-iteration: 5
-cursor: M5
+iteration: 6
+cursor: M7
 
 note: Eliran ordered immediate deploy mid-run ("Do it now") — M8 partial deploy executed after M2 with M3-M7 still TODO; M8 stays TODO for final deploy after remaining missions.
 
@@ -12,3 +12,4 @@ iter 3: M2 attempt "public /home route + logged-out root rewrite, marketing comp
 iter 3b: M8-partial (Eliran "Do it now") → PASS — merged autopilot→dev→staging→main (ff to 0cdb89af), pushed cuantolabs remote (dev+staging created); Vercel prod deploy READY: / serves marketing 200, /join/* all 200 live; Railway BUILDING same SHA (backend unchanged); all stored VERCEL_* vault tokens 403-dead (CLI on Mini flaky) — rotate before M8 final
 iter 4: M3+M6 parallel batch attempt "2 worktree implementers; worktrees cut from stale base 1c8d9b88 -> M6 cherry-picked (cecc80ac), M3 re-ported by implementer on main checkout (9351bafa)" -> PASS - verifier APPROVE 8/8 criteria, gate exit 0 x3 (implementer, verifier, orchestrator); 2 non-blocking findings folded into M5
 iter 5: M4 attempt "audience-split section + shell-wrap /join; verifier REJECT (3 logos/2 footers/w-screen overflow) -> chromeless prop fix 9e476039" -> PASS - re-verify APPROVE, gate exit 0; /join screenshots deferred to M7
+iter 6: M5 attempt "metadata all public routes + metadataBase, robots.ts+sitemap.ts (campaigns-derived), de-Postiz grep (assets orphaned, favicons already Cuanto), checklist wording fix (961a814a)" -> PASS - verifier APPROVE 6/6, gate exit 0 x3

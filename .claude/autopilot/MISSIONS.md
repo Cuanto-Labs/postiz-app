@@ -36,7 +36,7 @@ fails: 1
 attempts: ["route-level shell wrap around LandingPage -> REJECT doubled chrome; fixed same iter via chromeless prop (9e476039)"]
 
 ## M5: SEO + brand polish on public surfaces
-status: TODO
+status: DONE
 goal: ALSO: fix marketing-nav.component.tsx:23 backslash href (\terms -> /terms, broken Terms link, verifier finding); fix docs/LAUNCH-CHECKLIST.md L41 FREE_GRANT_MONTHS wording (hardcoded const in free.tier.ts, not an env var). Original goal: Metadata exports (title/description/OpenGraph) for /, /pricing, /join/* ; robots.txt + sitemap covering public routes; favicon and any user-visible asset references switched off Postiz leftovers (public/postiz.svg, postiz-text.svg, postiz-fav.png) to Cuanto Socials branding; grep public pages for visible "Postiz" strings and remove.
 acceptance: metadata present on all public routes; robots+sitemap exist; no user-visible "Postiz" on public pages (grep evidence); `pnpm run verify` green.
 fails: 0
