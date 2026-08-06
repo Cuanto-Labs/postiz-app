@@ -41,15 +41,13 @@ export default async function JoinCampaign(props: {
     notFound();
   }
 
-  // LandingPage owns its own full-viewport layout (own header/CTA/footer) and
-  // the invite-code flow lives entirely inside it — wrap, don't rewrite, so
-  // that flow keeps working exactly as-is. The shared marketing nav/footer
-  // are added around it purely for shell consistency with the rest of the
-  // public site.
+  // LandingPage's invite-code CTA flow lives entirely inside it and is
+  // untouched here — `chromeless` only drops its internal header/footer so
+  // it sits cleanly inside the shared marketing nav/footer shell below.
   return (
     <>
       <MarketingNavComponent />
-      <LandingPage campaign={campaign} />
+      <LandingPage campaign={campaign} chromeless />
       <MarketingFooterComponent />
     </>
   );

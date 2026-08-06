@@ -14,7 +14,7 @@ export const MarketingNavComponent = () => {
         </Link>
 
         <nav className="hidden md:flex items-center gap-[32px] text-[14px] text-white/70">
-          <Link href="#features" className="hover:text-white">
+          <Link href="/home#features" className="hover:text-white">
             Features
           </Link>
           <Link href="/pricing" className="hover:text-white">

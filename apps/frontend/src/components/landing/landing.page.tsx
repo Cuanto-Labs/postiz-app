@@ -5,21 +5,38 @@ import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.com
 /**
  * Presentation only. The one thing that has to be right is the CTA target —
  * /auth?invite=<code> is what carries the campaign through to registration.
+ *
+ * `chromeless` drops the internal header/footer and the full-viewport root
+ * classes for use inside the shared marketing nav/footer shell (see
+ * app/(app)/join/[campaign]/page.tsx). Default (prop absent) is unchanged so
+ * any other caller keeps today's standalone layout exactly as-is.
  */
-export const LandingPage = ({ campaign }: { campaign: Campaign }) => {
+export const LandingPage = ({
+  campaign,
+  chromeless,
+}: {
+  campaign: Campaign;
+  chromeless?: boolean;
+}) => {
   const registerHref = `/auth?invite=${encodeURIComponent(campaign.invite)}`;
 
   return (
-    <div className="min-h-screen w-screen bg-[#0E0E0E] text-white flex flex-col">
-      <header className="flex items-center justify-between px-[24px] py-[20px] max-w-[1200px] w-full mx-auto">
-        <LogoTextComponent />
-        <Link
-          href="/auth/login"
-          className="text-[14px] text-white/70 hover:text-white"
-        >
-          Log in
-        </Link>
-      </header>
+    <div
+      className={`${
+        chromeless ? 'w-full min-h-[calc(100vh-73px)]' : 'min-h-screen w-screen'
+      } bg-[#0E0E0E] text-white flex flex-col`}
+    >
+      {!chromeless && (
+        <header className="flex items-center justify-between px-[24px] py-[20px] max-w-[1200px] w-full mx-auto">
+          <LogoTextComponent />
+          <Link
+            href="/auth/login"
+            className="text-[14px] text-white/70 hover:text-white"
+          >
+            Log in
+          </Link>
+        </header>
+      )}
 
       <main className="flex-1 flex items-center">
         <div className="max-w-[1200px] w-full mx-auto px-[24px] grid lg:grid-cols-2 gap-[48px] items-center py-[40px]">
@@ -130,15 +147,17 @@ export const LandingPage = ({ campaign }: { campaign: Campaign }) => {
         </div>
       </main>
 
-      <footer className="max-w-[1200px] w-full mx-auto px-[24px] py-[24px] text-[13px] text-white/40 flex flex-wrap gap-[16px]">
-        <Link href="/terms" className="hover:text-white/70">
-          Terms
-        </Link>
-        <Link href="/privacy" className="hover:text-white/70">
-          Privacy
-        </Link>
-        <span>© Cuanto Labs</span>
-      </footer>
+      {!chromeless && (
+        <footer className="max-w-[1200px] w-full mx-auto px-[24px] py-[24px] text-[13px] text-white/40 flex flex-wrap gap-[16px]">
+          <Link href="/terms" className="hover:text-white/70">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-white/70">
+            Privacy
+          </Link>
+          <span>© Cuanto Labs</span>
+        </footer>
+      )}
     </div>
   );
 };
