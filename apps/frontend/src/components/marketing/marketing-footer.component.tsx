@@ -14,6 +14,9 @@ export const MarketingFooterComponent = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-[16px] sm:gap-[24px] text-[13px] text-white/40">
+          <Link href="/pricing" className="hover:text-white/70">
+            Pricing
+          </Link>
           <Link href="/terms" className="hover:text-white/70">
             Terms
           </Link>
