@@ -40,8 +40,8 @@ export const pricing: PricingInterface = {
   },
   STANDARD: {
     current: 'STANDARD',
-    month_price: 29,
-    year_price: 278,
+    month_price: 79,
+    year_price: 758,
     channel: 5,
     posts_per_month: 400,
     image_generation_count: 20,
@@ -58,8 +58,8 @@ export const pricing: PricingInterface = {
   },
   TEAM: {
     current: 'TEAM',
-    month_price: 39,
-    year_price: 374,
+    month_price: 149,
+    year_price: 1430,
     channel: 10,
     posts_per_month: 1000000,
     image_generation_count: 100,
@@ -76,8 +76,8 @@ export const pricing: PricingInterface = {
   },
   PRO: {
     current: 'PRO',
-    month_price: 49,
-    year_price: 470,
+    month_price: 299,
+    year_price: 2870,
     channel: 30,
     posts_per_month: 1000000,
     image_generation_count: 300,
@@ -94,8 +94,8 @@ export const pricing: PricingInterface = {
   },
   ULTIMATE: {
     current: 'ULTIMATE',
-    month_price: 99,
-    year_price: 950,
+    month_price: 599,
+    year_price: 5750,
     channel: 100,
     posts_per_month: 1000000,
     image_generation_count: 500,
