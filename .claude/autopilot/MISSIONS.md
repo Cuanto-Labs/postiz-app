@@ -22,7 +22,7 @@ fails: 0
 attempts: []
 
 ## M3: Public /pricing page
-status: TODO
+status: DONE
 goal: Public `/pricing` route rendering tier cards imported from libraries/nestjs-libraries/src/database/prisma/subscriptions/pricing.ts (import or shared re-export — zero hardcoded prices), monthly + yearly prices, per-tier limits (channels, posts/month, AI image + video credits, team members, API), free-trial note (3-month STANDARD grant), FAQ section (reuse/adapt components/billing/faq.component.tsx if usable), CTA → /auth. Linked from marketing nav.
 acceptance: /pricing public (proxy allow-list), imports pricing.ts constants, nav link present; `pnpm run verify` green.
 fails: 0
@@ -37,13 +37,13 @@ attempts: []
 
 ## M5: SEO + brand polish on public surfaces
 status: TODO
-goal: Metadata exports (title/description/OpenGraph) for /, /pricing, /join/* ; robots.txt + sitemap covering public routes; favicon and any user-visible asset references switched off Postiz leftovers (public/postiz.svg, postiz-text.svg, postiz-fav.png) to Cuanto Socials branding; grep public pages for visible "Postiz" strings and remove.
+goal: ALSO: fix marketing-nav.component.tsx:23 backslash href (\terms -> /terms, broken Terms link, verifier finding); fix docs/LAUNCH-CHECKLIST.md L41 FREE_GRANT_MONTHS wording (hardcoded const in free.tier.ts, not an env var). Original goal: Metadata exports (title/description/OpenGraph) for /, /pricing, /join/* ; robots.txt + sitemap covering public routes; favicon and any user-visible asset references switched off Postiz leftovers (public/postiz.svg, postiz-text.svg, postiz-fav.png) to Cuanto Socials branding; grep public pages for visible "Postiz" strings and remove.
 acceptance: metadata present on all public routes; robots+sitemap exist; no user-visible "Postiz" on public pages (grep evidence); `pnpm run verify` green.
 fails: 0
 attempts: []
 
 ## M6: Go-live launch checklist
-status: TODO
+status: DONE
 goal: Write docs/LAUNCH-CHECKLIST.md — env matrix per layer (Vercel frontend / Railway backend) with the known gaps and switches: STRIPE_PUBLISHABLE_KEY presence = billing master switch (absent ⇒ self-host free mode w/ ULTIMATE perms — permissions.service.ts:27), STRIPE_SIGNING_KEY missing on Railway (webhooks will fail), X_API_KEY/X_API_SECRET/X_URL missing while ENABLED_INTEGRATIONS includes x, MCP_URL missing on Vercel, DISABLE_REGISTRATION, FREE_GRANT_MONTHS, AGENT_PROVIDER pool, ENABLED_INTEGRATIONS filter. Plus: deploy targets (Vercel prj_CYH0IyIX346Xey72QQIl8eUl0tSn, Railway backend svc b928eea3), B2B enterprise API + OAuth apps notes, legal-template caveat (terms/privacy are templates, need attorney review).
 acceptance: docs/LAUNCH-CHECKLIST.md exists with sections {Env matrix, Billing switch, Known gaps, Deploy targets, B2B notes, Legal caveat}; no secret VALUES in the doc.
 fails: 0
