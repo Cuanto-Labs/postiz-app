@@ -58,7 +58,7 @@ fails: 0
 attempts: []
 
 ## M8: Promote + deploy to production (Vercel + Railway)
-status: TODO
+status: DONE
 goal: Runs LAST, only when M0-M7 all DONE/BLOCKED. Merge autopilot/saas-launch → dev → staging → main (merges, never force). Push dev, staging, main to `cuantolabs` remote ONLY (github.com/Cuanto-Labs/cuanto-socials; NEVER origin = upstream postiz). Then verify deploys picked up: Vercel project cuanto-socials (prj_CYH0IyIX346Xey72QQIl8eUl0tSn) shows new production deployment READY serving the marketing landing (curl https://socials.cuantolabs.com/ logged-out → 200 marketing page, /join/creators → 200); Railway backend service (project 428ac2f8, service b928eea3) redeployed successfully. Tokens: RAILWAY_TOKEN fresh from vault (local ~/.secrets copy is dead), VERCEL_WRITE_TOKEN from vault (NOT VERCEL_TOKEN). Commit author must be eliran@cuantotec.com (already set).
 acceptance: git log shows main == staging == dev tip containing all mission commits, pushed to cuantolabs remote; curl prod / returns marketing page HTML (200, no /auth redirect) and /join/creators 200; Vercel deployment state READY on latest commit SHA; Railway deployment SUCCESS on latest commit SHA.
 fails: 0

@@ -16,5 +16,6 @@
 - Production system with real users — additive changes only; don't alter authed-user flows.
 
 ## Recent Learnings
+- Prod deploy verify without API tokens: poll /pricing for 200 (took ~20min post-push), then curl markers; React comment-splits price text ($<!-- -->29) — grep tier names not $-amounts. Backend health: api.socials.cuantolabs.com returns "App is running!".
 - Agent-tool worktree isolation cuts from stale base 1c8d9b88 (NOT current branch) in this repo — worktree branches diverge 100+ commits. Do NOT use isolation:worktree here; run implementers directly on the checkout (sequential) or cherry-pick/port their commits.
 - Public pages: reuse components/marketing/marketing-nav|footer.component.tsx; add route to proxy.ts allow-list (~line 46-55) as exact-match line.
