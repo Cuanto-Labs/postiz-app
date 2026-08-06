@@ -50,7 +50,7 @@ fails: 0
 attempts: []
 
 ## M7: Visual QA screenshots
-status: TODO
+status: DONE
 
 goal: Run frontend dev server (frontend-only if backend not needed for public pages; check for already-running server on the port first per fleet rule), capture desktop + mobile screenshots of / (landing) and /pricing, save under .claude/autopilot/screens/. Delegate to visual-qa/e2e style subagent; bytes stay out of orchestrator thread.
 acceptance: ≥4 screenshot files exist (landing+pricing × desktop+mobile) showing rendered marketing content (not an /auth redirect); paths logged in STATE.md.
