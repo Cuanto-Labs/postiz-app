@@ -23,10 +23,20 @@ const BRAND = {
 
 const EFFECTIVE_DATE = 'July 22, 2026';
 
+const PRIVACY_TITLE = `Privacy Policy · ${BRAND.name}`;
+const PRIVACY_DESCRIPTION = `Privacy Policy for ${BRAND.name} — how we collect, use, and protect your data.`;
+
 export const metadata: Metadata = {
-  title: `Privacy Policy · ${BRAND.name}`,
-  description: `Privacy Policy for ${BRAND.name} — how we collect, use, and protect your data.`,
+  title: PRIVACY_TITLE,
+  description: PRIVACY_DESCRIPTION,
   robots: { index: true, follow: false },
+  openGraph: {
+    title: PRIVACY_TITLE,
+    description: PRIVACY_DESCRIPTION,
+    url: `${BRAND.url}/privacy`,
+    siteName: BRAND.name,
+    type: 'website',
+  },
 };
 
 export default function PrivacyPage() {

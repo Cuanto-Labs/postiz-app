@@ -25,9 +25,17 @@ export async function generateMetadata(props: {
   if (!campaign) {
     return { title: brand };
   }
+  const title = `${campaign.headline} ${campaign.accentWord} — ${brand}`;
   return {
-    title: `${campaign.headline} ${campaign.accentWord} — ${brand}`,
+    title,
     description: campaign.subhead,
+    openGraph: {
+      title,
+      description: campaign.subhead,
+      url: `https://socials.cuantolabs.com/join/${campaign.slug}`,
+      siteName: brand,
+      type: 'website',
+    },
   };
 }
 

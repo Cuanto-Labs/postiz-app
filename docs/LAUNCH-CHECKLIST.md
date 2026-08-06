@@ -38,7 +38,7 @@ Layer legend: **FE** = Vercel frontend (`apps/frontend`), **BE** = Railway backe
 | `STRIPE_SIGNING_KEY` | BE | Required for paid mode | Webhook signature verification (`stripe.controller.ts`). **Currently MISSING on Railway — see Known gaps.** |
 | `STRIPE_SIGNING_KEY_CONNECT` | BE | Optional | Stripe Connect webhook variant (marketplace/payout path, dormant feature). |
 | `FEE_AMOUNT` | BE | Optional | Marketplace/take-rate fee fraction. |
-| `FREE_GRANT_MONTHS` | BE | Optional | Months of free `STANDARD`-tier grant for new orgs (`free.tier.ts`, currently `3`). |
+| `FREE_GRANT_MONTHS` *(not an env var)* | BE | N/A | Hardcoded const in `free.tier.ts:10` (currently `3`) — months of free `STANDARD`-tier grant for new orgs. Change requires a code edit, not a Railway env var. |
 
 ### Social provider credentials (only needed for providers actually enabled)
 

@@ -22,10 +22,20 @@ const BRAND = {
 
 const EFFECTIVE_DATE = 'July 22, 2026';
 
+const TERMS_TITLE = `Terms of Service · ${BRAND.name}`;
+const TERMS_DESCRIPTION = `Terms of Service for ${BRAND.name} — ${BRAND.legal.companyName}.`;
+
 export const metadata: Metadata = {
-  title: `Terms of Service · ${BRAND.name}`,
-  description: `Terms of Service for ${BRAND.name} — ${BRAND.legal.companyName}.`,
+  title: TERMS_TITLE,
+  description: TERMS_DESCRIPTION,
   robots: { index: true, follow: false },
+  openGraph: {
+    title: TERMS_TITLE,
+    description: TERMS_DESCRIPTION,
+    url: `${BRAND.url}/terms`,
+    siteName: BRAND.name,
+    type: 'website',
+  },
 };
 
 export default function TermsPage() {

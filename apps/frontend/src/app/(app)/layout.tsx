@@ -1,6 +1,14 @@
-﻿import { SentryComponent } from '@gitroom/frontend/components/layout/sentry.component';
+﻿import type { Metadata } from 'next';
+import { SentryComponent } from '@gitroom/frontend/components/layout/sentry.component';
 
 export const dynamic = 'force-dynamic';
+
+// Site-wide fallback for resolving relative OG/Twitter image URLs. Public
+// route metadata (home/pricing/join/terms/privacy) already sets absolute
+// OG urls directly, but this covers anything that doesn't.
+export const metadata: Metadata = {
+  metadataBase: new URL('https://socials.cuantolabs.com'),
+};
 import '../global.scss';
 import 'react-tooltip/dist/react-tooltip.css';
 import '@copilotkit/react-ui/styles.css';
