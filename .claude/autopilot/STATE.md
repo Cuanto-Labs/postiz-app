@@ -1,7 +1,7 @@
 # STATE
 
-iteration: 8
-cursor: COMPLETE-CHECK
+iteration: 9
+cursor: COMPLETE
 
 note: Eliran ordered immediate deploy mid-run ("Do it now") — M8 partial deploy executed after M2 with M3-M7 still TODO; M8 stays TODO for final deploy after remaining missions.
 
@@ -15,3 +15,4 @@ iter 5: M4 attempt "audience-split section + shell-wrap /join; verifier REJECT (
 iter 6: M5 attempt "metadata all public routes + metadataBase, robots.ts+sitemap.ts (campaigns-derived), de-Postiz grep (assets orphaned, favicons already Cuanto), checklist wording fix (961a814a)" -> PASS - verifier APPROVE 6/6, gate exit 0 x3
 iter 7: M7 attempt "e2e-runner: fresh dev:frontend on 4200, playwright logged-out captures" -> PASS - 6/6 screenshots validated (landing/pricing/join-creators x desktop+mobile) at .claude/autopilot/screens/{landing,pricing,join-creators}-{desktop,mobile}.png; single nav/footer on /join confirmed, 4 tier cards w/ prices, no mobile overflow; server killed after; gate exit 0. PNGs gitignored (evidence on disk only)
 iter 8: M8 attempt "ff-promote saas-launch->dev->staging->main (1a16ff22), push cuantolabs x3; curl-verify prod (all 6 routes 200, M4/M5 markers live, 0 postiz, api 200, backend diff empty=no-op redeploy)" -> PASS - verifier APPROVE incl. criterion-4 judgment (observable evidence sufficient; frontend 961a814a..tip byte-identical); Vercel CLI unauthed + vault tokens dead -> API state check substituted, token rotation follow-up; SECURITY: PAT was embedded in cuantolabs remote URL -> URL switched token-less (auth verified), PAT rotation task chip spawned
+iter 9: COMPLETION attempt "fresh loop-verifier vs full VISION DoD" -> CONFIRM-COMPLETE - 8/8 DoD items independently re-proven (gate exit 0 fresh, prod curls, screenshot views, no fabricated passes); REPORT.md written
