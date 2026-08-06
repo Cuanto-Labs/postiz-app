@@ -1,7 +1,14 @@
 'use client';
 
 import { Slider } from '@gitroom/react/form/slider';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button } from '@gitroom/react/form/button';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Subscription } from '@prisma/client';
@@ -28,6 +35,10 @@ import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
+import {
+  clearPendingPlan,
+  readPendingPlan,
+} from '@gitroom/frontend/components/billing/pending.plan';
 
 export const Prorate: FC<{
   period: 'MONTHLY' | 'YEARLY';
@@ -433,6 +444,38 @@ export const MainBillingComponent: FC<{
       },
     [monthlyOrYearly, subscription, user, utm]
   );
+  // Resume a plan carried from the public pricing page (?plan=TEAM&period=month
+  // on this page, or stored at signup/login by pending.plan.ts): preselect the
+  // billing period, then open checkout for that tier exactly once. Only fires
+  // for orgs with no subscription — never touches an existing plan.
+  const autoTriggered = useRef(false);
+  const [autoPlan, setAutoPlan] = useState<string | null>(null);
+  useEffect(() => {
+    if (autoTriggered.current || subscription) {
+      return;
+    }
+    const fromQuery = queryParams.get('plan');
+    const stored = readPendingPlan();
+    const plan =
+      fromQuery && fromQuery !== 'FREE' && pricing[fromQuery]
+        ? fromQuery
+        : stored?.plan;
+    if (!plan) {
+      return;
+    }
+    const period = fromQuery ? queryParams.get('period') : stored?.period;
+    autoTriggered.current = true;
+    clearPendingPlan();
+    setMonthlyOrYearly(period === 'year' ? 'on' : 'off');
+    setAutoPlan(plan);
+  }, [queryParams, subscription]);
+  useEffect(() => {
+    if (!autoPlan) {
+      return;
+    }
+    setAutoPlan(null);
+    moveToCheckout(autoPlan as 'STANDARD' | 'PRO')();
+  }, [autoPlan, moveToCheckout]);
   if (user?.isLifetime) {
     router.replace('/');
     return null;

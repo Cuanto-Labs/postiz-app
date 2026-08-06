@@ -8,6 +8,7 @@ import { Input } from '@gitroom/react/form/input';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
+import { storePendingPlan } from '@gitroom/frontend/components/billing/pending.plan';
 import { GithubProvider } from '@gitroom/frontend/components/auth/providers/github.provider';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
@@ -165,6 +166,11 @@ export function RegisterAfter({
   // is optional, and the complimentary tier is granted either way.
   const searchParams = useSearchParams();
   const inviteFromUrl = searchParams?.get('invite') || '';
+  // Pricing cards link here with ?plan=TEAM&period=month — persist the intent
+  // so the billing page can resume checkout after signup/activation.
+  useEffect(() => {
+    storePendingPlan(searchParams?.get('plan'), searchParams?.get('period'));
+  }, [searchParams]);
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const form = useForm<Inputs>({
     resolver,

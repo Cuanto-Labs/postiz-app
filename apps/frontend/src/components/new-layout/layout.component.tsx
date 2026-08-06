@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useEffect } from 'react';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 const ModeComponent = dynamic(
@@ -14,7 +14,8 @@ import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { readPendingPlan } from '@gitroom/frontend/components/billing/pending.plan';
 import useSWR from 'swr';
 import { CheckPayment } from '@gitroom/frontend/components/layout/check.payment';
 import { ToolTip } from '@gitroom/frontend/components/layout/top.tip';
@@ -66,6 +67,22 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     refreshWhenOffline: false,
     refreshWhenHidden: false,
   });
+
+  // A plan picked on the public pricing page is parked in localStorage through
+  // signup (pending.plan.ts). Once the user lands anywhere in the app, route
+  // them to billing exactly once to finish checkout; billing consumes the key.
+  const router = useRouter();
+  const pathname = usePathname();
+  useEffect(() => {
+    if (
+      billingEnabled &&
+      user &&
+      pathname !== '/billing' &&
+      readPendingPlan()
+    ) {
+      router.push('/billing');
+    }
+  }, [billingEnabled, user, pathname, router]);
 
   if (!user) return null;
 

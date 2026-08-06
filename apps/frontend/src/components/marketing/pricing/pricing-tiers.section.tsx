@@ -139,7 +139,7 @@ export const PricingTiersSection = () => {
               </div>
 
               <Link
-                href="/auth"
+                href={`/auth?plan=${key}&period=month`}
                 className="mt-[24px] inline-flex items-center justify-center h-[44px] rounded-[10px] font-[600] text-[14px] transition-colors"
                 style={
                   isRecommended

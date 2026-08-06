@@ -122,6 +122,12 @@ state — it's binary per-deploy, not per-org.
 
 - [ ] Confirm `STRIPE_PUBLISHABLE_KEY` + `STRIPE_SECRET_KEY` + `STRIPE_SIGNING_KEY` are
       all set on Railway before announcing paid plans publicly.
+- [ ] Vault status (item "Stripe — CuantoSocials", checked 2026-08-06): live publishable
+      key + full TEST pair present; **live secret key and live signing secret MISSING** —
+      reveal/create the live secret key in the Stripe dashboard and store it in vault,
+      then create the live webhook endpoint (`https://api.socials.cuantolabs.com/stripe`)
+      via API to obtain the signing secret. Frontend env var is `STRIPE_PUBLISHABLE_KEY`
+      on Vercel (no `NEXT_PUBLIC_` prefix — read server-side in `(app)/layout.tsx`).
 - [ ] Confirm the matching `NEXT_PUBLIC_STRIPE_*`/publishable key is set on Vercel if
       the frontend renders Stripe Elements directly (check `apps/frontend` for a
       `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` usage before flipping this on — not
