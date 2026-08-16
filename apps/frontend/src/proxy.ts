@@ -63,6 +63,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (
+    nextUrl.pathname.startsWith('/monitor/') ||
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
     nextUrl.pathname.startsWith('/provider/') ||

@@ -23,5 +23,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/monitor/uptime",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }
