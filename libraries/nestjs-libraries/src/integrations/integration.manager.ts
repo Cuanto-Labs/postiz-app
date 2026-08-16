@@ -37,6 +37,7 @@ import { MoltbookProvider } from '@gitroom/nestjs-libraries/integrations/social/
 import { SkoolProvider } from '@gitroom/nestjs-libraries/integrations/social/skool.provider';
 import { WhopProvider } from '@gitroom/nestjs-libraries/integrations/social/whop.provider';
 import { MeweProvider } from '@gitroom/nestjs-libraries/integrations/social/mewe.provider';
+import { TumblrProvider } from '@gitroom/nestjs-libraries/integrations/social/tumblr.provider';
 
 // ENABLED_INTEGRATIONS — comma-separated list of provider identifiers to activate.
 // When set, only those providers are instantiated and Temporal workers are registered for them.
@@ -84,6 +85,8 @@ const ALL_PROVIDERS: Array<SocialAbstract & SocialProvider> = [
   new WhopProvider(),
   new SkoolProvider(),
   new MeweProvider(),
+  new TumblrProvider(),
+  // new MastodonCustomProvider(),
 ];
 
 // Boot-time list — Temporal workers registered from this at startup.
@@ -125,7 +128,9 @@ export class IntegrationManager {
           isExternal: !!p.externalUrl,
           isWeb3: !!p.isWeb3,
           isChromeExtension: !!p.isChromeExtension,
-          ...(p.extensionCookies ? { extensionCookies: p.extensionCookies } : {}),
+          ...(p.extensionCookies
+            ? { extensionCookies: p.extensionCookies }
+            : {}),
           ...(p.customFields ? { customFields: await p.customFields() } : {}),
         }))
       ),

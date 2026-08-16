@@ -43,7 +43,7 @@ export const pricing: PricingInterface = {
     month_price: 79,
     year_price: 758,
     channel: 5,
-    posts_per_month: 400,
+    posts_per_month: 1000000,
     image_generation_count: 20,
     team_members: false,
     ai: true,
