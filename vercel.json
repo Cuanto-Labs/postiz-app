@@ -6,15 +6,21 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.socials.cuantolabs.com/:path*"
+      "destination": "https://deb.tail789fa0.ts.net/:path*"
     }
   ],
   "headers": [
     {
       "source": "/api/:path*",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "https://socials.cuantolabs.com" },
-        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://socials.cuantolabs.com"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
       ]
     }
   ]
