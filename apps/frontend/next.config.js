@@ -46,25 +46,6 @@ const nextConfig = {
   },
   async rewrites() {
     return {
-      // beforeFiles runs ahead of the filesystem and of app-router matching,
-      // which is what this rule needs: api.socials.cuantolabs.com has to proxy
-      // every path straight through to the backend. An afterFiles rule (or the
-      // equivalent rewrite in vercel.json) loses to the frontend's own routing,
-      // which 307s unmatched paths to /auth.
-      beforeFiles: [
-        {
-          source: '/:path*',
-          has: [
-            {
-              type: 'host',
-              value: 'api.socials.cuantolabs.com',
-            },
-          ],
-          destination: `${
-            process.env.BACKEND_INTERNAL_URL || 'https://deb.tail789fa0.ts.net'
-          }/:path*`,
-        },
-      ],
       afterFiles: [
         {
           source: '/uploads/:path*',
