@@ -5,6 +5,16 @@
   "installCommand": "pnpm install",
   "rewrites": [
     {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "api.socials.cuantolabs.com"
+        }
+      ],
+      "destination": "https://deb.tail789fa0.ts.net/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://deb.tail789fa0.ts.net/:path*"
     }
