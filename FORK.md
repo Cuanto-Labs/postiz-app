@@ -4,21 +4,23 @@ This repo is **Cuanto Socials**, a fork of [gitroomhq/postiz-app](https://github
 It exists so updates stay cheap: read this before customising anything, and run
 `./scripts/fork-status.sh` before deciding to merge upstream.
 
-## Where the fork stands (measured 2026-08-16)
+## Where the fork stands (measured 2026-08-16, after the catch-up)
 
 | | |
 |---|---|
-| Fork point | upstream **v2.21.10**, 2026-06-22 |
-| Upstream latest | **v2.23.0** (2026-08-04), main still moving |
-| Behind | **199** upstream commits, **63** of them under `integrations/social` |
-| Ahead | **82** local commits — 178 files changed |
-| Conflict surface (files both sides touched) | 36 |
-| Files only we touched | 142 (carry freely) |
-| Brand-new files | 46 (zero merge risk) |
-| **Real merge conflicts** | **6 files** (was 20 before the i18n refactor below) |
+| Merged up to | upstream main **9ddbd73c** (2026-08-15, post-v2.23.0) |
+| Behind | **0** upstream commits |
+| Ahead | **84** local commits |
+| Files only we touched | 180 (carry freely) |
+| Brand-new files | 48 (zero merge risk) |
 
-199 commits behind sounds alarming and mostly is not: the divergence is
-concentrated in a handful of files, and a dry-run merge proves it.
+The catch-up merged 199 upstream commits. It was worth measuring first: the dry
+run said 6 conflicting files, and 6 is what it was. Merging upstream *main* rather
+than the v2.23.0 tag was deliberate — two LinkedIn page fixes and a non-axios SSRF
+check landed after the tag, and LinkedIn is the only connected integration.
+
+Only schema change in those 199 commits: `APPLE` added to the `Provider` enum.
+Additive, so the startup `prisma db push` was safe.
 
 ## What we actually changed
 
