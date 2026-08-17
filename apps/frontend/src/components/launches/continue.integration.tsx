@@ -96,6 +96,7 @@ export const ContinueIntegration: FC<{
 
   useEffect(() => {
     (async () => {
+      try {
       const timezone = String(dayjs.tz().utcOffset());
 
       // Try public endpoint first (handles both public and fallback scenarios)
@@ -199,6 +200,16 @@ export const ContinueIntegration: FC<{
         returnURL,
         'Channel Updated'
       );
+      } catch (e) {
+        // Never let a throw escape to the Next.js error boundary — the user is
+        // mid-OAuth-return and needs a readable failure, not a
+        // "client-side exception" dead end.
+        console.error('channel connect failed', e);
+        setErrorMessage(
+          e instanceof Error && e.message ? e.message : 'Could not add provider'
+        );
+        setError(true);
+      }
     })();
   }, []);
 

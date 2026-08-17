@@ -52,7 +52,7 @@ export class NoAuthIntegrationsController {
         .getAllowedSocialsIntegrations())
         .includes(integration)
     ) {
-      throw new Error('Integration not allowed');
+      throw new HttpException('This channel type is not enabled on this workspace.', 400);
     }
 
     const integrationProvider =
@@ -62,12 +62,18 @@ export class NoAuthIntegrationsController {
       ? 'none'
       : await ioRedis.get(`login:${body.state}`);
     if (!getCodeVerifier) {
-      throw new Error('Invalid state');
+      throw new HttpException(
+        'This connection link is expired or was not started from Add Channel. Open the app and connect the channel from there.',
+        400
+      );
     }
 
     const organization = await ioRedis.get(`organization:${body.state}`);
     if (!organization) {
-      throw new Error('Organization not found');
+      throw new HttpException(
+        'The workspace for this connection link no longer exists. Start the connection again from Add Channel.',
+        400
+      );
     }
 
     const org = await this._organizationService.getOrgById(organization);
@@ -322,12 +328,18 @@ export class NoAuthIntegrationsController {
   @Post('/public/provider/:id/connect')
   async saveProviderPage(@Param('id') id: string, @Body() body: any) {
     if (!body.state) {
-      throw new Error('Invalid state');
+      throw new HttpException(
+        'This connection link is expired or was not started from Add Channel. Open the app and connect the channel from there.',
+        400
+      );
     }
 
     const organization = await ioRedis.get(`organization:${body.state}`);
     if (!organization) {
-      throw new Error('Organization not found');
+      throw new HttpException(
+        'The workspace for this connection link no longer exists. Start the connection again from Add Channel.',
+        400
+      );
     }
 
     const org = await this._organizationService.getOrgById(organization);
