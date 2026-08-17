@@ -3,12 +3,6 @@
   "buildCommand": "pnpm run build:frontend",
   "outputDirectory": "apps/frontend/.next",
   "installCommand": "pnpm install",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://deb.tail789fa0.ts.net/:path*"
-    }
-  ],
   "headers": [
     {
       "source": "/api/:path*",
