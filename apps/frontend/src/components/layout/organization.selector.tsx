@@ -11,7 +11,15 @@ export const OrganizationSelector: FC<{ asOpenSelect?: boolean }> = ({
   const fetch = useFetch();
   const user = useUser();
   const load = useCallback(async () => {
-    return await (await fetch('/user/organizations')).json();
+    // A 502 from the origin (or any error body) must not reach the render path:
+    // data?.find / data?.filter below assume an array and throw a client-side
+    // exception on anything else, taking the whole page down.
+    const response = await fetch('/user/organizations');
+    if (!response.ok) {
+      return [];
+    }
+    const json = await response.json().catch(() => []);
+    return Array.isArray(json) ? json : [];
   }, []);
   const { isLoading, data } = useSWR('organizations', load, {
     revalidateIfStale: false,

@@ -8,7 +8,12 @@ export const useIntegrationList = () => {
   const fetch = useFetch();
 
   const load = useCallback(async (path: string) => {
-    return (await (await fetch(path)).json()).integrations;
+    const response = await fetch(path);
+    if (!response.ok) {
+      return [];
+    }
+    const json = await response.json().catch(() => ({}));
+    return Array.isArray(json?.integrations) ? json.integrations : [];
   }, []);
 
   return useSWR('/integrations/list', load, {
