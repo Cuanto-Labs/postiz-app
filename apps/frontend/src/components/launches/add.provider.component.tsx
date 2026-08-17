@@ -406,8 +406,9 @@ export const AddProviderComponent: FC<{
   isMobile?: boolean;
 }> = (props) => {
   const { update, social, article, onboarding, isMobile } = props;
-  // Only these channels are live for now; the rest render disabled ("Coming Soon").
-  const ENABLED_PROVIDERS = ['linkedin'];
+  // Live channels come from the backend allowlist (ENABLED_INTEGRATIONS) — the
+  // /integrations response is already filtered, so anything returned is enabled.
+  const ENABLED_PROVIDERS = (social || []).map((i: any) => i.identifier);
   const { isGeneral, extensionId } = useVariables();
   const toaster = useToaster();
   const router = useRouter();
