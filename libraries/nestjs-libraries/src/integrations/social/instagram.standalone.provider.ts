@@ -25,7 +25,7 @@ export class InstagramStandaloneProvider
   implements SocialProvider
 {
   identifier = 'instagram-standalone';
-  name = 'Instagram\n(Standalone)';
+  name = 'Instagram';
   isBetweenSteps = false;
   refreshCron = true;
   scopes = [
