@@ -11,9 +11,10 @@
 // origin processed it and the response was lost", and replaying a publish or a
 // channel connect is worse than surfacing the error.
 //
-// Edge runtime, not Node: the request body streams through, so media uploads
-// are not subject to the 4.5 MB serverless body cap.
-export const runtime = 'edge';
+// Node runtime: the edge runtime could not reach the Funnel host at all (every
+// fetch failed with 'internal error'). Request bodies are therefore subject to
+// Vercel's 4.5MB function body cap.
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ORIGIN = process.env.BACKEND_ORIGIN_URL || 'https://deb.tail789fa0.ts.net';
