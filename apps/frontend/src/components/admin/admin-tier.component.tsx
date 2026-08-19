@@ -5,6 +5,9 @@ import useSWR from 'swr';
 import dayjs from 'dayjs';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Button } from '@gitroom/react/form/button';
+import { Input } from '@gitroom/react/form/input';
+import { Select } from '@gitroom/react/form/select';
+import { Checkbox } from '@gitroom/react/form/checkbox';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
 type Tier = 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
@@ -148,85 +151,92 @@ const ChangePanel = ({ org, onDone }: { org: OrgRow; onDone: () => void }) => {
 
   return (
     <div className="flex flex-col gap-[14px] bg-newColColor p-[16px] rounded-[8px]">
-      <div className="flex flex-wrap gap-[10px] items-end">
-        <label className="flex flex-col gap-[4px]">
-          <span className="text-[12px] text-textColor/60">New plan</span>
-          <select
+      <div className="flex flex-wrap gap-[12px] items-start">
+        <div className="w-[150px]">
+          <Select
+            label="New plan"
+            translationKey="label_new_plan"
+            name="tier"
+            disableForm={true}
             value={tier}
             onChange={(e) => {
               setTier(e.target.value as Tier);
               setPreview(null);
             }}
-            className="bg-newBgColorInner rounded-[6px] h-[38px] px-[10px] outline-none"
           >
             {TIERS.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </div>
 
-        <label className="flex flex-col gap-[4px]">
-          <span className="text-[12px] text-textColor/60">Lasts</span>
-          <div className="flex gap-[6px]">
-            <input
-              value={duration}
-              onChange={(e) => setDuration(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="forever"
-              inputMode="numeric"
-              disabled={isLifetime}
-              className="bg-newBgColorInner rounded-[6px] h-[38px] px-[10px] outline-none w-[90px] disabled:opacity-40"
-            />
-            <select
-              value={durationUnit}
-              onChange={(e) =>
-                setDurationUnit(e.target.value as 'months' | 'days')
-              }
-              disabled={isLifetime}
-              className="bg-newBgColorInner rounded-[6px] h-[38px] px-[10px] outline-none disabled:opacity-40"
-            >
-              <option value="months">months</option>
-              <option value="days">days</option>
-            </select>
-          </div>
-        </label>
+        <div className="w-[160px]">
+          <Input
+            label="Lasts"
+            translationKey="label_lasts"
+            name="duration"
+            disableForm={true}
+            removeError={true}
+            placeholder="forever"
+            inputMode="numeric"
+            disabled={isLifetime}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value.replace(/[^0-9]/g, ''))}
+          />
+        </div>
 
-        <label className="flex gap-[6px] items-center h-[38px] cursor-pointer">
-          <input
-            type="checkbox"
+        <div className="w-[130px]">
+          <Select
+            label="Unit"
+            translationKey="label_unit"
+            name="durationUnit"
+            disableForm={true}
+            disabled={isLifetime}
+            value={durationUnit}
+            onChange={(e) =>
+              setDurationUnit(e.target.value as 'months' | 'days')
+            }
+          >
+            <option value="months">months</option>
+            <option value="days">days</option>
+          </Select>
+        </div>
+
+        <div className="flex gap-[16px] items-center h-[42px] mt-[26px]">
+          <Checkbox
+            name="isLifetime"
+            disableForm={true}
+            label="Lifetime"
             checked={isLifetime}
             onChange={(e) => {
-              setIsLifetime(e.target.checked);
-              if (e.target.checked) {
+              setIsLifetime(e.target.value);
+              if (e.target.value) {
                 setDuration('');
               }
             }}
           />
-          <span className="text-[13px] text-textColor/70">Lifetime</span>
-        </label>
-
-        <label className="flex gap-[6px] items-center h-[38px] cursor-pointer">
-          <input
-            type="checkbox"
+          <Checkbox
+            name="notify"
+            disableForm={true}
+            label="Email the customer"
             checked={notify}
-            onChange={(e) => setNotify(e.target.checked)}
+            onChange={(e) => setNotify(e.target.value)}
           />
-          <span className="text-[13px] text-textColor/70">Email the customer</span>
-        </label>
+        </div>
       </div>
 
-      <label className="flex flex-col gap-[4px]">
-        <span className="text-[12px] text-textColor/60">
-          Note for the customer (optional — appears in the email)
-        </span>
-        <input
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Applied as agreed on your call with us."
-          className="bg-newBgColorInner rounded-[6px] h-[38px] px-[10px] outline-none"
-        />
-      </label>
+      <Input
+        label="Note for the customer (optional — appears in the email)"
+        translationKey="label_customer_note"
+        name="reason"
+        disableForm={true}
+        removeError={true}
+        placeholder="Applied as agreed on your call with us."
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
 
       <div className="flex gap-[10px] items-center">
         <Button onClick={loadPreview} disabled={busy}>
@@ -301,20 +311,28 @@ export const AdminTierComponent = () => {
         Organizations billed through Stripe are read-only here.
       </div>
 
-      <div className="flex gap-[8px] items-end bg-newBgColorInner p-[16px] rounded-[8px]">
-        <label className="flex flex-col gap-[4px] flex-1">
-          <span className="text-[12px] text-textColor/60">Customer email</span>
-          <input
+      <div className="flex gap-[12px] items-start bg-newBgColorInner p-[16px] rounded-[8px]">
+        <div className="flex-1">
+          <Input
+            label="Customer email"
+            translationKey="label_customer_email"
+            name="email"
+            disableForm={true}
+            removeError={true}
+            placeholder="name@example.com"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && setQuery(input.trim())}
-            placeholder="name@example.com"
-            className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none"
           />
-        </label>
-        <Button onClick={() => setQuery(input.trim())} disabled={input.trim().length < 3}>
-          Search
-        </Button>
+        </div>
+        <div className="mt-[26px]">
+          <Button
+            onClick={() => setQuery(input.trim())}
+            disabled={input.trim().length < 3}
+          >
+            Search
+          </Button>
+        </div>
       </div>
 
       {isLoading && <LoadingComponent />}
