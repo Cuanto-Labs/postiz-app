@@ -13,7 +13,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 type Tier = 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
 
-interface RedeemSuccess {
+export interface RedeemSuccess {
   success: true;
   from: Tier | null;
   to: Tier;
@@ -112,7 +112,7 @@ const TierBadge = ({ tier, muted }: { tier: string; muted?: boolean }) => (
   </div>
 );
 
-const Success = ({ result }: { result: RedeemSuccess }) => {
+export const RedeemSuccessCard = ({ result }: { result: RedeemSuccess }) => {
   const t = useT();
   const [scope, animate] = useAnimate();
 
@@ -224,7 +224,7 @@ export const RedeemCode = () => {
     <LazyMotion features={domAnimation} strict>
       <div className="max-w-[560px] mx-auto w-full flex flex-col gap-[20px]">
         {result ? (
-          <Success result={result} />
+          <RedeemSuccessCard result={result} />
         ) : (
           <m.div
             initial={{ opacity: 0, y: 8 }}
