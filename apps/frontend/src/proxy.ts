@@ -10,9 +10,28 @@ import {
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
 
+const API_BACKEND_HOST = 'api.socials.cuantolabs.com';
+const API_BACKEND_ORIGIN =
+  process.env.BACKEND_INTERNAL_URL || 'https://deb.tail789fa0.ts.net';
+
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
   const nextUrl = request.nextUrl;
+
+  // api.socials.cuantolabs.com is the backend's public hostname. It is attached
+  // to this Vercel project only so it gets a certificate — the app must never
+  // serve it. Proxy every path 1:1 to the self-hosted backend here, ahead of the
+  // auth logic below, which would otherwise redirect API calls to /auth (that is
+  // exactly what happened when this rule was tried as a vercel.json rewrite and
+  // as a next.config beforeFiles rewrite: proxy.ts runs first and won).
+  // socials.cuantolabs.com/api/* keeps reaching the same backend through the
+  // vercel.json rewrite and is unaffected by this branch.
+  const requestHost = request.headers.get('host')?.split(':')[0];
+  if (requestHost === API_BACKEND_HOST) {
+    return NextResponse.rewrite(
+      new URL(`${nextUrl.pathname}${nextUrl.search}`, API_BACKEND_ORIGIN)
+    );
+  }
   const authCookie =
     request.cookies.get('auth') ||
     request.headers.get('auth') ||
@@ -44,6 +63,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (
+    nextUrl.pathname.startsWith('/monitor/') ||
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
     nextUrl.pathname.startsWith('/provider/') ||

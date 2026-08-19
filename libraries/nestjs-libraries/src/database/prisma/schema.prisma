@@ -136,15 +136,29 @@ model UsedCodes {
 // Registration invite codes, managed at runtime rather than through an env
 // var. A code is accepted at signup when a row exists, is active, and is not
 // past expiresAt. Landing pages carry one of these as ?invite=.
+//
+// A code with a `tier` also grants that plan — at signup, or redeemed later by
+// an existing user at /billing/redeem. `tier` null keeps the original
+// attribution-only behaviour, which is what every pre-existing row has.
 model InviteCode {
-  id        String    @id @default(uuid())
-  code      String    @unique
-  label     String?
-  active    Boolean   @default(true)
-  expiresAt DateTime?
-  timesUsed Int       @default(0)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String            @id @default(uuid())
+  code       String            @unique
+  label      String?
+  active     Boolean           @default(true)
+  expiresAt  DateTime?
+  timesUsed  Int               @default(0)
+  tier       SubscriptionTier?
+  isLifetime Boolean           @default(false)
+  maxUses    Int?
+  // How long the granted plan lasts, counted from the moment it is redeemed
+  // rather than from a fixed date, so one code behaves identically whenever it
+  // is used. At most one of the two is set; months means the same day-of-month
+  // later (19 Aug -> 19 Sep), which days cannot express because month lengths
+  // differ. Both null with isLifetime false means the grant never lapses.
+  durationDays   Int?
+  durationMonths Int?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@index([code])
 }
@@ -939,6 +953,7 @@ enum Provider {
   LOCAL
   GITHUB
   GOOGLE
+  APPLE
   FARCASTER
   WALLET
   GENERIC

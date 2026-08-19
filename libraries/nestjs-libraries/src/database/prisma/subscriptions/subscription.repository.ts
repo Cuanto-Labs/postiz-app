@@ -179,8 +179,13 @@ export class SubscriptionRepository {
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
-    org?: { id: string }
+    org?: { id: string },
+    // A code used to mean "lifetime" — the only comped path that existed was
+    // the lifetime deal. Comped promo tiers need the two decoupled, so this
+    // overrides when passed and otherwise keeps the historical behaviour.
+    isLifetime?: boolean
   ) {
+    const lifetime = isLifetime ?? !!code;
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
 
@@ -204,14 +209,14 @@ export class SubscriptionRepository {
         totalChannels,
         period,
         identifier,
-        isLifetime: !!code,
+        isLifetime: lifetime,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         deletedAt: null,
       },
       create: {
         organizationId: findOrg.id,
         subscriptionTier: billing,
-        isLifetime: !!code,
+        isLifetime: lifetime,
         totalChannels,
         period,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,

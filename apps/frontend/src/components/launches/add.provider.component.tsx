@@ -165,6 +165,7 @@ export const CustomVariables: FC<{
     defaultValue?: string;
     validation: string;
     type: 'text' | 'password';
+    hint?: string;
   }>;
   close?: () => void;
   identifier: string;
@@ -236,11 +237,31 @@ export const CustomVariables: FC<{
         >
           {variables.map((variable) => (
             <div key={variable.key}>
-              <Input
-                label={variable.label}
-                name={variable.key}
-                type={variable.type == 'text' ? 'text' : 'password'}
-              />
+              {variable.hint ? (
+                <div className="flex flex-col gap-[6px]">
+                  <div className="text-[14px] flex items-center gap-[6px]">
+                    <span>{variable.label}</span>
+                    <span
+                      data-tooltip-id="tooltip"
+                      data-tooltip-content={variable.hint}
+                      className="w-[16px] h-[16px] rounded-full border border-textColor/60 text-textColor/60 flex items-center justify-center text-[11px] leading-none cursor-help select-none"
+                    >
+                      i
+                    </span>
+                  </div>
+                  <Input
+                    label=""
+                    name={variable.key}
+                    type={variable.type == 'text' ? 'text' : 'password'}
+                  />
+                </div>
+              ) : (
+                <Input
+                  label={variable.label}
+                  name={variable.key}
+                  type={variable.type == 'text' ? 'text' : 'password'}
+                />
+              )}
             </div>
           ))}
           <div>
@@ -372,6 +393,7 @@ export const AddProviderComponent: FC<{
       label: string;
       validation: string;
       type: 'text' | 'password';
+      hint?: string;
     }>;
   }>;
   article: Array<{
@@ -384,8 +406,9 @@ export const AddProviderComponent: FC<{
   isMobile?: boolean;
 }> = (props) => {
   const { update, social, article, onboarding, isMobile } = props;
-  // Only these channels are live for now; the rest render disabled ("Coming Soon").
-  const ENABLED_PROVIDERS = ['linkedin'];
+  // Live channels come from the backend allowlist (ENABLED_INTEGRATIONS) — the
+  // /integrations response is already filtered, so anything returned is enabled.
+  const ENABLED_PROVIDERS = (social || []).map((i: any) => i.identifier);
   const { isGeneral, extensionId } = useVariables();
   const toaster = useToaster();
   const router = useRouter();
@@ -404,6 +427,7 @@ export const AddProviderComponent: FC<{
           validation: string;
           defaultValue?: string;
           type: 'text' | 'password';
+          hint?: string;
         }>
       ) =>
       async () => {
