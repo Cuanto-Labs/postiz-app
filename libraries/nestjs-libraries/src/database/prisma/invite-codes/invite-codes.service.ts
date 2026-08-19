@@ -91,6 +91,7 @@ export class InviteCodesService implements OnModuleInit {
     isLifetime?: boolean;
     maxUses?: number | null;
     durationDays?: number | null;
+    durationMonths?: number | null;
   }) {
     return this._repository.create(data);
   }
@@ -105,6 +106,7 @@ export class InviteCodesService implements OnModuleInit {
       isLifetime?: boolean;
       maxUses?: number | null;
       durationDays?: number | null;
+    durationMonths?: number | null;
     }
   ) {
     return this._repository.update(id, data);

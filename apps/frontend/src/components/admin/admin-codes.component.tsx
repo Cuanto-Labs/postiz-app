@@ -19,6 +19,7 @@ interface InviteCode {
   isLifetime: boolean;
   maxUses: number | null;
   durationDays: number | null;
+  durationMonths: number | null;
   createdAt: string;
 }
 
@@ -33,7 +34,8 @@ export const AdminCodesComponent = () => {
   const [tier, setTier] = useState<Tier | ''>('');
   const [isLifetime, setIsLifetime] = useState(false);
   const [maxUses, setMaxUses] = useState('');
-  const [durationDays, setDurationDays] = useState('');
+  const [duration, setDuration] = useState('');
+  const [durationUnit, setDurationUnit] = useState<'months' | 'days'>('months');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -59,7 +61,13 @@ export const AdminCodesComponent = () => {
         isLifetime,
         maxUses: maxUses.trim() === '' ? null : Number(maxUses),
         durationDays:
-          durationDays.trim() === '' ? null : Number(durationDays),
+          durationUnit === 'days' && duration.trim() !== ''
+            ? Number(duration)
+            : null,
+        durationMonths:
+          durationUnit === 'months' && duration.trim() !== ''
+            ? Number(duration)
+            : null,
       }),
     });
     setBusy(false);
@@ -72,9 +80,19 @@ export const AdminCodesComponent = () => {
     setTier('');
     setIsLifetime(false);
     setMaxUses('');
-    setDurationDays('');
+    setDuration('');
     mutate();
-  }, [code, label, tier, isLifetime, maxUses, durationDays, fetch, mutate]);
+  }, [
+    code,
+    label,
+    tier,
+    isLifetime,
+    maxUses,
+    duration,
+    durationUnit,
+    fetch,
+    mutate,
+  ]);
 
   const toggle = useCallback(
     async (row: InviteCode) => {
@@ -167,18 +185,33 @@ export const AdminCodesComponent = () => {
             className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none"
           />
         </label>
-        <label className="flex flex-col gap-[4px] w-[130px]">
-          <span className="text-[12px] text-textColor/60">Lasts (days)</span>
-          <input
-            value={durationDays}
-            onChange={(e) =>
-              setDurationDays(e.target.value.replace(/[^0-9]/g, ''))
-            }
-            placeholder="forever"
-            inputMode="numeric"
-            disabled={!tier || isLifetime}
-            className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none disabled:opacity-40"
-          />
+        <label className="flex flex-col gap-[4px]">
+          <span className="text-[12px] text-textColor/60">Lasts</span>
+          <div className="flex gap-[6px]">
+            <input
+              value={duration}
+              onChange={(e) =>
+                setDuration(e.target.value.replace(/[^0-9]/g, ''))
+              }
+              placeholder="forever"
+              inputMode="numeric"
+              disabled={!tier || isLifetime}
+              className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none w-[90px] disabled:opacity-40"
+            />
+            <select
+              value={durationUnit}
+              onChange={(e) =>
+                setDurationUnit(e.target.value as 'months' | 'days')
+              }
+              disabled={!tier || isLifetime}
+              className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none disabled:opacity-40"
+            >
+              {/* Months keep the day-of-month (19 Aug -> 19 Sep); days cannot,
+                  since month lengths differ. */}
+              <option value="months">months</option>
+              <option value="days">days</option>
+            </select>
+          </div>
         </label>
         <label className="flex gap-[6px] items-center h-[38px] cursor-pointer">
           <input
@@ -191,7 +224,7 @@ export const AdminCodesComponent = () => {
               // ignores duration when lifetime is set, so don't let the form
               // imply otherwise.
               if (e.target.checked) {
-                setDurationDays('');
+                setDuration('');
               }
             }}
           />
@@ -228,6 +261,8 @@ export const AdminCodesComponent = () => {
                     {row.tier}
                     {row.isLifetime
                       ? ' · lifetime'
+                      : row.durationMonths
+                      ? ` · ${row.durationMonths}mo`
                       : row.durationDays
                       ? ` · ${row.durationDays}d`
                       : ''}

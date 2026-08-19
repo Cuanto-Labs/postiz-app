@@ -185,7 +185,8 @@ export class BillingController {
         found.tier,
         found.code,
         found.isLifetime,
-        found.durationDays
+        found.durationDays,
+        found.durationMonths
       );
     } catch (err) {
       // grantTierFromCode verifies its own write and throws when the row does

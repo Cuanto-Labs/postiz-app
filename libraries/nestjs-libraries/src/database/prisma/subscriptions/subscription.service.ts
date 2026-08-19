@@ -269,14 +269,24 @@ export class SubscriptionService {
     tier: SubscriptionTier,
     code: string,
     isLifetime: boolean,
-    durationDays?: number | null
+    durationDays?: number | null,
+    durationMonths?: number | null
   ) {
     // Counted from redemption, not from a fixed date, so one code behaves the
     // same whenever it is used. A lifetime grant ignores duration entirely.
-    const cancelAt =
-      isLifetime || !durationDays
-        ? null
-        : Math.floor(dayjs().add(durationDays, 'day').valueOf() / 1000);
+    //
+    // Months are added as calendar months, so a grant made on the 19th ends on
+    // the 19th — dayjs clamps where the target month is shorter (31 Jan + 1
+    // month = 28 Feb), which is the conventional behaviour for billing dates.
+    const expiry = isLifetime
+      ? null
+      : durationMonths
+      ? dayjs().add(durationMonths, 'month')
+      : durationDays
+      ? dayjs().add(durationDays, 'day')
+      : null;
+
+    const cancelAt = expiry ? Math.floor(expiry.valueOf() / 1000) : null;
 
     await this.createOrUpdateSubscription(
       false,

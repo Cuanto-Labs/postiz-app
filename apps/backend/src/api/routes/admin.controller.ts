@@ -138,6 +138,7 @@ export class AdminController {
       isLifetime?: boolean;
       maxUses?: number | null;
       durationDays?: number | null;
+      durationMonths?: number | null;
     }
   ) {
     this.assertSuperAdmin(user);
@@ -152,7 +153,7 @@ export class AdminController {
       tier: this.parseTier(body.tier),
       isLifetime: !!body.isLifetime,
       maxUses: this.parsePositiveInt(body.maxUses, 'Max uses'),
-      durationDays: this.parsePositiveInt(body.durationDays, 'Duration'),
+      ...this.parseDuration(body.durationDays, body.durationMonths),
     });
   }
 
@@ -169,6 +170,7 @@ export class AdminController {
       isLifetime?: boolean;
       maxUses?: number | null;
       durationDays?: number | null;
+      durationMonths?: number | null;
     }
   ) {
     this.assertSuperAdmin(user);
@@ -187,10 +189,9 @@ export class AdminController {
         body.maxUses === undefined
           ? undefined
           : this.parsePositiveInt(body.maxUses, 'Max uses'),
-      durationDays:
-        body.durationDays === undefined
-          ? undefined
-          : this.parsePositiveInt(body.durationDays, 'Duration'),
+      ...(body.durationDays === undefined && body.durationMonths === undefined
+        ? {}
+        : this.parseDuration(body.durationDays, body.durationMonths)),
     });
   }
 
@@ -206,6 +207,28 @@ export class AdminController {
       throw new HttpException(`Unknown tier: ${tier}`, 400);
     }
     return tier;
+  }
+
+  /**
+   * Days and months are mutually exclusive — a code that carried both would
+   * silently apply only one, and which one is an implementation detail the
+   * admin should never have to know.
+   */
+  private parseDuration(
+    days?: number | null,
+    months?: number | null
+  ): { durationDays: number | null; durationMonths: number | null } {
+    const parsedDays = this.parsePositiveInt(days, 'Duration in days');
+    const parsedMonths = this.parsePositiveInt(months, 'Duration in months');
+
+    if (parsedDays && parsedMonths) {
+      throw new HttpException(
+        'Set a duration in days or in months, not both',
+        400
+      );
+    }
+
+    return { durationDays: parsedDays, durationMonths: parsedMonths };
   }
 
   private parsePositiveInt(value: number | null | undefined, label: string) {

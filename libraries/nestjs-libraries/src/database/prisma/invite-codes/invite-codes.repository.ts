@@ -50,6 +50,7 @@ export class InviteCodesRepository {
     isLifetime?: boolean;
     maxUses?: number | null;
     durationDays?: number | null;
+    durationMonths?: number | null;
   }) {
     return this._inviteCode.model.inviteCode.create({
       data: {
@@ -60,6 +61,7 @@ export class InviteCodesRepository {
         isLifetime: data.isLifetime ?? false,
         maxUses: data.maxUses ?? null,
         durationDays: data.durationDays ?? null,
+        durationMonths: data.durationMonths ?? null,
       },
     });
   }
@@ -74,6 +76,7 @@ export class InviteCodesRepository {
       isLifetime?: boolean;
       maxUses?: number | null;
       durationDays?: number | null;
+    durationMonths?: number | null;
     }
   ) {
     return this._inviteCode.model.inviteCode.update({
