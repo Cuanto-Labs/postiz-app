@@ -829,6 +829,21 @@ const ViewStats = () => {
   );
 };
 
+const ViewPlans = () => {
+  const t = useT();
+  const handleClick = useCallback(() => {
+    window.location.href = '/admin/plans';
+  }, []);
+  return (
+    <div
+      className="px-[10px] rounded-[4px] bg-teal-700 text-white cursor-pointer whitespace-nowrap"
+      onClick={handleClick}
+    >
+      {t('plan_changes', 'Plan Changes')}
+    </div>
+  );
+};
+
 const ViewCodes = () => {
   const t = useT();
   const handleClick = useCallback(() => {
@@ -1132,6 +1147,7 @@ export const Impersonate = () => {
                 <ViewErrors />
                 <ViewStats />
                 <ViewCodes />
+                <ViewPlans />
               </div>
             )}
           </div>

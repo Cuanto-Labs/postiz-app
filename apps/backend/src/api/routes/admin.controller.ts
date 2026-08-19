@@ -15,6 +15,10 @@ import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
 import { InviteCodesService } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.service';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { describeTierChange } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/tier.diff';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { REDIS_KEY_ENABLED, socialIntegrationList } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import dayjs from 'dayjs';
@@ -28,7 +32,9 @@ export class AdminController {
   constructor(
     private _errorsService: ErrorsService,
     private _adminStatsService: AdminStatsService,
-    private _inviteCodesService: InviteCodesService
+    private _inviteCodesService: InviteCodesService,
+    private _organizationService: OrganizationService,
+    private _subscriptionService: SubscriptionService
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -117,6 +123,103 @@ export class AdminController {
       from: fromDate.startOf('day').toDate(),
       to: toDate.endOf('day').toDate(),
       unknownOnly: unknownOnly === 'true' || unknownOnly === '1',
+    });
+  }
+
+  /**
+   * Find the organizations behind an email address. Support starts from an
+   * address, not an org id, so this is the entry point for every manual plan
+   * change below.
+   */
+  @Get('/organizations')
+  async searchOrganizations(
+    @GetUserFromRequest() user: User,
+    @Query('email') email?: string
+  ) {
+    this.assertSuperAdmin(user);
+    const query = (email || '').trim();
+    if (query.length < 3) {
+      throw new HttpException('Search by at least 3 characters', 400);
+    }
+    return this._organizationService.searchOrganizationsByUserEmail(query);
+  }
+
+  /**
+   * Preview a plan change without making it. The operator sees exactly what the
+   * customer's email will say before anyone is emailed.
+   */
+  @Get('/organizations/:id/tier-preview')
+  async previewTierChange(
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string,
+    @Query('tier') tier: SubscriptionTier
+  ) {
+    this.assertSuperAdmin(user);
+    const target = this.parseTier(tier);
+    if (!target) {
+      throw new HttpException('A tier is required', 400);
+    }
+    const current = await this._subscriptionService.getSubscriptionByOrganizationId(
+      id
+    );
+    return {
+      from: current?.subscriptionTier ?? null,
+      to: target,
+      ...describeTierChange(current?.subscriptionTier ?? null, target),
+    };
+  }
+
+  /**
+   * Apply a plan to an organization by hand. This is the operator counterpart
+   * to redeeming a code, and runs through the same applyTier path — same
+   * write, same verification, same customer email.
+   */
+  @Post('/organizations/:id/tier')
+  async setOrganizationTier(
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      tier?: SubscriptionTier;
+      isLifetime?: boolean;
+      durationDays?: number | null;
+      durationMonths?: number | null;
+      notify?: boolean;
+      reason?: string;
+    }
+  ) {
+    this.assertSuperAdmin(user);
+
+    const tier = this.parseTier(body.tier);
+    if (!tier) {
+      throw new HttpException('A tier is required', 400);
+    }
+
+    const org = await this._organizationService.getOrgById(id);
+    if (!org) {
+      throw new HttpException('Organization not found', 404);
+    }
+
+    // A Stripe-billed org must be changed in Stripe, or the next webhook
+    // overwrites whatever is written here and the customer gets two
+    // contradictory emails.
+    if (org.paymentId) {
+      throw new HttpException(
+        'This organization has a Stripe subscription — change it in Stripe instead',
+        400
+      );
+    }
+
+    const duration = this.parseDuration(body.durationDays, body.durationMonths);
+
+    return this._subscriptionService.applyTier({
+      orgId: id,
+      tier,
+      identifier: `admin:${makeId(8)}`,
+      isLifetime: !!body.isLifetime,
+      ...duration,
+      notify: body.notify !== false,
+      reason: body.reason?.trim() || undefined,
     });
   }
 
