@@ -12,6 +12,7 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
+import { InviteCodesService } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.service';
 
 const activationEmailHtml = (activationUrl: string) => `
   <p style="margin: 0 0 16px;">Welcome to Cuanto Socials — one more step and you're in.</p>
@@ -41,8 +42,47 @@ export class AuthService {
     private _notificationService: NotificationService,
     private _emailService: EmailService,
     private _providerManager: AuthProviderManager,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _inviteCodesService: InviteCodesService
   ) {}
+
+  /**
+   * Everything a brand-new organization is entitled to: the complimentary tier,
+   * then an upgrade if the signup carried a code that grants one.
+   *
+   * Non-fatal throughout — a failure here must not cost the user their
+   * completed registration. They land on the free grant and the code can be
+   * redeemed later at /billing/redeem, which is the same operation.
+   */
+  private async grantSignupEntitlements(orgId: string, inviteCode?: string) {
+    try {
+      await this._subscriptionService.grantFreeTier(orgId);
+    } catch (err) {
+      console.error('Could not grant the free tier to', orgId, err);
+    }
+
+    if (!inviteCode) {
+      return;
+    }
+
+    try {
+      const code = await this._inviteCodesService.findRedeemable(inviteCode);
+      if (!code?.tier) {
+        return;
+      }
+      await this._subscriptionService.grantTierFromCode(
+        orgId,
+        code.tier,
+        code.code,
+        code.isLifetime
+      );
+      // The only place the code is consumed. Registration validates it without
+      // consuming precisely so this stays the single increment.
+      await this._inviteCodesService.consume(code.id);
+    } catch (err) {
+      console.error('Could not apply the invite code tier to', orgId, err);
+    }
+  }
   async canRegister(provider: string) {
     if (
       process.env.DISABLE_REGISTRATION !== 'true' ||
@@ -84,14 +124,10 @@ export class AuthService {
           userAgent
         );
 
-        // Complimentary tier for every new organization. Non-fatal: a failure
-        // here must not cost the user their completed registration — they land
-        // on free and the grant can be reissued.
-        try {
-          await this._subscriptionService.grantFreeTier(create.id);
-        } catch (err) {
-          console.error('Could not grant the free tier to', create.id, err);
-        }
+        await this.grantSignupEntitlements(
+          create.id,
+          (body as CreateOrgUserDto).inviteCode
+        );
 
         const addedOrg =
           addToOrg && typeof addToOrg !== 'boolean'
@@ -207,13 +243,9 @@ export class AuthService {
       userAgent
     );
 
-    // Same complimentary grant as the local path — OAuth signups create an
+    // Same entitlements as the local path — OAuth signups create an
     // organization too, and would otherwise land on free.
-    try {
-      await this._subscriptionService.grantFreeTier(create.id);
-    } catch (err) {
-      console.error('Could not grant the free tier to', create.id, err);
-    }
+    await this.grantSignupEntitlements(create.id, body.inviteCode);
 
     this._track('register', providerUser.email, body.datafast_visitor_id).catch(
       (err) => {}

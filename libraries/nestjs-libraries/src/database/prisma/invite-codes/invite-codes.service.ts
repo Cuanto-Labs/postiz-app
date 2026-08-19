@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InviteCodesRepository } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.repository';
+import { InviteCode, SubscriptionTier } from '@prisma/client';
 
 @Injectable()
 export class InviteCodesService implements OnModuleInit {
@@ -33,34 +34,76 @@ export class InviteCodesService implements OnModuleInit {
   }
 
   /**
-   * True when the code may be used for registration. An empty/absent code is
-   * "valid" — codes are optional, the complimentary tier is granted regardless
-   * — so only a *non-empty, unrecognised* code is rejected. Bumps usage on a
-   * hit so the admin list shows which codes are pulling their weight.
+   * Resolve a code for registration without consuming it. An empty/absent code
+   * resolves to `{ accepted: true, code: null }` — codes are optional, the
+   * complimentary tier is granted regardless — so only a *non-empty,
+   * unrecognised* code is rejected.
+   *
+   * Consumption is deliberately NOT done here. The caller decides when the
+   * signup actually succeeded and calls `consume()` exactly once, so a code is
+   * never spent by a registration that then failed, and never counted twice
+   * when it also grants a tier.
    */
-  async isAcceptable(code?: string): Promise<boolean> {
+  async resolveForRegistration(
+    code?: string
+  ): Promise<{ accepted: boolean; code: InviteCode | null }> {
     if (!code) {
-      return true;
+      return { accepted: true, code: null };
     }
     const found = await this._repository.findUsable(code);
     if (!found) {
-      return false;
+      return { accepted: false, code: null };
     }
-    this._repository.markUsed(found.id).catch(() => {});
-    return true;
+    return { accepted: true, code: found };
+  }
+
+  /**
+   * True when the code may be used for registration. Kept as the thin boolean
+   * wrapper the auth flow used before tiers existed.
+   */
+  async isAcceptable(code?: string): Promise<boolean> {
+    return (await this.resolveForRegistration(code)).accepted;
+  }
+
+  /** A code that is usable AND actually grants a plan. */
+  async findRedeemable(code: string) {
+    const found = await this._repository.findUsable(code);
+    if (!found || !found.tier) {
+      return null;
+    }
+    return found;
+  }
+
+  /** Bump `timesUsed`. Best-effort — never block the flow that granted access. */
+  consume(id: string) {
+    return this._repository.markUsed(id).catch(() => {});
   }
 
   list() {
     return this._repository.list();
   }
 
-  create(data: { code: string; label?: string; expiresAt?: Date | null }) {
+  create(data: {
+    code: string;
+    label?: string;
+    expiresAt?: Date | null;
+    tier?: SubscriptionTier | null;
+    isLifetime?: boolean;
+    maxUses?: number | null;
+  }) {
     return this._repository.create(data);
   }
 
   update(
     id: string,
-    data: { label?: string; active?: boolean; expiresAt?: Date | null }
+    data: {
+      label?: string;
+      active?: boolean;
+      expiresAt?: Date | null;
+      tier?: SubscriptionTier | null;
+      isLifetime?: boolean;
+      maxUses?: number | null;
+    }
   ) {
     return this._repository.update(id, data);
   }

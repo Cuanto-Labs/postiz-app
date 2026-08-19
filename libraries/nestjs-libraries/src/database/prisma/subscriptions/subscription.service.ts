@@ -3,7 +3,7 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { Organization } from '@prisma/client';
+import { Organization, SubscriptionTier } from '@prisma/client';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { activeSubscriptionTier } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/free.tier';
@@ -184,7 +184,8 @@ export class SubscriptionService {
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
-    org?: string
+    org?: string,
+    isLifetime?: boolean
   ) {
     if (!code) {
       try {
@@ -209,7 +210,8 @@ export class SubscriptionService {
       period,
       cancelAt,
       code,
-      org ? { id: org } : undefined
+      org ? { id: org } : undefined,
+      isLifetime
     );
   }
 
@@ -251,6 +253,37 @@ export class SubscriptionService {
     return {
       credits: imageGenerationCount - totalUse,
     };
+  }
+
+  /**
+   * Grant a plan with no money changing hands — a promo code, at signup or
+   * redeemed later. Deliberately does NOT touch Stripe: a comped org usually
+   * has no customer, and `modifySubscription` would fail on it, so a `code` is
+   * always passed to short-circuit that path.
+   *
+   * `isTrailing: false` is what ends the complimentary trial — the repository
+   * writes it onto the organization alongside `allowTrial: false`.
+   */
+  async grantTierFromCode(
+    orgId: string,
+    tier: SubscriptionTier,
+    code: string,
+    isLifetime: boolean
+  ) {
+    return this.createOrUpdateSubscription(
+      false,
+      makeId(10),
+      orgId,
+      pricing[tier].channel!,
+      tier,
+      'MONTHLY',
+      null,
+      // Namespaced so a promo redemption can never collide with a lifetime-deal
+      // code in `usedCodes`, which is unique per code string.
+      `promo:${code}:${orgId}`,
+      orgId,
+      isLifetime
+    );
   }
 
   async addSubscription(orgId: string, userId: string, subscription: any) {
