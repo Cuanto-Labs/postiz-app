@@ -11,6 +11,9 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { Request } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { InviteCodesService } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.service';
+import { RedeemCodeDto } from '@gitroom/nestjs-libraries/dtos/billing/redeem.code.dto';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @ApiTags('Billing')
 @Controller('/billing')
@@ -19,7 +22,8 @@ export class BillingController {
     private _subscriptionService: SubscriptionService,
     private _stripeService: StripeService,
     private _notificationService: NotificationService,
-    private _usersService: UsersService
+    private _usersService: UsersService,
+    private _inviteCodesService: InviteCodesService
   ) {}
 
   private async assertNoOtherSubscribedAccount(user: User) {
@@ -127,6 +131,79 @@ export class BillingController {
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
     return this._subscriptionService.getSubscriptionByOrganizationId(org.id);
+  }
+
+  /**
+   * Redeem a promo code that carries a tier. This is the only way an existing
+   * user can be upgraded without paying — `add-subscription` reads the org off
+   * the caller's own session, so it can only ever upgrade the superadmin.
+   *
+   * Always 200 with a `reason`, never a thrown error: the client renders a
+   * different message per outcome, and a failed redemption is not an
+   * exceptional condition worth a Sentry event.
+   */
+  @Post('/redeem')
+  async redeemCode(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: RedeemCodeDto
+  ) {
+    const found = await this._inviteCodesService.findRedeemable(body.code);
+    if (!found) {
+      return { success: false, reason: 'invalid' as const };
+    }
+
+    // A code with no tier is an attribution code from a landing page. It is a
+    // real, valid code — it just does not grant anything.
+    if (!found.tier) {
+      return { success: false, reason: 'not_upgradeable' as const };
+    }
+
+    // Never clobber real billing. An org with a Stripe customer is handled in
+    // Stripe, not here, or the next webhook would fight this row.
+    if (org.paymentId) {
+      return { success: false, reason: 'has_paid_subscription' as const };
+    }
+
+    const current =
+      await this._subscriptionService.getSubscriptionByOrganizationId(org.id);
+
+    if (current?.subscriptionTier === found.tier && current?.isLifetime) {
+      return { success: false, reason: 'already_on_tier' as const };
+    }
+
+    // Second check, against the enum rather than the column: a tier that no
+    // longer exists (renamed, removed) would otherwise index `pricing` as
+    // undefined and grant a subscription with NaN channels.
+    if (!pricing[found.tier]?.channel) {
+      return { success: false, reason: 'invalid' as const };
+    }
+
+    let granted;
+    try {
+      granted = await this._subscriptionService.grantTierFromCode(
+        org.id,
+        found.tier,
+        found.code,
+        found.isLifetime,
+        found.durationDays,
+        found.durationMonths
+      );
+    } catch (err) {
+      // grantTierFromCode verifies its own write and throws when the row does
+      // not match. Do not consume the code — the user must be able to retry.
+      return { success: false, reason: 'grant_failed' as const };
+    }
+
+    await this._inviteCodesService.consume(found.id);
+
+    return {
+      success: true,
+      from: current?.subscriptionTier ?? null,
+      to: granted.subscriptionTier,
+      isLifetime: granted.isLifetime,
+      totalChannels: granted.totalChannels,
+      expiresAt: granted.cancelAt ? granted.cancelAt.toISOString() : null,
+    };
   }
 
   @Post('/cancel')
