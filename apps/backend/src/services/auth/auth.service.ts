@@ -74,7 +74,8 @@ export class AuthService {
         orgId,
         code.tier,
         code.code,
-        code.isLifetime
+        code.isLifetime,
+        code.durationDays
       );
       // The only place the code is consumed. Registration validates it without
       // consuming precisely so this stays the single increment.

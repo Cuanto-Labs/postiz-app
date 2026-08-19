@@ -49,6 +49,7 @@ export class InviteCodesRepository {
     tier?: SubscriptionTier | null;
     isLifetime?: boolean;
     maxUses?: number | null;
+    durationDays?: number | null;
   }) {
     return this._inviteCode.model.inviteCode.create({
       data: {
@@ -58,6 +59,7 @@ export class InviteCodesRepository {
         tier: data.tier ?? null,
         isLifetime: data.isLifetime ?? false,
         maxUses: data.maxUses ?? null,
+        durationDays: data.durationDays ?? null,
       },
     });
   }
@@ -71,6 +73,7 @@ export class InviteCodesRepository {
       tier?: SubscriptionTier | null;
       isLifetime?: boolean;
       maxUses?: number | null;
+      durationDays?: number | null;
     }
   ) {
     return this._inviteCode.model.inviteCode.update({

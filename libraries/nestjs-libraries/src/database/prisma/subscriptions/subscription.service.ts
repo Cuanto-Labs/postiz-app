@@ -268,22 +268,52 @@ export class SubscriptionService {
     orgId: string,
     tier: SubscriptionTier,
     code: string,
-    isLifetime: boolean
+    isLifetime: boolean,
+    durationDays?: number | null
   ) {
-    return this.createOrUpdateSubscription(
+    // Counted from redemption, not from a fixed date, so one code behaves the
+    // same whenever it is used. A lifetime grant ignores duration entirely.
+    const cancelAt =
+      isLifetime || !durationDays
+        ? null
+        : Math.floor(dayjs().add(durationDays, 'day').valueOf() / 1000);
+
+    await this.createOrUpdateSubscription(
       false,
       makeId(10),
       orgId,
       pricing[tier].channel!,
       tier,
       'MONTHLY',
-      null,
+      cancelAt,
       // Namespaced so a promo redemption can never collide with a lifetime-deal
       // code in `usedCodes`, which is unique per code string.
       `promo:${code}:${orgId}`,
       orgId,
       isLifetime
     );
+
+    // Read back rather than trust the write. A grant that silently no-ops (the
+    // upsert's where-clause is conditional on `code`) would otherwise be
+    // reported to the user as a successful upgrade.
+    const written = await this._subscriptionRepository.getSubscriptionByOrgId(
+      orgId
+    );
+
+    if (
+      !written ||
+      written.subscriptionTier !== tier ||
+      written.totalChannels !== pricing[tier].channel ||
+      written.isLifetime !== isLifetime
+    ) {
+      throw new Error(
+        `Grant verification failed for org ${orgId}: expected ${tier}` +
+          `/${pricing[tier].channel}ch/lifetime=${isLifetime}, got ` +
+          `${written?.subscriptionTier}/${written?.totalChannels}ch/lifetime=${written?.isLifetime}`
+      );
+    }
+
+    return written;
   }
 
   async addSubscription(orgId: string, userId: string, subscription: any) {

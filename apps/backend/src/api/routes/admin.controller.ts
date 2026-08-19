@@ -137,6 +137,7 @@ export class AdminController {
       tier?: SubscriptionTier | null;
       isLifetime?: boolean;
       maxUses?: number | null;
+      durationDays?: number | null;
     }
   ) {
     this.assertSuperAdmin(user);
@@ -150,7 +151,8 @@ export class AdminController {
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
       tier: this.parseTier(body.tier),
       isLifetime: !!body.isLifetime,
-      maxUses: this.parseMaxUses(body.maxUses),
+      maxUses: this.parsePositiveInt(body.maxUses, 'Max uses'),
+      durationDays: this.parsePositiveInt(body.durationDays, 'Duration'),
     });
   }
 
@@ -166,6 +168,7 @@ export class AdminController {
       tier?: SubscriptionTier | null;
       isLifetime?: boolean;
       maxUses?: number | null;
+      durationDays?: number | null;
     }
   ) {
     this.assertSuperAdmin(user);
@@ -181,7 +184,13 @@ export class AdminController {
       tier: body.tier === undefined ? undefined : this.parseTier(body.tier),
       isLifetime: body.isLifetime,
       maxUses:
-        body.maxUses === undefined ? undefined : this.parseMaxUses(body.maxUses),
+        body.maxUses === undefined
+          ? undefined
+          : this.parsePositiveInt(body.maxUses, 'Max uses'),
+      durationDays:
+        body.durationDays === undefined
+          ? undefined
+          : this.parsePositiveInt(body.durationDays, 'Duration'),
     });
   }
 
@@ -199,13 +208,13 @@ export class AdminController {
     return tier;
   }
 
-  private parseMaxUses(maxUses?: number | null) {
-    if (maxUses === null || maxUses === undefined || `${maxUses}` === '') {
+  private parsePositiveInt(value: number | null | undefined, label: string) {
+    if (value === null || value === undefined || `${value}` === '') {
       return null;
     }
-    const parsed = Number(maxUses);
+    const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed < 1) {
-      throw new HttpException('Max uses must be a positive whole number', 400);
+      throw new HttpException(`${label} must be a positive whole number`, 400);
     }
     return parsed;
   }

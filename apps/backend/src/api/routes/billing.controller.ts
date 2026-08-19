@@ -171,21 +171,37 @@ export class BillingController {
       return { success: false, reason: 'already_on_tier' as const };
     }
 
-    await this._subscriptionService.grantTierFromCode(
-      org.id,
-      found.tier,
-      found.code,
-      found.isLifetime
-    );
+    // Second check, against the enum rather than the column: a tier that no
+    // longer exists (renamed, removed) would otherwise index `pricing` as
+    // undefined and grant a subscription with NaN channels.
+    if (!pricing[found.tier]?.channel) {
+      return { success: false, reason: 'invalid' as const };
+    }
+
+    let granted;
+    try {
+      granted = await this._subscriptionService.grantTierFromCode(
+        org.id,
+        found.tier,
+        found.code,
+        found.isLifetime,
+        found.durationDays
+      );
+    } catch (err) {
+      // grantTierFromCode verifies its own write and throws when the row does
+      // not match. Do not consume the code — the user must be able to retry.
+      return { success: false, reason: 'grant_failed' as const };
+    }
 
     await this._inviteCodesService.consume(found.id);
 
     return {
       success: true,
       from: current?.subscriptionTier ?? null,
-      to: found.tier,
-      isLifetime: found.isLifetime,
-      totalChannels: pricing[found.tier].channel,
+      to: granted.subscriptionTier,
+      isLifetime: granted.isLifetime,
+      totalChannels: granted.totalChannels,
+      expiresAt: granted.cancelAt ? granted.cancelAt.toISOString() : null,
     };
   }
 

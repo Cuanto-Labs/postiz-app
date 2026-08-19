@@ -18,6 +18,7 @@ interface InviteCode {
   tier: Tier | null;
   isLifetime: boolean;
   maxUses: number | null;
+  durationDays: number | null;
   createdAt: string;
 }
 
@@ -32,6 +33,7 @@ export const AdminCodesComponent = () => {
   const [tier, setTier] = useState<Tier | ''>('');
   const [isLifetime, setIsLifetime] = useState(false);
   const [maxUses, setMaxUses] = useState('');
+  const [durationDays, setDurationDays] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,6 +58,8 @@ export const AdminCodesComponent = () => {
         tier: tier || null,
         isLifetime,
         maxUses: maxUses.trim() === '' ? null : Number(maxUses),
+        durationDays:
+          durationDays.trim() === '' ? null : Number(durationDays),
       }),
     });
     setBusy(false);
@@ -68,8 +72,9 @@ export const AdminCodesComponent = () => {
     setTier('');
     setIsLifetime(false);
     setMaxUses('');
+    setDurationDays('');
     mutate();
-  }, [code, label, tier, isLifetime, maxUses, fetch, mutate]);
+  }, [code, label, tier, isLifetime, maxUses, durationDays, fetch, mutate]);
 
   const toggle = useCallback(
     async (row: InviteCode) => {
@@ -162,12 +167,33 @@ export const AdminCodesComponent = () => {
             className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none"
           />
         </label>
+        <label className="flex flex-col gap-[4px] w-[130px]">
+          <span className="text-[12px] text-textColor/60">Lasts (days)</span>
+          <input
+            value={durationDays}
+            onChange={(e) =>
+              setDurationDays(e.target.value.replace(/[^0-9]/g, ''))
+            }
+            placeholder="forever"
+            inputMode="numeric"
+            disabled={!tier || isLifetime}
+            className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none disabled:opacity-40"
+          />
+        </label>
         <label className="flex gap-[6px] items-center h-[38px] cursor-pointer">
           <input
             type="checkbox"
             checked={isLifetime}
             disabled={!tier}
-            onChange={(e) => setIsLifetime(e.target.checked)}
+            onChange={(e) => {
+              setIsLifetime(e.target.checked);
+              // Lifetime and a duration are mutually exclusive; the backend
+              // ignores duration when lifetime is set, so don't let the form
+              // imply otherwise.
+              if (e.target.checked) {
+                setDurationDays('');
+              }
+            }}
           />
           <span className="text-[13px] text-textColor/70">Lifetime</span>
         </label>
@@ -200,7 +226,11 @@ export const AdminCodesComponent = () => {
                 {row.tier ? (
                   <span className="text-[#10b981]">
                     {row.tier}
-                    {row.isLifetime ? ' · lifetime' : ''}
+                    {row.isLifetime
+                      ? ' · lifetime'
+                      : row.durationDays
+                      ? ` · ${row.durationDays}d`
+                      : ''}
                   </span>
                 ) : (
                   <span className="text-textColor/40">—</span>

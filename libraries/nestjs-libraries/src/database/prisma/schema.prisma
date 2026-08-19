@@ -150,6 +150,10 @@ model InviteCode {
   tier       SubscriptionTier?
   isLifetime Boolean           @default(false)
   maxUses    Int?
+  // How long the granted plan lasts, counted from the moment it is redeemed
+  // rather than from a fixed date, so one code behaves identically whenever it
+  // is used. Null with isLifetime false means the grant never lapses.
+  durationDays Int?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 

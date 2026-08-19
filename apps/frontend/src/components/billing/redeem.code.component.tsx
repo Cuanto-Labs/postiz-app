@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import confetti from 'canvas-confetti';
 import { LazyMotion, domAnimation, m, useAnimate } from 'motion/react';
+import dayjs from 'dayjs';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Input } from '@gitroom/react/form/input';
@@ -19,6 +20,7 @@ export interface RedeemSuccess {
   to: Tier;
   isLifetime: boolean;
   totalChannels: number;
+  expiresAt: string | null;
 }
 
 interface RedeemFailure {
@@ -27,7 +29,8 @@ interface RedeemFailure {
     | 'invalid'
     | 'not_upgradeable'
     | 'has_paid_subscription'
-    | 'already_on_tier';
+    | 'already_on_tier'
+    | 'grant_failed';
 }
 
 // Copy per failure reason. The old lifetime screen collapsed every outcome into
@@ -39,41 +42,54 @@ const FAILURES: Record<RedeemFailure['reason'], string> = {
   has_paid_subscription:
     'You already have a paid subscription — contact support and we will apply this to your account.',
   already_on_tier: 'You are already on this plan.',
+  grant_failed:
+    'We could not apply that code just now. Nothing was used — please try again.',
 };
 
-/** Brand accents, matching the rest of the app. */
 const ACCENT = '#10b981';
 const ACCENT_ALT = '#6366f1';
 
-const fireConfetti = () => {
-  // Two opposing cones rather than one burst — reads as a celebration across
-  // the whole card instead of a spray from the middle.
-  const base = {
-    particleCount: 60,
-    spread: 70,
-    startVelocity: 45,
-    ticks: 140,
-    colors: [ACCENT, ACCENT_ALT, '#ffffff'],
-    disableForReducedMotion: true,
-  };
-  confetti({ ...base, angle: 60, origin: { x: 0.1, y: 0.75 } });
-  confetti({ ...base, angle: 120, origin: { x: 0.9, y: 0.75 } });
-};
+const reducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * Counts to `value` over `duration`. Deliberately hand-rolled on rAF rather
- * than pulled from an animation lib: it is ten lines, and the alternative
- * (a spring on a number) fights the exact landing value.
+ * One restrained burst of thin strips from under the card, in brand colours
+ * only. Low particle count and a wide spread read as a finishing flourish
+ * rather than a party popper.
  */
-const CountUp = ({ value, duration = 900 }: { value: number; duration?: number }) => {
+const fireConfetti = () => {
+  if (reducedMotion()) {
+    return;
+  }
+  confetti({
+    particleCount: 34,
+    spread: 96,
+    startVelocity: 34,
+    gravity: 0.9,
+    decay: 0.92,
+    ticks: 110,
+    scalar: 0.75,
+    shapes: ['square'],
+    colors: [ACCENT, ACCENT_ALT, '#d1fae5'],
+    origin: { x: 0.5, y: 0.62 },
+    disableForReducedMotion: true,
+  });
+};
+
+/** Counts to `value` on rAF. A spring would overshoot the exact landing number. */
+const CountUp = ({
+  value,
+  duration = 1100,
+}: {
+  value: number;
+  duration?: number;
+}) => {
   const [shown, setShown] = useState(0);
   const frame = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
+    if (reducedMotion()) {
       setShown(value);
       return;
     }
@@ -81,8 +97,8 @@ const CountUp = ({ value, duration = 900 }: { value: number; duration?: number }
     const started = performance.now();
     const step = (now: number) => {
       const progress = Math.min((now - started) / duration, 1);
-      // easeOutCubic — fast then settling, so the final number is readable.
-      setShown(Math.round(value * (1 - Math.pow(1 - progress, 3))));
+      // easeOutQuint — moves fast, settles slowly, so the number stays readable.
+      setShown(Math.round(value * (1 - Math.pow(1 - progress, 5))));
       if (progress < 1) {
         frame.current = requestAnimationFrame(step);
       }
@@ -99,16 +115,12 @@ const CountUp = ({ value, duration = 900 }: { value: number; duration?: number }
   return <>{shown}</>;
 };
 
-const TierBadge = ({ tier, muted }: { tier: string; muted?: boolean }) => (
-  <div
-    className={`px-[14px] py-[6px] rounded-[8px] text-[16px] font-[700] tracking-[0.5px] ${
-      muted
-        ? 'bg-newColColor text-textColor/40 line-through'
-        : 'text-[#0E0E0E]'
-    }`}
-    style={muted ? undefined : { background: ACCENT }}
-  >
-    {tier}
+const Meta = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex flex-col gap-[6px]">
+    <div className="text-[11px] uppercase tracking-[1.4px] text-textColor/35">
+      {label}
+    </div>
+    <div className="text-[15px] text-textColor/90">{value}</div>
   </div>
 );
 
@@ -117,59 +129,112 @@ export const RedeemSuccessCard = ({ result }: { result: RedeemSuccess }) => {
   const [scope, animate] = useAnimate();
 
   useEffect(() => {
-    fireConfetti();
-    // A second, smaller pop once the badge has settled — the card reads as
-    // finished rather than as one instant flash.
-    const timer = setTimeout(fireConfetti, 550);
-    animate(
-      scope.current,
-      { scale: [0.94, 1.04, 1] },
-      { duration: 0.55, ease: 'easeOut' }
-    );
+    // Fire once the tier has actually changed on screen, not on mount — the
+    // burst punctuates the reveal rather than preceding it.
+    const timer = setTimeout(fireConfetti, 620);
+    if (!reducedMotion()) {
+      animate(
+        scope.current,
+        { opacity: [0, 1], y: [10, 0] },
+        { duration: 0.4, ease: [0.16, 1, 0.3, 1] }
+      );
+    }
     return () => clearTimeout(timer);
   }, [animate, scope]);
 
+  const validity = result.isLifetime
+    ? 'Lifetime — never expires'
+    : result.expiresAt
+    ? `Through ${dayjs(result.expiresAt).format('MMM D, YYYY')}`
+    : 'No end date';
+
   return (
-    <m.div
+    <div
       ref={scope}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="border border-customColor6 bg-sixth p-[32px] rounded-[8px] flex flex-col gap-[24px] items-center text-center"
-      style={{ boxShadow: `0 0 0 1px ${ACCENT}22, 0 18px 60px -30px ${ACCENT}` }}
+      className="relative rounded-[16px] overflow-hidden"
+      style={{
+        background: `linear-gradient(160deg, ${ACCENT}2b 0%, transparent 44%), #101314`,
+        border: '1px solid rgba(255,255,255,0.07)',
+      }}
     >
-      <div className="text-[28px] font-[700]">
-        {t('redeem_success_title', "You're upgraded")}
-      </div>
+      {/* A single sheen pass across the card — the premium cue, used once. */}
+      <m.div
+        aria-hidden
+        initial={{ x: '-130%', opacity: 0 }}
+        // Fades out as it leaves. Without the opacity keyframe the strip parks
+        // at its end position and reads as a permanent seam down the card.
+        animate={{ x: '130%', opacity: [0, 1, 0] }}
+        transition={{ duration: 1.3, delay: 0.35, ease: 'easeInOut' }}
+        className="absolute inset-y-0 w-1/3 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(100deg, transparent, rgba(255,255,255,0.06), transparent)',
+        }}
+      />
 
-      <div className="flex items-center gap-[14px]">
-        {!!result.from && <TierBadge tier={result.from} muted />}
-        {!!result.from && <div className="text-textColor/40 text-[20px]">→</div>}
-        <m.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.15, type: 'spring', stiffness: 320, damping: 18 }}
+      <div className="relative p-[36px] flex flex-col gap-[30px]">
+        <div className="flex flex-col gap-[10px]">
+          <div className="text-[11px] uppercase tracking-[2px] text-[#10b981]">
+            {t('redeem_applied', 'Code applied')}
+          </div>
+          <div className="text-[15px] text-textColor/55 leading-[1.5]">
+            {t(
+              'redeem_success_sub',
+              'Your workspace has been upgraded. Everything below is active immediately.'
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-baseline gap-[16px] flex-wrap">
+          {!!result.from && (
+            <m.span
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 0.3 }}
+              transition={{ delay: 0.45, duration: 0.4 }}
+              className="text-[22px] text-textColor/40 line-through"
+            >
+              {result.from}
+            </m.span>
+          )}
+          <m.span
+            initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ delay: 0.5, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            className="text-[52px] leading-[1] font-[700] tracking-[-1px]"
+            style={{
+              backgroundImage: `linear-gradient(92deg, #ffffff, ${ACCENT})`,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            {result.to}
+          </m.span>
+        </div>
+
+        <div className="h-[1px] w-full bg-white/[0.06]" />
+
+        <div className="grid grid-cols-2 gap-[28px]">
+          <div className="flex flex-col gap-[6px]">
+            <div className="text-[11px] uppercase tracking-[1.4px] text-textColor/35">
+              {t('redeem_channels', 'Channels')}
+            </div>
+            <div className="text-[28px] font-[600] text-textColor tracking-[-0.5px] leading-[1]">
+              <CountUp value={result.totalChannels} />
+            </div>
+          </div>
+          <Meta label={t('redeem_validity', 'Validity')} value={validity} />
+        </div>
+
+        <a
+          href="/launches"
+          className="h-[46px] px-[22px] self-start flex items-center rounded-[10px] text-[14px] font-[600] text-[#0B0F10] transition-opacity hover:opacity-90"
+          style={{ background: ACCENT }}
         >
-          <TierBadge tier={result.to} />
-        </m.div>
+          {t('redeem_success_cta', 'Go to your calendar')}
+        </a>
       </div>
-
-      <div className="text-[16px] text-customColor18">
-        <span className="text-[34px] font-[700] text-textColor">
-          <CountUp value={result.totalChannels} />
-        </span>{' '}
-        {result.totalChannels === 1 ? 'channel' : 'channels'} unlocked
-        {result.isLifetime ? ' · lifetime' : ''}
-      </div>
-
-      <a
-        href="/launches"
-        className="px-[20px] h-[44px] flex items-center rounded-[10px] text-[#0E0E0E] font-[600]"
-        style={{ background: ACCENT }}
-      >
-        {t('redeem_success_cta', 'Start posting')}
-      </a>
-    </m.div>
+    </div>
   );
 };
 
@@ -216,38 +281,46 @@ export const RedeemCode = () => {
     }
   }, [code, fetch, mutate, fireEvents]);
 
+  const currentPlan = useMemo(
+    () => user?.tier?.current || 'FREE',
+    [user?.tier?.current]
+  );
+
   if (!user) {
     return null;
   }
 
   return (
     <LazyMotion features={domAnimation} strict>
-      <div className="max-w-[560px] mx-auto w-full flex flex-col gap-[20px]">
+      <div className="max-w-[540px] mx-auto w-full">
         {result ? (
           <RedeemSuccessCard result={result} />
         ) : (
-          <m.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="border border-customColor6 bg-sixth p-[24px] rounded-[8px] flex flex-col gap-[16px]"
+          <div
+            className="rounded-[16px] p-[36px] flex flex-col gap-[26px]"
+            style={{
+              background: '#101314',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }}
           >
-            <div className="text-[24px] font-[700]">
-              {t('redeem_title', 'Redeem a code')}
-            </div>
-            <div className="text-[14px] text-textColor/70">
-              {t(
-                'redeem_subtitle',
-                'Have a code? Enter it below to upgrade your plan instantly.'
-              )}
+            <div className="flex flex-col gap-[10px]">
+              <div className="text-[24px] font-[600] tracking-[-0.4px]">
+                {t('redeem_title', 'Redeem a code')}
+              </div>
+              <div className="text-[15px] text-textColor/55 leading-[1.5]">
+                {t(
+                  'redeem_subtitle',
+                  'Enter the code you were given to apply it to this workspace.'
+                )}
+              </div>
             </div>
 
-            <div className="flex items-end gap-[10px]">
+            <div className="flex items-end gap-[12px]">
               <div className="flex-1">
                 <Input
                   label="Code"
                   translationKey="label_code"
-                  placeholder="YOURCODE"
+                  placeholder="XXXXXX"
                   disableForm={true}
                   name="code"
                   value={code}
@@ -255,30 +328,37 @@ export const RedeemCode = () => {
                 />
               </div>
               <div className="pb-[8px]">
-                <Button disabled={busy || code.trim().length < 2} onClick={redeem}>
-                  {busy ? t('redeeming', 'Redeeming…') : t('redeem', 'Redeem')}
+                <Button
+                  disabled={busy || code.trim().length < 2}
+                  onClick={redeem}
+                >
+                  {busy ? t('redeeming', 'Applying…') : t('redeem', 'Apply')}
                 </Button>
               </div>
             </div>
 
             {!!error && (
               <m.div
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-[13px] text-red-400"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[13px] text-[#f87171] leading-[1.5]"
               >
                 {error}
               </m.div>
             )}
 
-            <div className="text-[13px] text-textColor/50">
-              {t('redeem_current', 'Current plan:')}{' '}
-              <span className="text-textColor/80">
-                {user?.tier?.current || 'FREE'}
+            <div className="h-[1px] w-full bg-white/[0.06]" />
+
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-textColor/35 uppercase tracking-[1.4px] text-[11px]">
+                {t('redeem_current', 'Current plan')}
               </span>
-              {user?.isLifetime ? ' · lifetime' : ''}
+              <span className="text-textColor/80">
+                {currentPlan}
+                {user?.isLifetime ? ' · lifetime' : ''}
+              </span>
             </div>
-          </m.div>
+          </div>
         )}
       </div>
     </LazyMotion>
