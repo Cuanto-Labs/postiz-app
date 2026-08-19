@@ -6,6 +6,8 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Button } from '@gitroom/react/form/button';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
+type Tier = 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
+
 interface InviteCode {
   id: string;
   code: string;
@@ -13,14 +15,29 @@ interface InviteCode {
   active: boolean;
   expiresAt: string | null;
   timesUsed: number;
+  tier: Tier | null;
+  isLifetime: boolean;
+  maxUses: number | null;
+  durationDays: number | null;
+  durationMonths: number | null;
   createdAt: string;
 }
+
+// Mirrors the Prisma SubscriptionTier enum, which deliberately has no FREE —
+// free is the absence of a subscription, not a tier a code can grant.
+const TIERS: Tier[] = ['STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
 
 export const AdminCodesComponent = () => {
   const fetch = useFetch();
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
+  const [tier, setTier] = useState<Tier | ''>('');
+  const [isLifetime, setIsLifetime] = useState(false);
+  const [maxUses, setMaxUses] = useState('');
+  const [duration, setDuration] = useState('');
+  const [durationUnit, setDurationUnit] = useState<'months' | 'days'>('months');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const loader = useCallback(async () => {
     const res = await fetch('/admin/invite-codes');
@@ -34,15 +51,48 @@ export const AdminCodesComponent = () => {
       return;
     }
     setBusy(true);
-    await fetch('/admin/invite-codes', {
+    setError('');
+    const res = await fetch('/admin/invite-codes', {
       method: 'POST',
-      body: JSON.stringify({ code: code.trim(), label: label.trim() }),
+      body: JSON.stringify({
+        code: code.trim(),
+        label: label.trim(),
+        tier: tier || null,
+        isLifetime,
+        maxUses: maxUses.trim() === '' ? null : Number(maxUses),
+        durationDays:
+          durationUnit === 'days' && duration.trim() !== ''
+            ? Number(duration)
+            : null,
+        durationMonths:
+          durationUnit === 'months' && duration.trim() !== ''
+            ? Number(duration)
+            : null,
+      }),
     });
+    setBusy(false);
+    if (!res.ok) {
+      setError('Could not save that code — check the tier and max uses.');
+      return;
+    }
     setCode('');
     setLabel('');
-    setBusy(false);
+    setTier('');
+    setIsLifetime(false);
+    setMaxUses('');
+    setDuration('');
     mutate();
-  }, [code, label, fetch, mutate]);
+  }, [
+    code,
+    label,
+    tier,
+    isLifetime,
+    maxUses,
+    duration,
+    durationUnit,
+    fetch,
+    mutate,
+  ]);
 
   const toggle = useCallback(
     async (row: InviteCode) => {
@@ -82,8 +132,13 @@ export const AdminCodesComponent = () => {
         <code className="bg-newColColor px-[6px] py-[2px] rounded-[4px]">
           ?invite=CODE
         </code>
-        . Registration is open without a code — these are for attribution and to
-        keep specific codes valid. An inactive or expired code is rejected.
+        . Registration is open without a code. A code with no tier is
+        attribution-only; give it a tier and it grants that plan — at signup, or
+        redeemed later by an existing user at{' '}
+        <code className="bg-newColColor px-[6px] py-[2px] rounded-[4px]">
+          /billing/redeem
+        </code>
+        . An inactive, expired, or fully-used code is rejected.
       </div>
 
       <div className="flex flex-wrap gap-[8px] items-end bg-newBgColorInner p-[16px] rounded-[8px]">
@@ -105,16 +160,89 @@ export const AdminCodesComponent = () => {
             className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none"
           />
         </label>
+        <label className="flex flex-col gap-[4px]">
+          <span className="text-[12px] text-textColor/60">Grants tier</span>
+          <select
+            value={tier}
+            onChange={(e) => setTier(e.target.value as Tier | '')}
+            className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none"
+          >
+            <option value="">None (attribution only)</option>
+            {TIERS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-[4px] w-[110px]">
+          <span className="text-[12px] text-textColor/60">Max uses</span>
+          <input
+            value={maxUses}
+            onChange={(e) => setMaxUses(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="∞"
+            inputMode="numeric"
+            className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-[4px]">
+          <span className="text-[12px] text-textColor/60">Lasts</span>
+          <div className="flex gap-[6px]">
+            <input
+              value={duration}
+              onChange={(e) =>
+                setDuration(e.target.value.replace(/[^0-9]/g, ''))
+              }
+              placeholder="forever"
+              inputMode="numeric"
+              disabled={!tier || isLifetime}
+              className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none w-[90px] disabled:opacity-40"
+            />
+            <select
+              value={durationUnit}
+              onChange={(e) =>
+                setDurationUnit(e.target.value as 'months' | 'days')
+              }
+              disabled={!tier || isLifetime}
+              className="bg-newColColor rounded-[6px] h-[38px] px-[10px] outline-none disabled:opacity-40"
+            >
+              {/* Months keep the day-of-month (19 Aug -> 19 Sep); days cannot,
+                  since month lengths differ. */}
+              <option value="months">months</option>
+              <option value="days">days</option>
+            </select>
+          </div>
+        </label>
+        <label className="flex gap-[6px] items-center h-[38px] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isLifetime}
+            disabled={!tier}
+            onChange={(e) => {
+              setIsLifetime(e.target.checked);
+              // Lifetime and a duration are mutually exclusive; the backend
+              // ignores duration when lifetime is set, so don't let the form
+              // imply otherwise.
+              if (e.target.checked) {
+                setDuration('');
+              }
+            }}
+          />
+          <span className="text-[13px] text-textColor/70">Lifetime</span>
+        </label>
         <Button onClick={create} disabled={busy || !code.trim()}>
           Add code
         </Button>
       </div>
+
+      {!!error && <div className="text-[13px] text-red-400">{error}</div>}
 
       <table className="w-full text-[14px]">
         <thead>
           <tr className="text-left text-textColor/60 border-b border-newTableBorder">
             <th className="py-[8px]">Code</th>
             <th className="py-[8px]">Label</th>
+            <th className="py-[8px]">Grants</th>
             <th className="py-[8px]">Uses</th>
             <th className="py-[8px]">Status</th>
             <th className="py-[8px]" />
@@ -127,7 +255,26 @@ export const AdminCodesComponent = () => {
               <td className="py-[10px] text-textColor/70">
                 {row.label || '—'}
               </td>
-              <td className="py-[10px]">{row.timesUsed}</td>
+              <td className="py-[10px]">
+                {row.tier ? (
+                  <span className="text-[#10b981]">
+                    {row.tier}
+                    {row.isLifetime
+                      ? ' · lifetime'
+                      : row.durationMonths
+                      ? ` · ${row.durationMonths}mo`
+                      : row.durationDays
+                      ? ` · ${row.durationDays}d`
+                      : ''}
+                  </span>
+                ) : (
+                  <span className="text-textColor/40">—</span>
+                )}
+              </td>
+              <td className="py-[10px]">
+                {row.timesUsed}
+                {row.maxUses ? ` / ${row.maxUses}` : ''}
+              </td>
               <td className="py-[10px]">
                 <span
                   className={
@@ -159,7 +306,7 @@ export const AdminCodesComponent = () => {
           ))}
           {!data?.length && (
             <tr>
-              <td colSpan={5} className="py-[16px] text-textColor/50">
+              <td colSpan={6} className="py-[16px] text-textColor/50">
                 No codes yet — add one above.
               </td>
             </tr>

@@ -3,19 +3,25 @@
   "buildCommand": "pnpm run build:frontend",
   "outputDirectory": "apps/frontend/.next",
   "installCommand": "pnpm install",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://api.socials.cuantolabs.com/:path*"
-    }
-  ],
   "headers": [
     {
       "source": "/api/:path*",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "https://socials.cuantolabs.com" },
-        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://socials.cuantolabs.com"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/monitor/uptime",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

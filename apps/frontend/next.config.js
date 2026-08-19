@@ -45,15 +45,35 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: '/uploads/:path*',
-        destination:
-          process.env.STORAGE_PROVIDER === 'local'
-            ? '/api/uploads/:path*'
-            : '/404',
-      },
-    ];
+    return {
+      // beforeFiles runs ahead of filesystem routes, so these bypass the
+      // /api/[...path] proxy function entirely and stream straight to the
+      // origin. Uppy allows 1GB uploads; a Vercel function caps request bodies
+      // at 4.5MB, so uploads must never touch the proxy.
+      beforeFiles: [
+        {
+          source: '/api/media/upload-server',
+          destination: `${
+            process.env.BACKEND_ORIGIN_URL || 'https://deb.tail789fa0.ts.net'
+          }/media/upload-server`,
+        },
+        {
+          source: '/api/media/upload-simple',
+          destination: `${
+            process.env.BACKEND_ORIGIN_URL || 'https://deb.tail789fa0.ts.net'
+          }/media/upload-simple`,
+        },
+      ],
+      afterFiles: [
+        {
+          source: '/uploads/:path*',
+          destination:
+            process.env.STORAGE_PROVIDER === 'local'
+              ? '/api/uploads/:path*'
+              : '/404',
+        },
+      ],
+    };
   },
 };
 

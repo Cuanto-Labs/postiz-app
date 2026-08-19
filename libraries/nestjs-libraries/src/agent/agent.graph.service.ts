@@ -19,6 +19,7 @@ import {
   activeProviderConfig,
   activeProviderModel,
 } from '@gitroom/nestjs-libraries/chat/ai.provider';
+import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
 
 const tools = !process.env.TAVILY_API_KEY
   ? []
@@ -336,19 +337,23 @@ export class AgentGraphService {
       return {};
     }
 
-    const newContent = await Promise.all(
-      (state.content || []).map(async (p) => {
-        const image = await dalle.invoke(p.prompt!);
-        return {
-          ...p,
-          image,
-        };
-      })
-    );
+    try {
+      const newContent = await Promise.all(
+        (state.content || []).map(async (p) => {
+          const image = await dalle.invoke(p.prompt!);
+          return {
+            ...p,
+            image,
+          };
+        })
+      );
 
-    return {
-      content: newContent,
-    };
+      return {
+        content: newContent,
+      };
+    } catch (err) {
+      throw generationError(err);
+    }
   }
 
   async uploadPictures(state: WorkflowChannelsState) {
