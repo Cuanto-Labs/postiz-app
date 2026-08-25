@@ -14,6 +14,15 @@
 // Node runtime: the edge runtime could not reach the Funnel host at all (every
 // fetch failed with 'internal error'). Request bodies are therefore subject to
 // Vercel's 4.5MB function body cap.
+//
+// IPv4 first: the Funnel hostname publishes both A and AAAA records, and Vercel's
+// Node functions have no IPv6 egress — when the resolver hands back the AAAA first
+// the connect fails before it ever reaches the origin, surfacing as a bare
+// 'fetch failed'. Pinning the result order keeps every hop on IPv4.
+import dns from 'node:dns';
+
+dns.setDefaultResultOrder('ipv4first');
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +42,19 @@ const STRIP_REQUEST_HEADERS = new Set([
 ]);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// undici collapses every transport failure into 'fetch failed' and hides the real
+// reason on .cause — without unwrapping it a DNS failure, a refused connection and
+// a TLS error are indistinguishable from the outside.
+function describeError(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause instanceof Error) {
+    const code = (cause as { code?: string }).code;
+    return `${error.message}: ${code ? `${code} ` : ''}${cause.message}`;
+  }
+  return error.message;
+}
 
 async function proxy(request: Request, path: string[]): Promise<Response> {
   const incoming = new URL(request.url);
@@ -86,7 +108,7 @@ async function proxy(request: Request, path: string[]): Promise<Response> {
   return new Response(
     JSON.stringify({
       message: 'The server is temporarily unreachable. Please try again.',
-      detail: lastError instanceof Error ? lastError.message : undefined,
+      detail: describeError(lastError),
     }),
     { status: 503, headers: { 'content-type': 'application/json' } }
   );
