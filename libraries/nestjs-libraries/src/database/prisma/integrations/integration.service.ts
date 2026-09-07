@@ -209,9 +209,9 @@ export class IntegrationService {
 
     if (
       !existing ||
-      this._integrationManager.getMigrationTarget(
+      (await this._integrationManager.getMigrationTarget(
         existing.providerIdentifier
-      ) !== newProvider
+      )) !== newProvider
     ) {
       throw new NotEnoughScopes(
         'Please refresh the channel that needs to be refreshed'
@@ -257,7 +257,9 @@ export class IntegrationService {
     newProvider: string,
     auth: { id: string; username: string }
   ) {
-    const sources = this._integrationManager.getMigrationSources(newProvider);
+    const sources = await this._integrationManager.getMigrationSources(
+      newProvider
+    );
     if (
       !sources.length ||
       this._integrationManager.getSocialIntegration(newProvider).isBetweenSteps

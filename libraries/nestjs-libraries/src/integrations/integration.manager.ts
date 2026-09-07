@@ -129,7 +129,7 @@ export class IntegrationManager {
   // Note: a target provider that implements `reConnect` is not supported - the
   // connect callback would run reConnect with the old app-scoped id before the
   // migration is attempted.
-  getMigrationTarget(identifier: string): string | undefined {
+  async getMigrationTarget(identifier: string): Promise<string | undefined> {
     const [, target] =
       (process.env.MIGRATE_PROVIDERS || '')
         .split(',')
@@ -138,14 +138,15 @@ export class IntegrationManager {
 
     return target &&
       target !== identifier &&
-      this.getAllowedSocialsIntegrations().includes(target)
+      (await this.getAllowedSocialsIntegrations()).includes(target)
       ? target
       : undefined;
   }
 
   // Reverse lookup of MIGRATE_PROVIDERS: the providers whose channels a fresh
   // connect of `identifier` should adopt instead of creating a duplicate.
-  getMigrationSources(identifier: string): string[] {
+  async getMigrationSources(identifier: string): Promise<string[]> {
+    const allowed = await this.getAllowedSocialsIntegrations();
     return (process.env.MIGRATE_PROVIDERS || '')
       .split(',')
       .map((p) => p.trim().split(':'))
@@ -154,7 +155,7 @@ export class IntegrationManager {
           to === identifier &&
           !!from &&
           from !== identifier &&
-          this.getAllowedSocialsIntegrations().includes(from)
+          allowed.includes(from)
       )
       .map(([from]) => from);
   }
