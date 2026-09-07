@@ -371,6 +371,11 @@ export class SubscriptionService {
     const cancelAt = expiry ? Math.floor(expiry.valueOf() / 1000) : null;
 
     await this.createOrUpdateSubscription(
+      // Upstream added `provider` as the first argument. A comped grant touches
+      // no payment provider at all, so use the value the column already
+      // defaults to — every pre-existing row has it, and nothing keys off it
+      // for a subscription with no customer.
+      'stripe',
       false,
       makeId(10),
       orgId,
@@ -408,7 +413,6 @@ export class SubscriptionService {
     return written;
   }
 
-  async addSubscription(orgId: string, userId: string, subscription: any) {
   async addSubscription(
     orgId: string,
     userId: string,
