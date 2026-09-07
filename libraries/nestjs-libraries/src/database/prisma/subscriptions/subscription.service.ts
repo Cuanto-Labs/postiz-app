@@ -38,14 +38,47 @@ export class SubscriptionService {
     return this._subscriptionRepository.grantFreeTier(organizationId);
   }
 
-  async deleteSubscription(customerId: string) {
+  // Customer-keyed flows must never touch a subscription owned by another provider
+  private async isManagedBy(customerId: string, provider: string) {
+    const current =
+      await this._subscriptionRepository.getSubscriptionByCustomerId(
+        customerId
+      );
+    return !current || current.provider === provider;
+  }
+
+  async deleteSubscription(customerId: string, provider: string) {
+    if (!(await this.isManagedBy(customerId, provider))) {
+      return { count: 0 };
+    }
     await this.modifySubscription(
       customerId,
       pricing.FREE.channel || 0,
       'FREE'
     );
     return this._subscriptionRepository.deleteSubscriptionByCustomerId(
-      customerId
+      customerId,
+      provider
+    );
+  }
+
+  // Store-managed subscriptions (RevenueCat etc.) have no Stripe customer, they are keyed by org
+  async deleteSubscriptionByOrgId(organizationId: string, provider: string) {
+    const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+      organizationId
+    );
+    if (!current || current.provider !== provider || current.isLifetime) {
+      return false;
+    }
+
+    await this.modifySubscriptionByOrg(
+      organizationId,
+      pricing.FREE.channel || 0,
+      'FREE'
+    );
+    return this._subscriptionRepository.deleteSubscriptionByOrgId(
+      organizationId,
+      provider
     );
   }
 
@@ -176,6 +209,7 @@ export class SubscriptionService {
   }
 
   async createOrUpdateSubscription(
+    provider: string,
     isTrailing: boolean,
     identifier: string,
     customerId: string,
@@ -188,6 +222,9 @@ export class SubscriptionService {
     isLifetime?: boolean
   ) {
     if (!code) {
+      if (!(await this.isManagedBy(customerId, provider))) {
+        return {};
+      }
       try {
         const load = await this.modifySubscription(
           customerId,
@@ -202,6 +239,7 @@ export class SubscriptionService {
       }
     }
     return this._subscriptionRepository.createOrUpdateSubscription(
+      provider,
       isTrailing,
       identifier,
       customerId,
@@ -212,6 +250,50 @@ export class SubscriptionService {
       code,
       org ? { id: org } : undefined,
       isLifetime
+    );
+  }
+
+  async createOrUpdateSubscriptionByOrg(
+    isTrailing: boolean,
+    organizationId: string,
+    provider: string,
+    identifier: string,
+    totalChannels: number,
+    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+    period: 'MONTHLY' | 'YEARLY',
+    cancelAt: number | null
+  ) {
+    const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+      organizationId
+    );
+    if (current && (current.isLifetime || current.provider !== provider)) {
+      return {};
+    }
+
+    try {
+      const load = await this.modifySubscriptionByOrg(
+        organizationId,
+        totalChannels,
+        billing
+      );
+      if (!load) {
+        return {};
+      }
+    } catch (e) {
+      return {};
+    }
+
+    return this._subscriptionRepository.createOrUpdateSubscription(
+      provider,
+      isTrailing,
+      identifier,
+      '',
+      totalChannels,
+      billing,
+      period,
+      cancelAt,
+      undefined,
+      { id: organizationId }
     );
   }
 
@@ -327,8 +409,15 @@ export class SubscriptionService {
   }
 
   async addSubscription(orgId: string, userId: string, subscription: any) {
+  async addSubscription(
+    orgId: string,
+    userId: string,
+    subscription: any,
+    provider: string
+  ) {
     await this._subscriptionRepository.setCustomerId(orgId, userId);
     return this.createOrUpdateSubscription(
+      provider,
       false,
       makeId(5),
       userId,

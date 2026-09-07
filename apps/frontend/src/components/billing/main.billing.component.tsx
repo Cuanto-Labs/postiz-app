@@ -40,6 +40,10 @@ import {
   readPendingPlan,
 } from '@gitroom/frontend/components/billing/pending.plan';
 
+type SubscriptionWithPlatform = Subscription & {
+  platform?: 'web' | 'mobile';
+};
+
 export const Prorate: FC<{
   period: 'MONTHLY' | 'YEARLY';
   pack: 'STANDARD' | 'PRO';
@@ -220,7 +224,7 @@ const Info: FC<{
   );
 };
 export const MainBillingComponent: FC<{
-  sub?: Subscription;
+  sub?: SubscriptionWithPlatform;
 }> = (props) => {
   const { sub } = props;
   const { isGeneral } = useVariables();
@@ -239,7 +243,7 @@ export const MainBillingComponent: FC<{
     !!queryParams.get('finishTrial')
   );
 
-  const [subscription, setSubscription] = useState<Subscription | undefined>(
+  const [subscription, setSubscription] = useState<SubscriptionWithPlatform | undefined>(
     sub
   );
   const [loading, setLoading] = useState<boolean>(false);
@@ -491,6 +495,30 @@ export const MainBillingComponent: FC<{
   if (user?.isLifetime) {
     router.replace('/');
     return null;
+  }
+  if (subscription?.platform && subscription.platform !== 'web') {
+    return (
+      <div className="flex flex-col gap-[16px]">
+        <div className="text-[20px]">{t('plans', 'Plans')}</div>
+        <div className="flex flex-col items-center gap-[8px] rounded-[8px] bg-newBgColorInner p-[24px] text-center">
+          <div className="text-[18px]">
+            {t('subscription_managed_by', 'Your subscription is managed by')}{' '}
+            <span className="capitalize">{subscription.provider}</span>
+          </div>
+          <div className="text-[14px] opacity-70">
+            {t(
+              'subscription_manage_on_platform',
+              'Please go to {{platform}} to manage it',
+              { platform: subscription.platform }
+            )}
+          </div>
+        </div>
+        <FAQComponent />
+        <div className="flex justify-center mt-[20px]">
+          <LogoutComponent />
+        </div>
+      </div>
+    );
   }
   return (
     <div className="flex flex-col gap-[16px]">

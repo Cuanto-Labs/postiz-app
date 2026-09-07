@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useCallback, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
@@ -10,78 +10,143 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
 import { DeveloperComponent } from '@gitroom/frontend/components/developer/developer.component';
+import { McpClientIcon } from '@gitroom/frontend/components/public-api/mcp.client.icons';
 import clsx from 'clsx';
 
-const mcpClients = [
+// Remote clients can't set headers, they get a URL to paste (hint = where)
+export const remoteMcpClients = {
+  Claude:
+    'In Claude go to Settings > Connectors > Add custom connector and paste this URL.',
+  ChatGPT:
+    'In ChatGPT go to Settings > Connectors > Create and paste this URL.',
+} as const;
+
+// Clients with no MCP or CLI settings: you paste instructions into the chat,
+// the agent installs the CLI itself and asks you for the API key
+export const chatOnlyMcpClients = {
+  'Grok Bot':
+    'Install the Postiz CLI with `npm install -g postiz`, then install the Postiz skill with `npx skills add gitroomhq/postiz-agent`. Ask me for my Postiz API key and set it as the POSTIZ_API_KEY environment variable before using the CLI.',
+} as const;
+
+export const mcpClients = [
+  'OpenClaw',
+  'Hermes',
+  'NanoClaw',
   'Claude Code',
   'Cursor',
+  'Codex',
   'VS Code / Copilot',
   'Windsurf',
   'Amp',
-  'Codex',
   'Gemini CLI',
   'Warp',
 ] as const;
 
-type McpClient = (typeof mcpClients)[number];
+export type RemoteMcpClient = keyof typeof remoteMcpClients;
+export type ChatOnlyMcpClient = keyof typeof chatOnlyMcpClients;
+export type McpClient = (typeof mcpClients)[number];
+export type AnyMcpClient = RemoteMcpClient | ChatOnlyMcpClient | McpClient;
 
-const getMcpConfig = (
-  client: McpClient,
-  method: 'header' | 'path',
+// oauth: no API key, the client registers itself (DCR) and the user signs in to Postiz
+// apikey: the organization API key, as a Bearer header (or inside the URL for remote clients)
+export type McpAuth = 'oauth' | 'apikey';
+
+export const getMcpOauthUrl = (mcpBase: string) =>
+  `${mcpBase}/mcp-oauth-dynamic`;
+
+export const isRemoteMcpClient = (client: string): client is RemoteMcpClient =>
+  client in remoteMcpClients;
+
+export const isChatOnlyMcpClient = (
+  client: string
+): client is ChatOnlyMcpClient => client in chatOnlyMcpClients;
+
+export const getMcpConfig = (
+  client: AnyMcpClient,
+  auth: McpAuth,
   mcpBase: string,
   apiKey: string
 ): { config: string; hint: string } => {
-  const urlWithKey = `${mcpBase}/mcp/${apiKey}`;
+  if (isChatOnlyMcpClient(client)) {
+    return {
+      config: chatOnlyMcpClients[client],
+      hint: 'Paste this into the chat. The agent will ask you for your API key.',
+    };
+  }
+  if (isRemoteMcpClient(client)) {
+    return {
+      config:
+        auth === 'oauth' ? getMcpOauthUrl(mcpBase) : `${mcpBase}/mcp/${apiKey}`,
+      hint: remoteMcpClients[client],
+    };
+  }
+
+  const oauthUrl = getMcpOauthUrl(mcpBase);
   const urlBase = `${mcpBase}/mcp`;
   const bearer = `Bearer ${apiKey}`;
 
   const json = (obj: object) => JSON.stringify(obj, null, 2);
 
-  if (method === 'path') {
+  if (auth === 'oauth') {
     switch (client) {
       case 'Claude Code':
         return {
-          config: `claude mcp add Cuanto Socials --transport http "${urlWithKey}"`,
+          config: `claude mcp add cuanto-socials --transport http "${oauthUrl}"`,
           hint: 'Run this command in your terminal.',
         };
       case 'Cursor':
         return {
-          config: json({ mcpServers: { "Cuanto Socials": { url: urlWithKey } } }),
+          config: json({ mcpServers: { 'cuanto-socials': { url: oauthUrl } } }),
           hint: 'Add to .cursor/mcp.json in your project root.',
         };
       case 'VS Code / Copilot':
         return {
           config: json({
-            servers: { "Cuanto Socials": { type: 'http', url: urlWithKey } },
+            servers: { 'cuanto-socials': { type: 'http', url: oauthUrl } },
           }),
           hint: 'Add to .vscode/mcp.json in your project root.',
         };
       case 'Windsurf':
         return {
           config: json({
-            mcpServers: { "Cuanto Socials": { serverUrl: urlWithKey } },
+            mcpServers: { 'cuanto-socials': { serverUrl: oauthUrl } },
           }),
           hint: 'Add to ~/.codeium/windsurf/mcp_config.json',
         };
       case 'Amp':
         return {
-          config: `amp mcp add Cuanto Socials ${urlWithKey}`,
+          config: `amp mcp add cuanto-socials ${oauthUrl}`,
           hint: 'Run this command in your terminal.',
         };
       case 'Codex':
         return {
-          config: `# ~/.codex/config.toml\n\n[mcp_servers.Cuanto Socials]\nurl = "${urlWithKey}"`,
-          hint: 'Add to ~/.codex/config.toml',
+          config: `# ~/.codex/config.toml\n\n[mcp_servers.cuanto-socials]\nurl = "${oauthUrl}"`,
+          hint: 'Add to ~/.codex/config.toml, then run: codex mcp login cuanto-socials',
         };
       case 'Gemini CLI':
         return {
-          config: json({ mcpServers: { "Cuanto Socials": { url: urlWithKey } } }),
+          config: json({ mcpServers: { 'cuanto-socials': { url: oauthUrl } } }),
           hint: 'Add to ~/.gemini/settings.json',
         };
       case 'Warp':
         return {
-          config: json({ "Cuanto Socials": { url: urlWithKey } }),
+          config: json({ 'cuanto-socials': { url: oauthUrl } }),
           hint: 'Settings > MCP Servers > + Add, then paste this config.',
+        };
+      case 'Hermes':
+        return {
+          config: `# ~/.hermes/config.yaml\n\nmcp_servers:\n  cuanto-socials:\n    url: "${oauthUrl}"\n    auth: oauth`,
+          hint: 'Add to ~/.hermes/config.yaml, then run /reload-mcp in the chat.',
+        };
+      case 'OpenClaw':
+        return {
+          config: `openclaw mcp add cuanto-socials --url ${oauthUrl} --transport streamable-http --auth oauth && openclaw mcp login cuanto-socials`,
+          hint: 'Run this command in your terminal.',
+        };
+      case 'NanoClaw':
+        return {
+          config: `ncl groups config add-mcp-server --id <group-id> --name cuanto-socials --url ${oauthUrl}`,
+          hint: 'Run this in your terminal, replace <group-id> with the agent group that should get Postiz.',
         };
     }
   }
@@ -89,14 +154,14 @@ const getMcpConfig = (
   switch (client) {
     case 'Claude Code':
       return {
-        config: `claude mcp add --transport http Cuanto Socials ${urlBase} --header "Authorization: ${bearer}"`,
+        config: `claude mcp add --transport http cuanto-socials ${urlBase} --header "Authorization: ${bearer}"`,
         hint: 'Run this command in your terminal.',
       };
     case 'Cursor':
       return {
         config: json({
           mcpServers: {
-            "Cuanto Socials": { url: urlBase, headers: { Authorization: bearer } },
+            'cuanto-socials': { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
         hint: 'Add to .cursor/mcp.json in your project root.',
@@ -105,7 +170,7 @@ const getMcpConfig = (
       return {
         config: json({
           servers: {
-            "Cuanto Socials": {
+            'cuanto-socials': {
               type: 'http',
               url: urlBase,
               headers: { Authorization: bearer },
@@ -118,7 +183,7 @@ const getMcpConfig = (
       return {
         config: json({
           mcpServers: {
-            "Cuanto Socials": {
+            'cuanto-socials': {
               serverUrl: urlBase,
               headers: { Authorization: bearer },
             },
@@ -130,21 +195,21 @@ const getMcpConfig = (
       return {
         config: json({
           'amp.mcpServers': {
-            "Cuanto Socials": { url: urlBase, headers: { Authorization: bearer } },
+            'cuanto-socials': { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
         hint: 'Add to your Amp settings.json',
       };
     case 'Codex':
       return {
-        config: `# ~/.codex/config.toml\n\n[mcp_servers.Cuanto Socials]\nurl = "${urlBase}"\nhttp_headers = { "Authorization" = "${bearer}" }`,
+        config: `# ~/.codex/config.toml\n\n[mcp_servers.cuanto-socials]\nurl = "${urlBase}"\nhttp_headers = { "Authorization" = "${bearer}" }`,
         hint: 'Add to ~/.codex/config.toml',
       };
     case 'Gemini CLI':
       return {
         config: json({
           mcpServers: {
-            "Cuanto Socials": { url: urlBase, headers: { Authorization: bearer } },
+            'cuanto-socials': { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
         hint: 'Add to ~/.gemini/settings.json',
@@ -152,14 +217,40 @@ const getMcpConfig = (
     case 'Warp':
       return {
         config: json({
-          "Cuanto Socials": { url: urlBase, headers: { Authorization: bearer } },
+          'cuanto-socials': { url: urlBase, headers: { Authorization: bearer } },
         }),
         hint: 'Settings > MCP Servers > + Add, then paste this config.',
+      };
+    case 'Hermes':
+      return {
+        config: `# ~/.hermes/config.yaml\n\nmcp_servers:\n  cuanto-socials:\n    url: "${urlBase}"\n    headers:\n      Authorization: "${bearer}"`,
+        hint: 'Add to ~/.hermes/config.yaml, then run /reload-mcp in the chat.',
+      };
+    case 'OpenClaw':
+      return {
+        config: json({
+          mcp: {
+            servers: {
+              'cuanto-socials': {
+                url: urlBase,
+                transport: 'streamable-http',
+                headers: { Authorization: bearer },
+              },
+            },
+          },
+        }),
+        hint: 'Add to ~/.openclaw/openclaw.json',
+      };
+    case 'NanoClaw':
+      // No headers flag, the key travels inside the URL like remote clients
+      return {
+        config: `ncl groups config add-mcp-server --id <group-id> --name cuanto-socials --url ${mcpBase}/mcp/${apiKey}`,
+        hint: 'Run this in your terminal, replace <group-id> with the agent group that should get Postiz.',
       };
   }
 };
 
-const CopyButton = ({
+export const CopyButton = ({
   text,
   label,
 }: {
@@ -202,27 +293,29 @@ const McpSection = ({
   mcpBase: string;
 }) => {
   const t = useT();
-  const [activeClient, setActiveClient] = useState<McpClient>('Claude Code');
-  const [method, setMethod] = useState<'header' | 'path'>('header');
+  const { billingEnabled } = useVariables();
+  const [activeClient, setActiveClient] = useState<AnyMcpClient>('Claude');
+  const [auth, setAuth] = useState<McpAuth>('oauth');
   const [revealed, setRevealed] = useState(false);
 
   const { config, hint } = getMcpConfig(
     activeClient,
-    method,
+    auth,
     mcpBase,
     user.publicApi
   );
 
-  const remoteUrl = `${mcpBase}/mcp/${user.publicApi}`;
-  const cliUrl = `${mcpBase}/mcp`;
+  const baseUrl = auth === 'oauth' ? getMcpOauthUrl(mcpBase) : `${mcpBase}/mcp`;
 
-  const maskedConfig = revealed
-    ? config
-    : config.replace(new RegExp(user.publicApi.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '*'.repeat(user.publicApi.length));
+  const chatOnly = isChatOnlyMcpClient(activeClient);
 
-  const maskedRemoteUrl = revealed
-    ? remoteUrl
-    : remoteUrl.replace(user.publicApi, '*'.repeat(user.publicApi.length));
+  const maskedConfig =
+    revealed || auth === 'oauth' || chatOnly
+      ? config
+      : config.replace(
+          new RegExp(user.publicApi.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+          '*'.repeat(user.publicApi.length)
+        );
 
   return (
     <div className="bg-newBgColorInnerInner rounded-[12px] border border-newBorder overflow-hidden">
@@ -233,15 +326,25 @@ const McpSection = ({
           </div>
           <div className="text-[13px] text-customColor18 mt-[2px]">
             {t(
-              'connect_your_mcp_client_to_Cuanto Socials_to_schedule_your_posts_faster',
-              'Connect Cuanto Socials MCP server to your client (Http streaming) to schedule your posts faster.'
+              'connect_your_mcp_client_to_postiz_to_schedule_your_posts_faster',
+              'Connect Postiz MCP server to your client (Http streaming) to schedule your posts faster.'
             )}
           </div>
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
+          {billingEnabled && (
+            <a
+              className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              href="https://claude.ai/directory/postiz"
+              target="_blank"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+              {t('add_to_claude', 'Add to Claude')}
+            </a>
+          )}
           <a
-            className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            href="https://docs.cuantolabs.com/mcp/introduction"
+            className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+            href="https://docs.postiz.com/mcp/introduction"
             target="_blank"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
@@ -250,106 +353,120 @@ const McpSection = ({
         </div>
       </div>
       <div className="p-[20px] flex flex-col gap-[16px]">
-        <div className="flex flex-col gap-[6px]">
-          <div className="text-[13px] font-[600] text-customColor18">
-            {t('auth_method', 'Authentication')}
-          </div>
-          <div className="flex gap-[6px]">
-            {(['header', 'path'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={clsx(
-                  'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
-                  method === m
-                    ? 'bg-[#10b981] text-white'
-                    : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
-                )}
-                onClick={() => setMethod(m)}
-              >
-                {m === 'header'
-                  ? t('cli_claude_code_codex', 'CLI (Claude Code / Codex)')
-                  : t('remote_servers', 'Remote servers (ChatGPT, Claude)')}
-              </button>
-            ))}
-          </div>
-        </div>
-        {method === 'header' && (
+        {!chatOnly && (
           <div className="flex flex-col gap-[6px]">
             <div className="text-[13px] font-[600] text-customColor18">
-              {t('mcp_client', 'Client')}
+              {t('auth_method', 'Authentication')}
             </div>
-            <div className="flex flex-wrap gap-[6px]">
-              {mcpClients.map((client) => (
+            <div className="flex gap-[6px]">
+              {(['oauth', 'apikey'] as const).map((m) => (
                 <button
-                  key={client}
+                  key={m}
                   type="button"
                   className={clsx(
                     'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
-                    activeClient === client
-                      ? 'bg-[#10b981] text-white'
+                    auth === m
+                      ? 'bg-[#612BD3] text-white'
                       : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
                   )}
-                  onClick={() => setActiveClient(client)}
+                  onClick={() => setAuth(m)}
                 >
-                  {client}
+                  {m === 'oauth'
+                    ? t('sign_in_no_api_key', 'Sign in with Postiz (no API key)')
+                    : t('api_key', 'API Key')}
                 </button>
               ))}
             </div>
           </div>
         )}
+        <div className="flex flex-col gap-[6px]">
+          <div className="text-[13px] font-[600] text-customColor18">
+            {t('mcp_client', 'Client')}
+          </div>
+          <div className="flex flex-wrap gap-[6px]">
+            {[
+              ...Object.keys(remoteMcpClients),
+              ...mcpClients,
+              ...Object.keys(chatOnlyMcpClients),
+            ].map((client) => (
+              <button
+                key={client}
+                type="button"
+                className={clsx(
+                  'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors flex items-center gap-[8px]',
+                  activeClient === client
+                    ? 'bg-[#612BD3] text-white'
+                    : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
+                )}
+                onClick={() =>
+                  setActiveClient(client as AnyMcpClient)
+                }
+              >
+                <McpClientIcon client={client} />
+                {client}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex flex-col gap-[8px]">
           <div className="text-[12px] text-customColor18 font-[500]">
-            {method === 'header'
-              ? hint
-              : t(
-                  'remote_server_url_hint',
-                  'Paste this URL into your remote MCP client (ChatGPT, Claude, etc.).'
-                )}
+            {hint}
+            {auth === 'oauth' &&
+              !chatOnly &&
+              ` ${t(
+                'oauth_sign_in_hint',
+                'Your agent will open a browser window to sign in to Postiz.'
+              )}`}
           </div>
           <pre className="bg-newBgColorInner border border-newBorder rounded-[8px] p-[16px] text-[13px] whitespace-pre-wrap break-all overflow-x-auto leading-[1.6]">
-            {method === 'header' ? maskedConfig : maskedRemoteUrl}
+            {maskedConfig}
           </pre>
           <div className="flex gap-[8px]">
-            <button
-              type="button"
-              onClick={() => setRevealed(!revealed)}
-              className="cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {auth === 'apikey' && !chatOnly && (
+              <button
+                type="button"
+                onClick={() => setRevealed(!revealed)}
+                className="cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
               >
-                {revealed ? (
-                  <>
-                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-                    <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </>
-                ) : (
-                  <>
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </>
-                )}
-              </svg>
-              {revealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
-            </button>
-            <CopyButton
-              text={method === 'header' ? config : remoteUrl}
-              label={t('copy', 'Copy')}
-            />
-            {method === 'header' && (
-              <CopyButton
-                text={cliUrl}
-                label={t('copy_url', 'Copy URL')}
-              />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {revealed ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+                {revealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
+              </button>
+            )}
+            <CopyButton text={config} label={t('copy', 'Copy')} />
+            {!isRemoteMcpClient(activeClient) && !chatOnly && (
+              <CopyButton text={baseUrl} label={t('copy_url', 'Copy URL')} />
+            )}
+            {activeClient === 'Claude' && billingEnabled && (
+              <a
+                className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+                href="https://claude.ai/directory/postiz"
+                target="_blank"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                {t('add_to_claude', 'Add to Claude')}
+              </a>
             )}
           </div>
         </div>
@@ -358,33 +475,33 @@ const McpSection = ({
   );
 };
 
-const localCliSteps = [
+export const localCliSteps = [
   {
     label: 'Install the CLI',
-    code: 'npm install -g Cuanto Socials',
+    code: 'npm install -g postiz',
   },
   {
-    label: 'Run: Cuanto Socials auth:login',
-    code: 'Cuanto Socials auth:login',
+    label: 'Run: postiz auth:login',
+    code: 'postiz auth:login',
   },
   {
-    label: 'Install the Cuanto Socials skill for your AI agent',
-    code: 'npx skills add gitroomhq/Cuanto Socials-agent',
+    label: 'Install the Postiz skill for your AI agent',
+    code: 'npx skills add gitroomhq/postiz-agent',
   },
 ] as const;
 
 const ciCliSteps = [
   {
     label: 'Install the CLI',
-    code: 'npm install -g Cuanto Socials',
+    code: 'npm install -g postiz',
   },
   {
     label: 'Set your API key as an environment variable',
-    code: 'export CUANTO_API_KEY="{API_KEY}"',
+    code: 'export POSTIZ_API_KEY="{API_KEY}"',
   },
   {
-    label: 'Install the Cuanto Socials skill for your AI agent',
-    code: 'npx skills add gitroomhq/Cuanto Socials-agent',
+    label: 'Install the Postiz skill for your AI agent',
+    code: 'npx skills add gitroomhq/postiz-agent',
   },
 ] as const;
 
@@ -422,14 +539,14 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
           <div className="text-[13px] text-customColor18 mt-[2px]">
             {t(
               'cli_description',
-              'Use the Cuanto Socials CLI to automate posting from your terminal, or install the skill to let your AI agent schedule posts for you.'
+              'Use the Postiz CLI to automate posting from your terminal, or install the skill to let your AI agent schedule posts for you.'
             )}
           </div>
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
           <a
-            className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            href="https://docs.cuantolabs.com/cli/introduction"
+            className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+            href="https://docs.postiz.com/cli/introduction"
             target="_blank"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
@@ -446,7 +563,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
               className={clsx(
                 'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
                 mode === m
-                  ? 'bg-[#10b981] text-white'
+                  ? 'bg-[#612BD3] text-white'
                   : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
               )}
               onClick={() => setMode(m)}
@@ -556,7 +673,7 @@ const PublicApiContent = () => {
         <br />
         {t(
           'api_auth_note_line2',
-          'If you are building a product that schedules posts on behalf of other Cuanto Socials users,'
+          'If you are building a product that schedules posts on behalf of other Postiz users,'
         )}
         <br />
         {t(
@@ -577,23 +694,23 @@ const PublicApiContent = () => {
             </div>
             <div className="text-[13px] text-customColor18 mt-[2px]">
               {t(
-                'use_Cuanto Socials_api_to_integrate_with_your_tools',
-                'Use Cuanto Socials API to integrate with your tools.'
+                'use_postiz_api_to_integrate_with_your_tools',
+                'Use Postiz API to integrate with your tools.'
               )}
             </div>
           </div>
           <div className="flex gap-[6px] shrink-0 pt-[2px]">
             <a
-              className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://docs.cuantolabs.com/public-api"
+              className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              href="https://docs.postiz.com/public-api"
               target="_blank"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
             {t('read_the_docs', 'Docs')}
             </a>
             <a
-              className="cursor-pointer px-[16px] h-[36px] bg-[#10b981] hover:bg-[#059669] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://www.npmjs.com/package/n8n-nodes-Cuanto Socials"
+              className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              href="https://www.npmjs.com/package/n8n-nodes-postiz"
               target="_blank"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
@@ -740,7 +857,7 @@ export const PublicComponent = () => {
             className={clsx(
               'cursor-pointer px-[20px] h-[44px] text-[15px] font-[600] rounded-[8px] transition-colors',
               subTab === tab
-                ? 'bg-[#10b981] text-white'
+                ? 'bg-[#612BD3] text-white'
                 : 'bg-btnSimple text-customColor18 hover:bg-boxHover hover:text-textColor'
             )}
             onClick={() => setSubTab(tab)}
