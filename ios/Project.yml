@@ -114,6 +114,7 @@ targets:
     info:
       path: ShareExtension/Info.plist
       properties:
+        CFBundleDisplayName: Cuanto Socials Share
         SocialsAPIBaseURL: $(API_BASE_URL)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
@@ -150,6 +151,7 @@ targets:
     info:
       path: Widgets/Info.plist
       properties:
+        CFBundleDisplayName: Cuanto Socials Widgets
         SocialsAPIBaseURL: $(API_BASE_URL)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -182,6 +184,7 @@ targets:
     info:
       path: Intents/Info.plist
       properties:
+        CFBundleDisplayName: Cuanto Socials Intents
         SocialsAPIBaseURL: $(API_BASE_URL)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.appintents-extension
