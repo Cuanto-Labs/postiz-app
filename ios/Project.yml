@@ -110,7 +110,6 @@ targets:
     platform: iOS
     sources:
       - path: ShareExtension
-        optional: true
       - path: Sources/Core/Shared
     info:
       path: ShareExtension/Info.plist
@@ -147,7 +146,6 @@ targets:
     platform: iOS
     sources:
       - path: Widgets
-        optional: true
       - path: Sources/Core/Shared
     info:
       path: Widgets/Info.plist
@@ -180,7 +178,6 @@ targets:
     platform: iOS
     sources:
       - path: Intents
-        optional: true
       - path: Sources/Core/Shared
     info:
       path: Intents/Info.plist
@@ -208,7 +205,6 @@ targets:
     platform: iOS
     sources:
       - path: Tests
-        optional: true
     dependencies:
       - target: CuantoSocials
       - package: CuantoKit
