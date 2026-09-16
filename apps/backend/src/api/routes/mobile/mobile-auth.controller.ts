@@ -14,6 +14,8 @@ import {
   MobileAppleNativeDto,
   MobileLoginDto,
   MobileLogoutDto,
+  MobileOAuthExchangeDto,
+  MobileOAuthStartDto,
   MobileRefreshDto,
   MobileRegisterDto,
 } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-auth.dto';
@@ -89,6 +91,24 @@ export class MobileAuthController {
     @UserAgent() userAgent: string
   ) {
     return this._mobileOAuthService.appleNative(body, ip, userAgent);
+  }
+
+  @Post('oauth/start')
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async oauthStart(@Body() body: MobileOAuthStartDto) {
+    return this._mobileOAuthService.googleStart(body.codeChallenge);
+  }
+
+  @Post('oauth/exchange')
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async oauthExchange(
+    @Body() body: MobileOAuthExchangeDto,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    return this._mobileOAuthService.googleExchange(body, ip, userAgent);
   }
 
   @Post('/refresh')

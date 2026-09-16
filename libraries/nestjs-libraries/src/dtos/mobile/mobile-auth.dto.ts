@@ -1,7 +1,9 @@
 import {
   IsEmail,
+  IsIn,
   IsOptional,
   IsString,
+  Length,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -47,6 +49,30 @@ export class MobileAppleNativeDto extends MobileDeviceFields {
   @IsString()
   @MaxLength(128)
   fullName?: string;
+}
+
+export class MobileOAuthStartDto {
+  @IsIn(['google'])
+  provider: 'google';
+
+  @IsString()
+  @Length(43, 128)
+  codeChallenge: string;
+}
+
+export class MobileOAuthExchangeDto extends MobileDeviceFields {
+  @IsIn(['google'])
+  provider: 'google';
+
+  @IsString()
+  code: string;
+
+  @IsString()
+  state: string;
+
+  @IsString()
+  @Length(43, 128)
+  codeVerifier: string;
 }
 
 export class MobileRefreshDto {

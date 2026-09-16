@@ -1,0 +1,248 @@
+name: CuantoSocials
+options:
+  bundleIdPrefix: com.cuantolabs
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+configs:
+  Debug: debug
+  Debug-Staging: debug
+  Release-Staging: release
+  Release: release
+packages:
+  CuantoKit:
+    path: ../../cuanto-kit
+settings:
+  base:
+    SWIFT_VERSION: "6"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 8AWCD3T4B5
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+  configs:
+    Debug:
+      BUNDLE_ID_SUFFIX: ""
+      API_BASE_URL: http://localhost:3000
+    Debug-Staging:
+      BUNDLE_ID_SUFFIX: .staging
+      API_BASE_URL: https://api-staging.socials.cuantolabs.com
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) STAGING"
+    Release-Staging:
+      BUNDLE_ID_SUFFIX: .staging
+      API_BASE_URL: https://api-staging.socials.cuantolabs.com
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) STAGING"
+    Release:
+      BUNDLE_ID_SUFFIX: ""
+      API_BASE_URL: https://api.socials.cuantolabs.com
+targets:
+  CuantoSocials:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: App/PrivacyInfo.xcprivacy
+        buildPhase: resources
+      - path: Sources
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Cuanto Socials
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIBackgroundModes: [remote-notification]
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - cuantosocials
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.productivity
+        SocialsAPIBaseURL: $(API_BASE_URL)
+    entitlements:
+      path: App/CuantoSocials.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.cuantolabs.socials
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)com.cuantolabs.socials.shared"
+        com.apple.developer.applesignin:
+          - Default
+        aps-environment: development
+        com.apple.developer.associated-domains:
+          - applinks:socials.cuantolabs.com
+    dependencies:
+      - package: CuantoKit
+        product: CuantoCore
+      - package: CuantoKit
+        product: CuantoNet
+      - package: CuantoKit
+        product: CuantoUI
+      - package: CuantoKit
+        product: CuantoStore
+      - package: CuantoKit
+        product: CuantoNotify
+      - package: CuantoKit
+        product: CuantoAnalytics
+      # The extension targets, embedded + signed into the app bundle. These
+      # MUST stay in the same `dependencies:` list as the packages above —
+      # YAML keeps only the last of two identical keys, so a second
+      # `dependencies:` silently drops every CuantoKit product.
+      - target: CuantoSocialsShare
+        embed: true
+        codeSign: true
+      - target: CuantoSocialsWidgets
+        embed: true
+        codeSign: true
+      - target: CuantoSocialsIntents
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX)
+  CuantoSocialsShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+        optional: true
+      - path: Sources/Core/Shared
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        SocialsAPIBaseURL: $(API_BASE_URL)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 10
+              NSExtensionActivationSupportsMovieWithMaxCount: 1
+    entitlements:
+      path: ShareExtension/CuantoSocialsShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.cuantolabs.socials
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)com.cuantolabs.socials.shared"
+    dependencies:
+      - package: CuantoKit
+        product: CuantoCore
+      - package: CuantoKit
+        product: CuantoUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).share
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+  CuantoSocialsWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+        optional: true
+      - path: Sources/Core/Shared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        SocialsAPIBaseURL: $(API_BASE_URL)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/CuantoSocialsWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.cuantolabs.socials
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)com.cuantolabs.socials.shared"
+    dependencies:
+      - package: CuantoKit
+        product: CuantoCore
+      - package: CuantoKit
+        product: CuantoUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).widgets
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+  CuantoSocialsIntents:
+    # FALLBACK: xcodegen 2.46.0 ships no `extensionkit-extension` settings
+    # preset, so this uses the known-good `app-extension` product type with
+    # the App Intents extension point identifier instead.
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Intents
+        optional: true
+      - path: Sources/Core/Shared
+    info:
+      path: Intents/Info.plist
+      properties:
+        SocialsAPIBaseURL: $(API_BASE_URL)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.appintents-extension
+    entitlements:
+      path: Intents/CuantoSocialsIntents.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.cuantolabs.socials
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)com.cuantolabs.socials.shared"
+    dependencies:
+      - package: CuantoKit
+        product: CuantoCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).intents
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+  CuantoSocialsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+        optional: true
+    dependencies:
+      - target: CuantoSocials
+      - package: CuantoKit
+        product: CuantoTesting
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CuantoSocials.app/CuantoSocials"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  CuantoSocials:
+    build:
+      parallelizeBuild: true
+      targets:
+        CuantoSocials: all
+        CuantoSocialsShare: all
+        CuantoSocialsWidgets: all
+        CuantoSocialsIntents: all
+        CuantoSocialsTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      parallelizable: false
+      targets:
+        - CuantoSocialsTests
+  CuantoSocials-Staging:
+    build:
+      parallelizeBuild: true
+      targets:
+        CuantoSocials: all
+        CuantoSocialsShare: all
+        CuantoSocialsWidgets: all
+        CuantoSocialsIntents: all
+    run:
+      config: Debug-Staging
