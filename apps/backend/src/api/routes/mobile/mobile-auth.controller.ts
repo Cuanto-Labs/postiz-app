@@ -9,7 +9,9 @@ import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { InviteCodesService } from '@gitroom/nestjs-libraries/database/prisma/invite-codes/invite-codes.service';
 import { MobileAuthService } from '@gitroom/nestjs-libraries/mobile/mobile-auth.service';
+import { MobileOAuthService } from '@gitroom/backend/api/routes/mobile/mobile-oauth.service';
 import {
+  MobileAppleNativeDto,
   MobileLoginDto,
   MobileLogoutDto,
   MobileRefreshDto,
@@ -23,7 +25,8 @@ export class MobileAuthController {
     private _mobileAuthService: MobileAuthService,
     private _authService: AuthService,
     private _emailService: EmailService,
-    private _inviteCodesService: InviteCodesService
+    private _inviteCodesService: InviteCodesService,
+    private _mobileOAuthService: MobileOAuthService
   ) {}
 
   @Post('/login')
@@ -75,6 +78,17 @@ export class MobileAuthController {
       deviceId: body.deviceId,
       deviceName: body.deviceName,
     });
+  }
+
+  @Post('apple/native')
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async appleNative(
+    @Body() body: MobileAppleNativeDto,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    return this._mobileOAuthService.appleNative(body, ip, userAgent);
   }
 
   @Post('/refresh')

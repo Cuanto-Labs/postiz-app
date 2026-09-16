@@ -38,6 +38,17 @@ export class MobileRegisterDto extends CreateOrgUserDto {
   deviceName?: string;
 }
 
+export class MobileAppleNativeDto extends MobileDeviceFields {
+  @IsString()
+  @MinLength(20)
+  identityToken: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  fullName?: string;
+}
+
 export class MobileRefreshDto {
   @IsString()
   @MinLength(32)

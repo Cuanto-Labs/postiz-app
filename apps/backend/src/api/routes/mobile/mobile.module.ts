@@ -6,6 +6,7 @@ import { MobileAuthService } from '@gitroom/nestjs-libraries/mobile/mobile-auth.
 import { MobileTokenService } from '@gitroom/nestjs-libraries/mobile/mobile-token.service';
 import { MobileSessionRepository } from '@gitroom/nestjs-libraries/mobile/mobile-session.repository';
 import { MobileAuthMiddleware } from '@gitroom/backend/api/routes/mobile/mobile-auth.middleware';
+import { MobileOAuthService } from '@gitroom/backend/api/routes/mobile/mobile-oauth.service';
 
 const authenticatedControllers = [MobileDevicesController];
 
@@ -17,6 +18,7 @@ const authenticatedControllers = [MobileDevicesController];
     MobileSessionRepository,
     MobileAuthService,
     MobileAuthMiddleware,
+    MobileOAuthService,
   ],
 })
 export class MobileModule implements NestModule {
