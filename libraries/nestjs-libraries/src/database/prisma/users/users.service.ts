@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users/users.repository';
 import { Provider } from '@prisma/client';
+import { BRAND_NAME } from '@gitroom/nestjs-libraries/services/brand.constant';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
@@ -65,8 +66,8 @@ export class UsersService {
           this._notificationService
             .sendEmail(
               account.email,
-              'Your Postiz login was changed',
-              `An administrator changed the login for your Postiz account. ` +
+              `Your ${BRAND_NAME} login was changed`,
+              `An administrator changed the login for your ${BRAND_NAME} account. ` +
                 `You can now sign in using ${account.email}. ` +
                 `Your subscription and plan were not changed by this switch — ` +
                 `if you intended to cancel a subscription, please do that ` +
