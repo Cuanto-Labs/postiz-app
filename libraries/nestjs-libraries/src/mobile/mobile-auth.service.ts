@@ -6,8 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
-import type { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
-import type { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
+import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { MobileSessionRepository } from '@gitroom/nestjs-libraries/mobile/mobile-session.repository';
 import { MobileTokenService } from '@gitroom/nestjs-libraries/mobile/mobile-token.service';
 
