@@ -7,6 +7,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import dayjs from 'dayjs';
+import { BRAND_NAME } from '@gitroom/nestjs-libraries/services/brand.constant';
 import {
   BadBody,
   Disconnect,
@@ -222,7 +223,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value:
-          'You have to upload the picture/video to Postiz when sending a URL',
+          `You have to upload the picture/video to ${BRAND_NAME} when sending a URL`,
       };
     }
 
