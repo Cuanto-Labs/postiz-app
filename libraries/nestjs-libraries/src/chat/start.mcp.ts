@@ -71,13 +71,13 @@ export const startMcp = async (app: INestApplication) => {
   // exposed as an annotation-less catch-all ask_postiz tool, which the
   // ChatGPT and Claude directory reviews reject
   const oauthServer = new MCPServer({
-    name: 'Postiz MCP',
+    name: `${BRAND_NAME} MCP`,
     version: '1.0.0',
     tools,
   });
 
   const claudeOauthServer = new MCPServer({
-    name: 'Postiz MCP',
+    name: `${BRAND_NAME} MCP`,
     version: '1.0.0',
     tools: claudeTools,
   });
