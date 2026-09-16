@@ -116,6 +116,7 @@ model User {
   sendFailureEmails     Boolean              @default(true)
   sendStreakEmails      Boolean              @default(true)
   oauthAuthorizations   OAuthAuthorization[]
+  mobileSessions MobileSession[] // fork: mobile API
 
   @@unique([email, providerName])
   @@index([lastReadNotifications])
@@ -1012,4 +1013,23 @@ model Announcement {
   description String
   color       AnnouncementColor @default(INFO)
   createdAt   DateTime          @default(now())
+}
+
+model MobileSession {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId          String
+  deviceId          String
+  deviceName        String?
+  platform          String    @default("ios")
+  refreshTokenHash  String    @unique
+  previousTokenHash String?   @unique
+  createdAt         DateTime  @default(now())
+  lastUsedAt        DateTime  @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+
+  @@index([userId])
+  @@index([familyId])
 }
