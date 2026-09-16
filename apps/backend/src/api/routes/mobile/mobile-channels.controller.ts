@@ -42,10 +42,15 @@ export class MobileChannelsController {
           picture: p.picture || '/no-picture.jpg',
           disabled: p.disabled,
           refreshNeeded: p.refreshNeeded,
+          inBetweenSteps: p.inBetweenSteps,
+          display: p.profile,
           type: p.type,
           customer: p.customer,
           limits: {
-            maxLength: findIntegration.maxLength(verified),
+            maxCharacters: findIntegration
+              ? findIntegration.maxLength(verified)
+              : null,
+            editor: findIntegration ? findIntegration.editor : null,
           },
         };
       }),

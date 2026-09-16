@@ -66,6 +66,8 @@ describe('MobileChannelsController', () => {
         picture: null,
         disabled: false,
         refreshNeeded: true,
+        inBetweenSteps: false,
+        profile: 'my-profile',
         type: 'social',
         customer: null,
         additionalSettings: '[]',
@@ -73,6 +75,7 @@ describe('MobileChannelsController', () => {
     ]);
     integrationManager.getSocialIntegration.mockReturnValue({
       maxLength: jest.fn().mockReturnValue(280),
+      editor: 'normal',
     });
 
     const result = await controller.list(org as any);
@@ -91,9 +94,55 @@ describe('MobileChannelsController', () => {
           picture: '/no-picture.jpg',
           disabled: false,
           refreshNeeded: true,
+          inBetweenSteps: false,
+          display: 'my-profile',
           type: 'social',
           customer: null,
-          limits: { maxLength: 280 },
+          limits: { maxCharacters: 280, editor: 'normal' },
+        },
+      ],
+    });
+  });
+
+  it('returns null limits and never throws when the provider is missing (removed integration)', async () => {
+    const { controller, integrationService, integrationManager } =
+      makeController();
+
+    integrationService.getIntegrationsList.mockResolvedValue([
+      {
+        id: 'int-2',
+        internalId: 'internal-2',
+        name: 'Old Page',
+        providerIdentifier: 'removed-provider',
+        picture: null,
+        disabled: true,
+        refreshNeeded: false,
+        inBetweenSteps: false,
+        profile: null,
+        type: 'social',
+        customer: null,
+        additionalSettings: '[]',
+      },
+    ]);
+    integrationManager.getSocialIntegration.mockReturnValue(undefined);
+
+    const result = await controller.list(org as any);
+
+    expect(result).toEqual({
+      channels: [
+        {
+          id: 'int-2',
+          internalId: 'internal-2',
+          name: 'Old Page',
+          identifier: 'removed-provider',
+          picture: '/no-picture.jpg',
+          disabled: true,
+          refreshNeeded: false,
+          inBetweenSteps: false,
+          display: null,
+          type: 'social',
+          customer: null,
+          limits: { maxCharacters: null, editor: null },
         },
       ],
     });
