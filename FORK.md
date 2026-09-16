@@ -91,3 +91,20 @@ Merge cadence: no need to chase every release. The trigger that matters is a
 provider fix — when posting to a network breaks, check
 `git log upstream/main -- libraries/nestjs-libraries/src/integrations/social`
 first, and cherry-pick if a full catch-up is not warranted.
+
+## Mobile API (fork-only)
+
+The `/mobile/v1/*` surface (backing the iOS app) is new, additive code — see
+`docs/MOBILE-API.md` for the route table. Almost all of it lives in files that
+don't exist upstream, so it costs nothing at merge time:
+
+- `apps/backend/src/api/routes/mobile/` — controllers, middleware, oauth service, gate spec
+- `libraries/nestjs-libraries/src/mobile/` — auth/token services, session repository
+- `libraries/nestjs-libraries/src/dtos/mobile/` — request DTOs
+- `scripts/mobile-gate.sh` — CI gate (prisma validate + scoped tsc + mobile jest)
+
+The only upstream touch-points, and the only places a merge can conflict:
+
+- `apps/backend/src/app.module.ts` — imports `MobileModule`
+- `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — `User.mobileSessions` relation plus the appended mobile-session models
+- `.env.example` — the `MOBILE_*` / `APPLE_APP_BUNDLE_ID` block
