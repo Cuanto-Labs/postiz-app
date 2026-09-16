@@ -11,6 +11,7 @@ import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abst
 import { timer } from '@gitroom/helpers/utils/timer';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
+import { BRAND_NAME } from '@gitroom/nestjs-libraries/services/brand.constant';
 
 @Injectable()
 export class IntegrationTriggerTool implements AgentToolInterface {
@@ -130,7 +131,7 @@ export class IntegrationTriggerTool implements AgentToolInterface {
                   getIntegration
                 );
                 throw new Error(
-                  'The channel was disconnected because its token expired, the user needs to reconnect it in Postiz'
+                  `The channel was disconnected because its token expired, the user needs to reconnect it in ${BRAND_NAME}`
                 );
               }
 
@@ -149,7 +150,7 @@ export class IntegrationTriggerTool implements AgentToolInterface {
 
             if (err instanceof RefreshToken) {
               throw new Error(
-                'The provider rejected the credentials even after refreshing the token, the user needs to reconnect the channel in Postiz'
+                `The provider rejected the credentials even after refreshing the token, the user needs to reconnect the channel in ${BRAND_NAME}`
               );
             }
 

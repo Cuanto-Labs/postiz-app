@@ -7,6 +7,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { BRAND_NAME } from '@gitroom/nestjs-libraries/services/brand.constant';
 import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import {
@@ -68,7 +69,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          "One of the media URLs is invalid or inaccessible, make sure it's being uploaded to Postiz first",
+          `One of the media URLs is invalid or inaccessible, make sure it's being uploaded to ${BRAND_NAME} first`,
       };
     }
     if (body.includes('text must be at most 500 characters')) {
