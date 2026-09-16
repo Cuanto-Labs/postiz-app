@@ -12,6 +12,19 @@ jest.mock('@gitroom/backend/api/api.module', () => ({
 jest.mock('@gitroom/backend/services/auth/auth.service', () => ({
   AuthService: class AuthService {},
 }));
+// MobileModule now also registers MobileChannelsController, which imports
+// IntegrationService/IntegrationManager directly; IntegrationManager
+// transitively reaches nostr.provider.ts -> nostr-tools, an ESM package
+// ts-jest's CJS transform cannot require. Only the class references are
+// needed here, so stub them the same way.
+jest.mock(
+  '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service',
+  () => ({ IntegrationService: class IntegrationService {} })
+);
+jest.mock(
+  '@gitroom/nestjs-libraries/integrations/integration.manager',
+  () => ({ IntegrationManager: class IntegrationManager {} })
+);
 
 import { MobileDevicesController } from '@gitroom/backend/api/routes/mobile/mobile-devices.controller';
 import { MobileModule } from '@gitroom/backend/api/routes/mobile/mobile.module';

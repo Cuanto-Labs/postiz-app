@@ -44,6 +44,7 @@ model Organization {
   webhooks            Webhooks[]
   oauthApp            OAuthApp[]
   oauthAuthorizations OAuthAuthorization[]
+  idempotencyKeys     IdempotencyKey[]     // fork: mobile API
 
   @@index([apiKey])
   @@index([streakSince])
@@ -1032,4 +1033,22 @@ model MobileSession {
 
   @@index([userId])
   @@index([familyId])
+}
+
+// fork: mobile API
+model IdempotencyKey {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  key            String
+  method         String
+  path           String
+  requestHash    String
+  statusCode     Int
+  response       String
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime
+
+  @@unique([organizationId, key])
+  @@index([expiresAt])
 }
