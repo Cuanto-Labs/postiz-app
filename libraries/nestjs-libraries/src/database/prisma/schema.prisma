@@ -118,6 +118,7 @@ model User {
   sendStreakEmails      Boolean              @default(true)
   oauthAuthorizations   OAuthAuthorization[]
   mobileSessions MobileSession[] // fork: mobile API
+  pushDevices PushDevice[] // fork: mobile API
 
   @@unique([email, providerName])
   @@index([lastReadNotifications])
@@ -1051,4 +1052,25 @@ model IdempotencyKey {
 
   @@unique([organizationId, key])
   @@index([expiresAt])
+}
+
+// fork: mobile API
+model PushDevice {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String?
+  apnsToken      String    @unique
+  environment    String    @default("production")
+  bundleId       String
+  locale         String?
+  timezone       String?
+  prefs          Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastSeenAt     DateTime  @default(now())
+  disabledAt     DateTime?
+
+  @@index([userId])
+  @@index([organizationId])
 }

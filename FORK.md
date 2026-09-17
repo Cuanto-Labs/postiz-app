@@ -106,5 +106,5 @@ don't exist upstream, so it costs nothing at merge time:
 The only upstream touch-points, and the only places a merge can conflict:
 
 - `apps/backend/src/app.module.ts` — imports `MobileModule`
-- `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — `User.mobileSessions` relation plus the appended mobile-session models
+- `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — `User.mobileSessions` relation plus the appended mobile-session models; also `Organization.idempotencyKeys` relation and the `IdempotencyKey` model, added by the `20260917000000_idempotency_key` migration
 - `.env.example` — the `MOBILE_*` / `APPLE_APP_BUNDLE_ID` block

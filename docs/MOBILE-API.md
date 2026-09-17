@@ -27,17 +27,31 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `POST` | `/mobile/v1/auth/oauth/exchange` | `MobileOAuthExchangeDto` (`provider: 'google'`, `code`, `state`, `codeVerifier` 43–128 chars, `deviceId`, `deviceName?`) | `MobileAuthResponse` | 401 on bad/expired state, PKCE mismatch, or Google token-exchange failure |
 | `GET` | `/mobile/v1/devices` | — (bearer) | `{ devices: MobileSession[] }` (each session plus `current: boolean`) | requires `MobileAuthMiddleware` |
 | `DELETE` | `/mobile/v1/devices/:id` | — (bearer) | `{ ok: true }` | 404 if session doesn't exist or belongs to another user |
+| `GET` | `/mobile/v1/me` | — (bearer) | `{ user, org, orgs, plan: { tier, options }, sessionId }` | current user, orgs, current org and plan tier + limits |
+| `GET` | `/mobile/v1/config` | — (public, no bearer) | `{ minVersion, providers: Array<{ identifier, name }>, links: { support, terms, privacy } }` | min supported app version, enabled (non-hidden) providers, support/legal links |
+| `GET` | `/mobile/v1/channels` | — (bearer) | `{ channels: Array<{ id, internalId, name, identifier, picture, disabled, refreshNeeded, inBetweenSteps, display, type, customer, limits: { maxCharacters, editor } }> }` | connected channels with status and per-platform limits |
+| `GET` | `/mobile/v1/posts?from&to&customer` | `MobilePostsQueryDto` (`from`, `to` ISO dates, `customer?`) | `{ posts: [...] }` | list posts within a date window |
+| `GET` | `/mobile/v1/posts/:group` | — (bearer) | post group detail | 404 `{ msg: 'Post not found' }` if the group doesn't exist |
+| `POST` | `/mobile/v1/posts` | raw body (`posts[]`, `type`) | created post group | server-side validated (`PostValidationException` on empty content/settings/too-long unless `type: 'draft'`); optional `Idempotency-Key` header |
+| `PUT` | `/mobile/v1/posts/:group` | raw body (`posts[]`, `type` defaults to `update`) | updated post group | same validation as create; optional `Idempotency-Key` header |
+| `PATCH` | `/mobile/v1/posts/:group/date` | `MobileRescheduleDto` (`date` ISO date, `action?: 'schedule'\|'update'`) | `{ group, date }` | reschedules every root post (no `parentPostId`) in the group; 404 if group doesn't exist |
+| `DELETE` | `/mobile/v1/posts/:group` | — (bearer) | `{ ok: true }` | deletes the post group |
 
 `MobileTokens = { accessToken, refreshToken, expiresIn, sessionId }`.
 `MobileAuthResponse = MobileTokens & { user: { id, email, name?, lastName?, pictureId? }, orgs: Array<{ id, name, role, disabled }> }` (password stripped, disabled orgs filtered).
 
+## Idempotency-Key
+
+- Optional request header on `POST /mobile/v1/posts` and `PUT /mobile/v1/posts/:group` (`MobileIdempotencyInterceptor`).
+- 8–128 chars; outside that range → `400 { msg: 'Invalid Idempotency-Key' }`.
+- Scoped per org (`organizationId` + `key`), 24h TTL (`IDEMPOTENCY_TTL_MS`).
+- Same key + same request (method + path + body hash) → replayed: original status code and body returned, handler not re-run.
+- Same key + different payload → `422 { msg: 'Idempotency-Key reused with a different payload' }`.
+- Stored in the `IdempotencyKey` table (`libraries/nestjs-libraries/src/mobile/idempotency.repository.ts`); a concurrent duplicate write is swallowed (Prisma `P2002`), not treated as an error.
+
 ## Pending (later milestones, not yet implemented)
 
-- `GET /mobile/v1/me`
-- `GET /mobile/v1/config`
-- `GET /mobile/v1/channels`
 - `GET /mobile/v1/channels/connect/:provider`
-- `GET|POST|PUT|PATCH|DELETE /mobile/v1/posts*`
 - `POST /mobile/v1/media/uploads`
 - `PUT|DELETE /mobile/v1/push/devices*`, `GET|PUT /mobile/v1/push/prefs`
 - `DELETE /mobile/v1/account`
@@ -52,6 +66,10 @@ See `docs/IOS-APP-PLAN.md` §4 for the per-milestone route specs.
 - `MOBILE_OAUTH_REDIRECT_URI` — Google redirect URI; defaults to `https://socials.cuantolabs.com/m/auth/callback` if unset.
 - `MOBILE_APP_SCHEME` — app-side redirect target after the web OAuth hop.
 - `APPLE_APP_BUNDLE_ID` — read by `apps/backend/src/services/auth/providers/apple.provider.ts` to add the native iOS bundle id as an extra accepted JWT audience for Sign in with Apple. **Drift:** `.env.example` documents `APPLE_BUNDLE_ID` (no `APP_`), which nothing reads — that key is unused. Set `APPLE_APP_BUNDLE_ID` for native Apple sign-in to work.
+- `MOBILE_MIN_APP_VERSION` — minimum supported iOS app version returned by `/mobile/v1/config`; defaults to `1.0.0` if unset.
+- `MOBILE_SUPPORT_URL` — support link returned by `/mobile/v1/config`; defaults to `https://socials.cuantolabs.com/support`.
+- `MOBILE_TERMS_URL` — terms link returned by `/mobile/v1/config`; defaults to `https://socials.cuantolabs.com/terms`.
+- `MOBILE_PRIVACY_URL` — privacy link returned by `/mobile/v1/config`; defaults to `https://socials.cuantolabs.com/privacy`.
 
 ## Gate
 
