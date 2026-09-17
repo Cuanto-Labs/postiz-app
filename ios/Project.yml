@@ -229,10 +229,11 @@ targets:
           CODE_SIGN_IDENTITY: "Apple Distribution"
           PROVISIONING_PROFILE_SPECIFIER: "CuantoSocials Widgets App Store"
   CuantoSocialsIntents:
-    # FALLBACK: xcodegen 2.46.0 ships no `extensionkit-extension` settings
-    # preset, so this uses the known-good `app-extension` product type with
-    # the App Intents extension point identifier instead.
-    type: app-extension
+    # App Intents extensions are ExtensionKit, not NSExtension: altool rejects an
+    # `app-extension` bundle carrying `com.apple.appintents-extension` (91179, "must be built
+    # as an ExtensionKit extension"). xcodegen 2.46 does know this product type — it embeds
+    # into `Extensions/` and wants `EXAppExtensionAttributes` instead of `NSExtension`.
+    type: extensionkit-extension
     platform: iOS
     sources:
       - path: Intents
@@ -251,8 +252,8 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         SocialsAPIBaseURL: $(API_BASE_URL)
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.appintents-extension
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.appintents-extension
     entitlements:
       path: Intents/CuantoSocialsIntents.entitlements
       properties:
