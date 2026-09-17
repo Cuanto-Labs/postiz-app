@@ -36,12 +36,12 @@ final class SignInComposeScheduleFlowTests: XCTestCase {
         XCTAssertTrue(calendarTab.waitForExistence(timeout: 10), "Calendar tab after sign-in")
 
         // See the seeded connected channel on the Channels tab.
-        UITestKit.tab(app, "Channels").tap()
+        UITestKit.tapTab(app, "Channels")
         let channelRow = app.descendants(matching: .any)["UITest Channel"]
         XCTAssertTrue(channelRow.waitForExistence(timeout: 10), "seeded channel visible")
 
         // Back to Calendar, open the composer.
-        UITestKit.tab(app, "Calendar").tap()
+        UITestKit.tapTab(app, "Calendar")
         let newPost = app.buttons["calendar.newPost"]
         XCTAssertTrue(newPost.waitForExistence(timeout: 10), "Calendar new-post button")
         newPost.tap()

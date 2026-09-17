@@ -12,6 +12,30 @@ enum UITestKit {
         return bar.exists ? bar : app.buttons[name].firstMatch
     }
 
+    /// Taps a tab-bar item and waits for it to actually become selected. A bare `.tap()` is not
+    /// reliable on this app's tab bar: it intermittently reports a `{-1, -1}` hit point (the same
+    /// trap `ScreenshotUITests` sidesteps by relaunching with `-uiTestTab`), and XCUITest then
+    /// taps nothing at all and the test fails looking for the next screen's content. Falls back
+    /// to a normalized-coordinate tap on the item's own frame, retrying a few times.
+    @discardableResult
+    static func tapTab(_ app: XCUIApplication, _ name: String, timeout: TimeInterval = 10) -> Bool {
+        let item = tab(app, name)
+        guard item.waitForExistence(timeout: timeout) else { return false }
+        for attempt in 0..<3 {
+            if attempt == 0, item.isHittable {
+                item.tap()
+            } else {
+                item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline {
+                if item.isSelected { return true }
+                usleep(200_000)
+            }
+        }
+        return item.isSelected
+    }
+
     /// Back via the nav-bar leading button, falling back to a swipe-right if it's missing.
     static func back(_ app: XCUIApplication) {
         let b = app.navigationBars.firstMatch.buttons.element(boundBy: 0)
