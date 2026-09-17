@@ -141,7 +141,7 @@ struct ChannelsViewModelTests {
 
         #expect(viewModel.channels == [ch])
         let calls = await api.disableChannelCalls
-        #expect(calls == ["int-1"])
+        #expect(calls == ["1"])
     }
 
     @Test
@@ -155,7 +155,7 @@ struct ChannelsViewModelTests {
         await viewModel.enable(ch)
 
         let calls = await api.enableChannelCalls
-        #expect(calls == ["int-1"])
+        #expect(calls == ["1"])
     }
 }
 

@@ -100,22 +100,28 @@ struct OnboardingView: View {
                     .font(.footnote)
                     .accessibilityLabel("Onboarding error")
             } else {
-                VStack(spacing: 8) {
-                    ForEach(viewModel.providers, id: \.identifier) { provider in
-                        Button {
-                            viewModel.selectProvider(provider.identifier)
-                        } label: {
-                            HStack {
-                                Text(provider.name)
-                                Spacer()
-                                if viewModel.selectedProviderId == provider.identifier {
-                                    Image(systemName: "checkmark.circle.fill")
+                // Provider count (28+ channels, see project CLAUDE.md) overflows the screen in a
+                // plain VStack with no scroll container — the list, and the Next/Get started
+                // buttons below it, get pushed off-screen. Wrap in a ScrollView so every provider
+                // and the bottom controls stay reachable.
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(viewModel.providers, id: \.identifier) { provider in
+                            Button {
+                                viewModel.selectProvider(provider.identifier)
+                            } label: {
+                                HStack {
+                                    Text(provider.name)
+                                    Spacer()
+                                    if viewModel.selectedProviderId == provider.identifier {
+                                        Image(systemName: "checkmark.circle.fill")
+                                    }
                                 }
+                                .padding()
                             }
-                            .padding()
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel("Select \(provider.name)")
                         }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel("Select \(provider.name)")
                     }
                 }
             }

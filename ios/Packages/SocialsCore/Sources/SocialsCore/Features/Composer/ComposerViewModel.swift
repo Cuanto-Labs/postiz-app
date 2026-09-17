@@ -175,7 +175,7 @@ public final class ComposerViewModel {
                 publishDate: date,
                 status: nil,
                 integration: PostIntegrationRef(
-                    id: channel.internalId, name: channel.name, picture: channel.picture,
+                    id: channel.id, name: channel.name, picture: channel.picture,
                     providerIdentifier: channel.identifier),
                 content: .string(draft(for: channel.internalId).content)
             )

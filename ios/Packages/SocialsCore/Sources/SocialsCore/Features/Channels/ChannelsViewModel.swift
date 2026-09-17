@@ -89,13 +89,13 @@ public final class ChannelsViewModel {
 
     public func disable(_ channel: ChannelDTO) async {
         await withPendingChannel(channel) {
-            _ = try await self.api.disableChannel(channel.internalId)
+            _ = try await self.api.disableChannel(channel.id)
         }
     }
 
     public func enable(_ channel: ChannelDTO) async {
         await withPendingChannel(channel) {
-            _ = try await self.api.enableChannel(channel.internalId)
+            _ = try await self.api.enableChannel(channel.id)
         }
     }
 
@@ -104,7 +104,7 @@ public final class ChannelsViewModel {
     /// `deleteIntegration.status === 406` handling) rather than the generic error text.
     public func delete(_ channel: ChannelDTO) async {
         await withPendingChannel(channel) {
-            _ = try await self.api.deleteChannel(channel.internalId)
+            _ = try await self.api.deleteChannel(channel.id)
         }
     }
 

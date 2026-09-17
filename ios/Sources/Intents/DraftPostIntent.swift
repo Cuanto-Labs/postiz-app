@@ -59,7 +59,7 @@ struct DraftPostIntent: AppIntent {
         let post = PostGroupDTO(
             id: nil, group: nil, publishDate: nil, status: nil,
             integration: PostIntegrationRef(
-                id: channel.internalId, name: channel.name, picture: channel.picture,
+                id: channel.id, name: channel.name, picture: channel.picture,
                 providerIdentifier: channel.identifier),
             content: .string(caption)
         )

@@ -50,8 +50,13 @@ export class MobilePostsController {
     @GetOrgFromRequest() org: Organization,
     @Query() query: MobilePostsQueryDto
   ) {
+    // Mobile clients decode a plain `PostGroupDTO[]` (see docs/MOBILE-API.md and
+    // ios SocialsCore's PostsResponse) — `getPostsMinified` renames `posts` to the
+    // wire-minified `p` key for web's calendar SWR cache, which would nest an
+    // unparseable `{ posts: { p: [...] } }` shape here. Use the unminified
+    // `getPosts` so the response matches the documented `{ posts: [...] }` contract.
     return {
-      posts: await this._postsService.getPostsMinified(org.id, {
+      posts: await this._postsService.getPosts(org.id, {
         startDate: query.from,
         endDate: query.to,
         customer: query.customer,

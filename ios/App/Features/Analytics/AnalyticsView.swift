@@ -40,8 +40,8 @@ struct AnalyticsView: View {
                             Task { await viewModel.select(channelId: newValue) }
                         })
                 ) {
-                    ForEach(viewModel.channels, id: \.internalId) { channel in
-                        Text(channel.name).tag(channel.internalId)
+                    ForEach(viewModel.channels, id: \.id) { channel in
+                        Text(channel.name).tag(channel.id)
                     }
                 }
                 .pickerStyle(.menu)

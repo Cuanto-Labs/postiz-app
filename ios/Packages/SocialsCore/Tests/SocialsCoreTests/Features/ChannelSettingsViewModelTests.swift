@@ -60,7 +60,7 @@ struct ChannelSettingsViewModelTests {
 
         let calls = await api.updateChannelCustomerNameCalls
         #expect(calls.count == 1)
-        #expect(calls.first?.id == "int-9")
+        #expect(calls.first?.id == "1")
         #expect(calls.first?.body.name == "New Name")
         #expect(viewModel.errorMessage == nil)
     }
@@ -107,7 +107,7 @@ struct ChannelSettingsViewModelTests {
         await viewModel.saveTimeSlots()
 
         let calls = await api.setChannelTimesCalls
-        #expect(calls.first?.id == "int-2")
+        #expect(calls.first?.id == "1")
         #expect(calls.first?.body.time.map(\.time) == [60, 540])
         #expect(viewModel.errorMessage == nil)
     }
@@ -123,7 +123,7 @@ struct ChannelSettingsViewModelTests {
         await viewModel.saveProviderSettings(additionalSettings: "{\"tone\":\"formal\"}")
 
         let calls = await api.updateChannelSettingsCalls
-        #expect(calls.first?.id == "int-3")
+        #expect(calls.first?.id == "1")
         #expect(calls.first?.body.additionalSettings == "{\"tone\":\"formal\"}")
         #expect(viewModel.errorMessage == nil)
     }

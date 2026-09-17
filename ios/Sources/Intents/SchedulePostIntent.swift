@@ -33,7 +33,7 @@ struct SchedulePostIntent: AppIntent {
         let post = PostGroupDTO(
             id: nil, group: nil, publishDate: dateString, status: nil,
             integration: PostIntegrationRef(
-                id: channel.internalId, name: channel.name, picture: channel.picture,
+                id: channel.id, name: channel.name, picture: channel.picture,
                 providerIdentifier: channel.identifier),
             content: .string(caption)
         )

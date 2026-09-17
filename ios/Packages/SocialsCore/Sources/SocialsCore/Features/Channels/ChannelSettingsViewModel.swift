@@ -53,7 +53,7 @@ public final class ChannelSettingsViewModel {
     public func saveCustomerName(_ name: String) async {
         await save {
             _ = try await self.api.updateChannelCustomerName(
-                self.channel.internalId, body: ChannelCustomerNameRequest(name: name))
+                self.channel.id, body: ChannelCustomerNameRequest(name: name))
         }
     }
 
@@ -62,7 +62,7 @@ public final class ChannelSettingsViewModel {
     public func saveGroup(_ group: String) async {
         await save {
             _ = try await self.api.updateChannelGroup(
-                self.channel.internalId, body: ChannelGroupRequest(group: group))
+                self.channel.id, body: ChannelGroupRequest(group: group))
         }
     }
 
@@ -90,7 +90,7 @@ public final class ChannelSettingsViewModel {
     public func saveTimeSlots() async {
         await save {
             let body = ChannelTimeRequest(time: self.timeSlots.map { ChannelTimeSlot(time: $0) })
-            _ = try await self.api.setChannelTimes(self.channel.internalId, body: body)
+            _ = try await self.api.setChannelTimes(self.channel.id, body: body)
         }
     }
 
@@ -99,7 +99,7 @@ public final class ChannelSettingsViewModel {
     public func saveProviderSettings(additionalSettings: String) async {
         await save {
             _ = try await self.api.updateChannelSettings(
-                self.channel.internalId,
+                self.channel.id,
                 body: ChannelSettingsRequest(additionalSettings: additionalSettings))
         }
     }

@@ -36,7 +36,7 @@ public final class AnalyticsViewModel {
             let response = try await api.channels()
             channels = response.channels
             if selectedChannelId == nil, let first = channels.first {
-                selectedChannelId = first.internalId
+                selectedChannelId = first.id
                 await refresh()
             }
         } catch {
