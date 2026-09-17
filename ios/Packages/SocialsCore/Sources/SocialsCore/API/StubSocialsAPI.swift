@@ -531,8 +531,10 @@ public actor StubSocialsAPI: SocialsAPI {
     // MARK: - Org settings
 
     public var teamMembersResults: [Result<TeamListResponse, Error>] = []
+    public private(set) var teamMembersCalls = 0
     public func teamMembers() async throws -> TeamListResponse {
-        try next(&teamMembersResults, "teamMembers")
+        teamMembersCalls += 1
+        return try next(&teamMembersResults, "teamMembers")
     }
 
     public var addTeamMemberResults: [Result<OkResponse, Error>] = []
