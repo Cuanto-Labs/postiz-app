@@ -10,6 +10,13 @@ public enum SocialsSchema {
         PendingAction.self,
     ]
 
+    /// `ModelContainer(for:configurations:)` is not safe to call concurrently —
+    /// swift-testing runs different `@Suite`s in parallel by default, and
+    /// concurrent container creation (in-memory or not) has caused intermittent
+    /// SIGSEGV crashes across test suites. Serialize creation here so every
+    /// call site is safe without needing `.serialized` on each suite.
+    private static let creationLock = NSLock()
+
     /// Builds the shared `ModelContainer`.
     /// - Parameters:
     ///   - inMemory: use a transient, in-memory store (tests, previews).
@@ -27,6 +34,8 @@ public enum SocialsSchema {
         } else {
             configuration = ModelConfiguration(schema: schema)
         }
+        creationLock.lock()
+        defer { creationLock.unlock() }
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 }
