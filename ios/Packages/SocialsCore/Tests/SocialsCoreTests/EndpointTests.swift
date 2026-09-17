@@ -279,7 +279,8 @@ struct EndpointTests {
         #expect(recorded.request.method == .post)
         #expect(recorded.request.path == "/mobile/v1/posts")
         #expect(recorded.request.headerFields[IdempotencyKey.headerName] == key.value)
-        #expect(try bodyKeys(recorded.body) == ["type", "posts"])
+        // Web `CreatePostDto` contract: `shortLink`/`date`/`tags` are always sent.
+        #expect(try bodyKeys(recorded.body) == ["type", "posts", "shortLink", "date", "tags"])
     }
 
     @Test("updatePost: PUT with group in path and Idempotency-Key header")

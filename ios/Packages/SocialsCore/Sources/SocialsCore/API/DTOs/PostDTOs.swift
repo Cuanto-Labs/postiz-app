@@ -137,7 +137,7 @@ public struct PostTagRef: Sendable, Codable, Equatable {
 /// which additionally carries `order`, `shortLink`, `inter`, `republish`, `date`, and `tags`.
 /// Those extra fields are optional here so existing mobile-only callers (`type`/`posts` only)
 /// keep compiling; per-post item shape mirrors `PostGroupDTO`.
-public struct CreatePostBody: Sendable, Codable, Equatable {
+public struct CreatePostBody: Sendable, Equatable {
     public let type: String
     public let posts: [PostGroupDTO]
     public let order: String?
@@ -160,6 +160,120 @@ public struct CreatePostBody: Sendable, Codable, Equatable {
         self.republish = republish
         self.date = date
         self.tags = tags
+    }
+}
+
+/// Wire shape is the web `CreatePostDto`: each post is
+/// `{ integration: { id }, value: [{ content, image: [] }], group?, settings: { __type } }`,
+/// and `shortLink`/`date`/`tags` are required. Decoding also accepts the legacy
+/// `PostGroupDTO` shape so offline actions queued by older builds still replay.
+extension CreatePostBody: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case type, posts, order, shortLink, inter, republish, date, tags
+    }
+
+    private enum PostKeys: String, CodingKey {
+        case integration, value, group, settings, content
+    }
+
+    private struct WireIntegration: Codable {
+        let id: String?
+    }
+
+    private struct WireValue: Codable {
+        let content: String?
+        let image: [String]?
+    }
+
+    private struct WireSettings: Codable {
+        let type: String?
+
+        enum CodingKeys: String, CodingKey {
+            case type = "__type"
+        }
+    }
+
+    /// One `posts[]` element. Decoding a single value per unkeyed-container slot keeps the
+    /// container's cursor correct for both the wire and the legacy shape.
+    private struct WirePost: Decodable {
+        let post: PostGroupDTO
+        let isWireShape: Bool
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: PostKeys.self)
+            guard container.contains(.value) else {
+                post = try PostGroupDTO(from: decoder)
+                isWireShape = false
+                return
+            }
+            let integration = try container.decodeIfPresent(
+                WireIntegration.self, forKey: .integration)
+            let values = try container.decodeIfPresent([WireValue].self, forKey: .value) ?? []
+            let settings = try container.decodeIfPresent(WireSettings.self, forKey: .settings)
+            post = PostGroupDTO(
+                id: nil, group: try container.decodeIfPresent(String.self, forKey: .group),
+                publishDate: nil, status: nil,
+                integration: PostIntegrationRef(
+                    id: integration?.id, name: nil, picture: nil,
+                    providerIdentifier: settings?.type),
+                content: .string(values.first?.content ?? ""))
+            isWireShape = true
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(String.self, forKey: .type)
+        order = try container.decodeIfPresent(String.self, forKey: .order)
+        shortLink = try container.decodeIfPresent(Bool.self, forKey: .shortLink)
+        inter = try container.decodeIfPresent(Int.self, forKey: .inter)
+        republish = try container.decodeIfPresent(Bool.self, forKey: .republish)
+        date = try container.decodeIfPresent(String.self, forKey: .date)
+        tags = try container.decodeIfPresent([PostTagRef].self, forKey: .tags)
+
+        let publishDate = date
+        posts = try container.decode([WirePost].self, forKey: .posts).map { wire in
+            guard wire.isWireShape else { return wire.post }
+            // The wire shape carries one `date` for the whole body, not per post.
+            return PostGroupDTO(
+                id: wire.post.id, group: wire.post.group, publishDate: publishDate,
+                status: wire.post.status, integration: wire.post.integration,
+                content: wire.post.content)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(type, forKey: .type)
+        try container.encode(shortLink ?? false, forKey: .shortLink)
+        try container.encode(date ?? Self.nowISO8601(), forKey: .date)
+        try container.encode(tags ?? [], forKey: .tags)
+        try container.encodeIfPresent(order, forKey: .order)
+        try container.encodeIfPresent(inter, forKey: .inter)
+        try container.encodeIfPresent(republish, forKey: .republish)
+
+        var postsContainer = container.nestedUnkeyedContainer(forKey: .posts)
+        for post in posts {
+            var item = postsContainer.nestedContainer(keyedBy: PostKeys.self)
+            try item.encode(WireIntegration(id: post.integration?.id), forKey: .integration)
+            try item.encode([WireValue(content: Self.text(of: post.content), image: [])], forKey: .value)
+            try item.encodeIfPresent(post.group, forKey: .group)
+            try item.encode(WireSettings(type: post.integration?.providerIdentifier), forKey: .settings)
+        }
+    }
+
+    private static func text(of content: PostContentValue?) -> String {
+        switch content {
+        case .string(let value): value
+        case .items(let items): items.first?.content ?? ""
+        case nil: ""
+        }
+    }
+
+    private static func nowISO8601() -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: Date())
     }
 }
 

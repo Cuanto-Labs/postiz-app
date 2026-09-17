@@ -252,7 +252,7 @@ struct DTOTests {
         #expect(value.posts.count == 2)
     }
 
-    @Test("CreatePostBody round-trips")
+    @Test("CreatePostBody encodes web CreatePostDto shape and round-trips")
     func createPostBody() throws {
         let body = CreatePostBody(
             type: "draft",
@@ -261,9 +261,21 @@ struct DTOTests {
                     id: nil, group: nil, publishDate: "2026-01-01T00:00:00Z", status: nil,
                     integration: PostIntegrationRef(id: "i1", name: nil, picture: nil, providerIdentifier: "x"),
                     content: .string("hi"))
-            ])
-        let round = try decode(CreatePostBody.self, String(decoding: encodeString(body), as: UTF8.self))
+            ], shortLink: false, date: "2026-01-01T00:00:00Z", tags: [])
+        let json = try String(decoding: encodeString(body), as: UTF8.self)
+        #expect(json.contains(#""value":[{"#))
+        #expect(json.contains(#""__type":"x""#))
+        let round = try decode(CreatePostBody.self, json)
         #expect(round == body)
+    }
+
+    @Test("CreatePostBody decodes legacy queued PostGroupDTO shape")
+    func createPostBodyLegacy() throws {
+        let body = try decode(
+            CreatePostBody.self,
+            #"{"type":"now","posts":[{"integration":{"id":"i1","providerIdentifier":"x"},"content":"hi"}]}"#)
+        #expect(body.posts.first?.content == .string("hi"))
+        #expect(body.posts.first?.integration?.providerIdentifier == "x")
     }
 
     @Test("RescheduleRequest and RescheduleResponse decode")
