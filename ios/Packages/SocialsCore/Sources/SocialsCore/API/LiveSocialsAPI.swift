@@ -36,6 +36,7 @@ public final class LiveSocialsAPI: SocialsAPI {
             let message = ServerErrorMessage.parse(body)
             switch code {
             case 400: return SocialsAPIError.validation(message: message)
+            case 402: return mapAIPaymentError(body: body, message: message)
             case 403: return SocialsAPIError.forbidden(message: message)
             case 404: return SocialsAPIError.notFound(message: message)
             case 422: return SocialsAPIError.idempotencyConflict
@@ -44,6 +45,25 @@ public final class LiveSocialsAPI: SocialsAPI {
         case .transport, .decoding, .offline, .cancelled:
             return apiError
         }
+    }
+
+    /// 402 on AI endpoints is either `SubscriptionException`'s `{section, action}` body
+    /// (plan doesn't include AI at all) or a "no credits left" message (plan includes AI,
+    /// but its image/video generation credits are used up); anything else falls back to
+    /// `.server`.
+    private static func mapAIPaymentError(body: Data, message: String?) -> Error {
+        struct SubscriptionExceptionBody: Decodable {
+            let section: String
+        }
+        if let decoded = try? JSONDecoder().decode(SubscriptionExceptionBody.self, from: body),
+            decoded.section == "ai"
+        {
+            return SocialsAPIError.aiNotInPlan
+        }
+        if let message, message.localizedCaseInsensitiveContains("credit") {
+            return SocialsAPIError.aiCreditsExhausted
+        }
+        return SocialsAPIError.server(code: 402, message: message)
     }
 
     // MARK: - Auth
@@ -154,5 +174,21 @@ public final class LiveSocialsAPI: SocialsAPI {
         -> PushPrefsResponse
     {
         try await send(SocialsEndpoints.updatePushPrefs(body, orgId: orgProvider()))
+    }
+
+    // MARK: - AI
+
+    public func aiCredits(type: String = "ai_images") async throws -> AICreditsResponse {
+        try await send(SocialsEndpoints.aiCredits(type: type, orgId: orgProvider()))
+    }
+
+    public func aiGenerateImage(prompt: String) async throws -> AIMediaResult {
+        try await send(
+            SocialsEndpoints.aiGenerateImage(
+                AIImageRequest(prompt: prompt), orgId: orgProvider()))
+    }
+
+    public func aiGenerateVideo(_ body: AIVideoRequest) async throws -> AIMediaResult {
+        try await send(SocialsEndpoints.aiGenerateVideo(body, orgId: orgProvider()))
     }
 }

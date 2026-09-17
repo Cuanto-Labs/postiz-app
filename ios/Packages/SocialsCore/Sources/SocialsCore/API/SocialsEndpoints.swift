@@ -169,4 +169,28 @@ public enum SocialsEndpoints {
             method: .put, path: "\(basePath)/push/prefs", body: .json(body))
         return withOrg(endpoint, orgId)
     }
+
+    // MARK: - AI
+
+    public static func aiCredits(
+        type: String = "ai_images", orgId: String? = nil
+    ) -> Endpoint<AICreditsResponse> {
+        withOrg(Endpoint(path: "\(basePath)/ai/credits").query("type", type), orgId)
+    }
+
+    public static func aiGenerateImage(
+        _ body: AIImageRequest, orgId: String? = nil
+    ) throws -> Endpoint<AIMediaResult> {
+        let endpoint = try Endpoint<AIMediaResult>(
+            method: .post, path: "\(basePath)/ai/image", body: .json(body))
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func aiGenerateVideo(
+        _ body: AIVideoRequest, orgId: String? = nil
+    ) throws -> Endpoint<AIMediaResult> {
+        let endpoint = try Endpoint<AIMediaResult>(
+            method: .post, path: "\(basePath)/ai/video", body: .json(body))
+        return withOrg(endpoint, orgId)
+    }
 }

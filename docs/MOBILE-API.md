@@ -27,9 +27,10 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `POST` | `/mobile/v1/auth/oauth/exchange` | `MobileOAuthExchangeDto` (`provider: 'google'`, `code`, `state`, `codeVerifier` 43–128 chars, `deviceId`, `deviceName?`) | `MobileAuthResponse` | 401 on bad/expired state, PKCE mismatch, or Google token-exchange failure |
 | `GET` | `/mobile/v1/devices` | — (bearer) | `{ devices: MobileSession[] }` (each session plus `current: boolean`) | requires `MobileAuthMiddleware` |
 | `DELETE` | `/mobile/v1/devices/:id` | — (bearer) | `{ ok: true }` | 404 if session doesn't exist or belongs to another user |
-| `GET` | `/mobile/v1/me` | — (bearer) | `{ user, org, orgs, plan: { tier, options }, sessionId }` | current user, orgs, current org and plan tier + limits |
+| `GET` | `/mobile/v1/me` | — (bearer) | `{ user, org, orgs, plan: { tier, options }, sessionId }` | current user, orgs, current org and plan tier + limits; `user.aiConsentAt` (`Date \| null`) mirrors `GET /mobile/v1/ai/consent` |
 | `GET` | `/mobile/v1/config` | — (public, no bearer) | `{ minVersion, providers: Array<{ identifier, name }>, links: { support, terms, privacy } }` | min supported app version, enabled (non-hidden) providers, support/legal links |
 | `GET` | `/mobile/v1/channels` | — (bearer) | `{ channels: Array<{ id, internalId, name, identifier, picture, disabled, refreshNeeded, inBetweenSteps, display, type, customer, limits: { maxCharacters, editor, media: MediaLimits } }> }` | connected channels with status and per-platform limits; `limits.media` (`maxImages`, `maxVideos`, `maxImageBytes`, `maxVideoBytes`, `maxVideoSeconds`, `imageMimes`, `videoMimes`, `aspectRatios?`) comes from `getMediaLimits(providerIdentifier)` |
+| `GET` | `/mobile/v1/channels/connect/:provider?refresh&externalUrl` | — (bearer) | `{ url, state }` | starts the OAuth flow for `provider`; 400 `{ msg: 'Integration not allowed' }` if the provider isn't in `getAllowedSocialsIntegrations()`; 400 `{ msg: 'Missing external url' }` if the provider needs `externalUrl` (e.g. self-hosted instances) and it's omitted; stores `organization:<state>`, `login:<state>` (PKCE verifier), `external:<state>`, `mobile:<state>` (`'1'`, marks this as a mobile-originated flow), and — only when `refresh` is truthy — `refresh:<state>` in Redis (1h TTL each); also sets `redirect:<state>` to `${FRONTEND_URL}/m/connected?provider=<provider>` so the web callback knows where to bounce back to |
 | `GET` | `/mobile/v1/posts?from&to&customer` | `MobilePostsQueryDto` (`from`, `to` ISO dates, `customer?`) | `{ posts: [...] }` | list posts within a date window |
 | `GET` | `/mobile/v1/posts/:group` | — (bearer) | post group detail | 404 `{ msg: 'Post not found' }` if the group doesn't exist |
 | `POST` | `/mobile/v1/posts` | raw body (`posts[]`, `type`) | created post group | server-side validated (`PostValidationException` on empty content/settings/too-long unless `type: 'draft'`); optional `Idempotency-Key` header |
@@ -47,6 +48,9 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `GET` | `/mobile/v1/media?page=` | `MobileMediaListQueryDto` (`page?` int) | `{ pages, results: Array<{ id, name, originalName, path, thumbnail, alt, thumbnailTimestamp }> }` | 18 per page; excludes media still `processing` |
 | `GET` | `/mobile/v1/account/deletion-preview` | — (bearer) | `AccountDeletionPreview` = `{ orgsToDelete: { id, name }[], orgsToLeave: { id, name }[] }` | orgs where the caller is the sole `SUPERADMIN` land in `orgsToDelete` (will be fully deleted); the rest land in `orgsToLeave` (caller just leaves) |
 | `DELETE` | `/mobile/v1/account` | `MobileDeleteAccountDto` (`confirm`, must be exactly `'DELETE'`) | `{ ok: true, deletedOrgs, leftOrgs }` (both `{ id, name }[]`) | 400 if `confirm` isn't `'DELETE'`; `3/min` throttle; see `## Account deletion` for cascade order |
+| `GET` | `/mobile/v1/ai/consent` | — (bearer) | `{ aiConsentAt: Date \| null }` | current AI consent timestamp, `null` if never granted |
+| `POST` | `/mobile/v1/ai/consent` | `MobileAiConsentDto` (`granted: boolean`) | `{ aiConsentAt: Date \| null }` | grants (sets timestamp) or revokes (clears it) AI consent |
+| `POST` | `/mobile/v1/ai/suggest` | `MobileAiSuggestDto` (`content` ≤5000 chars, `mode: 'variations'\|'fit'`, `maxLength?` int 1–10000) | `{ suggestions: string[] }` | `CheckPolicies([Create, Sections.AI])`; 403 `{ msg: 'AI consent required' }` if the user hasn't granted AI consent (`GET/POST /ai/consent` first); 503 `{ msg: 'AI not configured' }` if `OPENAI_API_KEY` is unset; `mode: 'variations'` calls `OpenaiService.generatePosts`, `mode: 'fit'` calls `OpenaiService.separatePosts(content, maxLength ?? 280)` |
 
 `MobileTokens = { accessToken, refreshToken, expiresIn, sessionId }`.
 `MobileAuthResponse = MobileTokens & { user: { id, email, name?, lastName?, pictureId? }, orgs: Array<{ id, name, role, disabled }> }` (password stripped, disabled orgs filtered).
@@ -106,12 +110,23 @@ Per-provider posting limits (`limits.media` on `GET /mobile/v1/channels`) narrow
 
 **Retained:** the `AccountDeletionAudit` row (hashed `userId` only) and the anonymized `User` row (kept for referential integrity, no PII left).
 
+## Channel connect (mobile)
+
+`GET /mobile/v1/channels/connect/:provider` kicks off the same provider OAuth flow as web, adapted for an in-app `ASWebAuthenticationSession`:
+
+1. App calls `GET /mobile/v1/channels/connect/:provider?refresh&externalUrl` and opens `url` in an `ASWebAuthenticationSession`.
+2. User completes the provider's OAuth consent in that session (this is regular web OAuth — no app-side changes per provider).
+3. Provider redirects to the existing web OAuth callback, which resolves `state` and, because `mobile:<state>` is set, redirects to `redirect:<state>` = `${FRONTEND_URL}/m/connected?provider=<provider>` instead of the normal web post-connect page.
+4. `/m/connected` renders the shared `MobileBounce` client component, which reads the query params and immediately does `window.location.replace('cuantosocials://connected?...')` (also shows a manual "tap here"/"Open app" fallback link).
+5. Because `cuantosocials://` is a scheme the app registered, `ASWebAuthenticationSession` intercepts the redirect and completes the session, returning control to the app with the callback URL.
+
+## Universal links
+
+- `apps/frontend/public/.well-known/apple-app-site-association` declares `applinks.details[0].appIDs = ["8AWCD3T4B5.com.cuantolabs.socials"]` and `components: [{ "/": "/m/*" }]` — every path under `/m/` (currently `/m/connected`, `/m/auth/callback`) is a universal-link target as well as a plain web page, so the same URL works whether or not the app is installed. `webcredentials.apps` shares the same app id for password AutoFill.
+
 ## Pending (later milestones, not yet implemented)
 
-- `GET /mobile/v1/channels/connect/:provider`
-- `POST /mobile/v1/ai/*`
-
-See `docs/IOS-APP-PLAN.md` §4 for the per-milestone route specs.
+none
 
 ## Env vars
 
@@ -132,6 +147,9 @@ See `docs/IOS-APP-PLAN.md` §4 for the per-milestone route specs.
 - `CLOUDFLARE_ACCESS_KEY` / `CLOUDFLARE_SECRET_ACCESS_KEY` — R2 S3 API credentials used to presign multipart upload/part URLs; vault-only.
 - `CLOUDFLARE_BUCKETNAME` — R2 bucket the mobile upload service writes to.
 - `CLOUDFLARE_BUCKET_URL` — public base URL prefixed onto the object key to build the media `location` returned on upload complete.
+- `NEXT_PUBLIC_MOBILE_APP_SCHEME` — deep-link scheme `MobileBounce` (`/m/connected`, `/m/auth/callback`) redirects to after the web OAuth hop; defaults to `cuantosocials` if unset.
+- `OPENAI_API_KEY` — required for `POST /mobile/v1/ai/suggest`; unset → `503 { msg: 'AI not configured' }` (`MobileAiService.isConfigured()`).
+- `FRONTEND_URL` — base URL `GET /mobile/v1/channels/connect/:provider` uses to build the post-connect redirect (`${FRONTEND_URL}/m/connected?provider=...`).
 
 ## Gate
 

@@ -56,4 +56,10 @@ public enum SocialsAPIError: Error, Sendable, Equatable {
     case server(code: Int, message: String?)
     case offline
     case cancelled
+    /// 402 on AI credits/image/video endpoints — the org's plan doesn't include AI at
+    /// all (`Sections.AI` policy check, `SubscriptionException`).
+    case aiNotInPlan
+    /// 402 on AI credits/image/video endpoints — the org's plan includes AI, but its
+    /// image/video generation credits are used up for the current billing period.
+    case aiCreditsExhausted
 }
