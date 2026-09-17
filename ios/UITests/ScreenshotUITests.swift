@@ -55,41 +55,59 @@ final class ScreenshotUITests: XCTestCase {
         XCTAssertTrue(calendarTab.waitForExistence(timeout: 20), "Calendar tab after sign-in")
         UITestKit.shot("01-calendar", dir: dir)
 
-        // Composer, with a channel picked so the editor itself renders (ComposerView gates the
-        // editor behind "Pick at least one channel").
+        // Visit Channels before the composer, in the same order as
+        // SignInComposeScheduleFlowTests: the composer's channel picker renders from the
+        // channel list the Channels tab loads, so opening the composer on a cold cache
+        // leaves it with no chip to tap.
+        tapTab("Channels", index: 1)
+        XCTAssertTrue(app.descendants(matching: .any)["UITest Channel"].waitForExistence(timeout: 15),
+                      "seeded channel on Channels tab")
+        UITestKit.shot("02-channels", dir: dir)
+
+        tapTab("Calendar", index: 0)
         let newPost = app.buttons["calendar.newPost"]
-        XCTAssertTrue(newPost.waitForExistence(timeout: 10), "Calendar new-post button")
+        XCTAssertTrue(newPost.waitForExistence(timeout: 15), "Calendar new-post button")
         newPost.tap()
+
         let channelChip = app.buttons["UITest Channel"]
-        XCTAssertTrue(channelChip.waitForExistence(timeout: 10), "composer channel chip")
+        XCTAssertTrue(channelChip.waitForExistence(timeout: 20), "composer channel chip")
         channelChip.tap()
         let editor = app.textViews["Global post content"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 10), "composer global editor")
+        XCTAssertTrue(editor.waitForExistence(timeout: 15), "composer global editor")
         editor.tap()
         editor.typeText("Product launch goes live Thursday — same copy, every channel.")
-        UITestKit.shot("02-composer", dir: dir)
+        UITestKit.shot("03-composer", dir: dir)
 
-        // Schedule sheet on top of the filled composer.
         let addToCalendar = app.buttons["Add to calendar"]
-        XCTAssertTrue(addToCalendar.waitForExistence(timeout: 5), "Add to calendar button")
+        XCTAssertTrue(addToCalendar.waitForExistence(timeout: 10), "Add to calendar button")
         addToCalendar.tap()
-        XCTAssertTrue(app.buttons["Confirm schedule"].waitForExistence(timeout: 10), "schedule sheet")
-        UITestKit.shot("03-schedule", dir: dir)
+        XCTAssertTrue(app.buttons["Confirm schedule"].waitForExistence(timeout: 15), "schedule sheet")
+        UITestKit.shot("04-schedule", dir: dir)
         app.buttons["Confirm schedule"].tap()
-        XCTAssertTrue(newPost.waitForExistence(timeout: 15), "back on Calendar after scheduling")
+        XCTAssertTrue(newPost.waitForExistence(timeout: 20), "back on Calendar after scheduling")
 
-        for (tabName, shotName) in [("Channels", "04-channels"), ("Media", "05-media"),
-                                    ("Notifications", "06-notifications")] {
-            let tab = UITestKit.tab(app, tabName)
-            guard tab.waitForExistence(timeout: 10) else {
-                XCTFail("\(tabName) tab missing")
-                continue
-            }
-            // TabView tab-bar buttons can report a {-1,-1} hit point and swallow `.tap()`
-            // silently (gotchas #18's sibling failure mode) — tap the element's own centre.
-            tab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        for (tabName, index, shotName) in [("Media", 2, "05-media"),
+                                           ("Notifications", 3, "06-notifications")] {
+            tapTab(tabName, index: index)
             UITestKit.shot(shotName, dir: dir)
         }
+    }
+
+    /// TabView tab-bar buttons report a `{-1,-1}` hit point on this app, so both `.tap()` and
+    /// the element's own centre coordinate are silently swallowed (confirmed: the tab stayed on
+    /// Calendar while the shot was taken). The bottom bar's own frame is sound, so tap the
+    /// horizontal slice belonging to the tab's index instead — five equal tabs, centre of the
+    /// nth fifth — and verify the switch actually happened via the destination's nav bar.
+    private func tapTab(_ name: String, index: Int, of count: Int = 5) {
+        let bar = app.tabBars.firstMatch
+        guard bar.waitForExistence(timeout: 15) else {
+            XCTFail("tab bar missing")
+            return
+        }
+        let dx = (Double(index) + 0.5) / Double(count)
+        bar.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: 0.5)).tap()
+        XCTAssertTrue(app.navigationBars[name].waitForExistence(timeout: 15),
+                      "\(name) did not become the active tab")
     }
 
     /// Driven by `bin/ios-layout-check`. Not part of the App Store screenshot set — writes into
@@ -116,6 +134,10 @@ final class ScreenshotUITests: XCTestCase {
         let title = app.staticTexts["Sign in"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 30), "launch screen (layout check)")
         UITestKit.assertNotClipped(app, label: title, name: "sign-in title")
-        UITestKit.shot("01-sign-in", dir: dir)
+        // Only ios-layout-check (which always sets these) wants this frame; otherwise it would
+        // drop a second sign-in PNG into the App Store screenshot set.
+        if !orientationRaw.isEmpty || !textSize.isEmpty {
+            UITestKit.shot("01-sign-in", dir: dir)
+        }
     }
 }

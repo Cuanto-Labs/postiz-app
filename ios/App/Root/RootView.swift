@@ -97,7 +97,8 @@ struct RootView: View {
     private func updateRequiredView(minimum: AppVersion) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "arrow.up.circle")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle, design: .rounded))
+                .imageScale(.large)
                 .foregroundStyle(.secondary)
             Text("Update required")
                 .font(.title2.bold())
