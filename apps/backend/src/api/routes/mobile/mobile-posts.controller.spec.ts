@@ -29,6 +29,7 @@ describe('MobilePostsController', () => {
 
   const makeController = () => {
     const postsService = {
+      getPosts: jest.fn(),
       getPostsMinified: jest.fn(),
       getPostsByGroup: jest.fn(),
       getPostsList: jest.fn(),
@@ -60,7 +61,7 @@ describe('MobilePostsController', () => {
 
   it('list maps from/to/customer to startDate/endDate/customer', async () => {
     const { controller, postsService } = makeController();
-    postsService.getPostsMinified.mockResolvedValue([{ id: 'post-1' }]);
+    postsService.getPosts.mockResolvedValue([{ id: 'post-1' }]);
 
     const result = await controller.list(org as any, {
       from: '2026-01-01',
@@ -68,7 +69,7 @@ describe('MobilePostsController', () => {
       customer: 'cust-1',
     } as any);
 
-    expect(postsService.getPostsMinified).toHaveBeenCalledWith('org-1', {
+    expect(postsService.getPosts).toHaveBeenCalledWith('org-1', {
       startDate: '2026-01-01',
       endDate: '2026-01-31',
       customer: 'cust-1',
