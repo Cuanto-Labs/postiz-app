@@ -18,7 +18,7 @@ struct CuantoSocialsApp: App {
             }
             .task {
                 if environment == nil {
-                    // UI tests launch with `-uiTestStub` to get `StubSocialsAPI` + in-memory
+                    // UI tests launch with `-uiTestStub` to get the stub API + in-memory
                     // storage instead of the real network/Keychain. No other stub use.
                     let isUITestStub = ProcessInfo.processInfo.arguments.contains("-uiTestStub")
                     if isUITestStub {

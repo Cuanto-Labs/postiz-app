@@ -62,3 +62,16 @@ Ordered by dependency. Nothing below has been started by autopilot; every row is
   and log the date checked here.
 - Beta testers: the current ~6 web users via TestFlight External, once TestFlight Internal (row 6) is green.
 - Full phased roadmap and Apple-compliance matrix: `docs/IOS-APP-PLAN.md` §§ 2, 11–14.
+
+## FINAL GATE — 2026-09-17 (EST)
+
+Local code-complete gate on `feat/ios-app`, all green on one simulator (iPhone 17 Pro Max):
+
+- `scripts/mobile-gate.sh` — prisma validate, backend tsc (baseline only, zero `mobile` errors), mobile jest specs.
+- `ios/scripts/gate.sh` — xcodegen, build of App/ShareExtension/Widgets/Intents, SocialsCore + app unit tests,
+  `CuantoSocialsUITests` (sign-in → channels → compose → schedule against `-uiTestStub`), a11y lint.
+- No placeholder/sample data in shipping sources; stub API referenced only from `AppEnvironment.swift` +
+  `Testing/UITestFixtures.swift`.
+- Intentionally not done (Decision 8): T078–T083 AI usage tables, superseded by web CheckPolicies/Credits.
+
+Everything in the table above remains external and pending.
