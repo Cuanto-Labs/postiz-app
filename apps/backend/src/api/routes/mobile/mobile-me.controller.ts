@@ -41,6 +41,7 @@ export class MobileMeController {
         lastName: user.lastName,
         pictureId: user.pictureId,
         providerName: user.providerName,
+        aiConsentAt: user.aiConsentAt ?? null,
       },
       org: {
         id: org.id,

@@ -77,6 +77,7 @@ describe('MobileMeController', () => {
         lastName: 'One',
         pictureId: 'pic-1',
         providerName: 'LOCAL',
+        aiConsentAt: null,
       },
       org: {
         id: 'org-1',
@@ -110,5 +111,15 @@ describe('MobileMeController', () => {
     const expectedTier = process.env.STRIPE_PUBLISHABLE_KEY ? 'FREE' : 'PRO';
     expect(result.plan.tier).toBe(expectedTier);
     expect(result.sessionId).toBeUndefined();
+  });
+
+  it('returns aiConsentAt when the user has consented', async () => {
+    const { controller } = makeController();
+    const consentedUser = { ...user, aiConsentAt: new Date('2026-01-01') };
+    const req = {};
+
+    const result = await controller.me(consentedUser as any, org as any, req as any);
+
+    expect(result.user.aiConsentAt).toEqual(new Date('2026-01-01'));
   });
 });
