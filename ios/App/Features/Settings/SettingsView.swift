@@ -174,11 +174,20 @@ struct SettingsView: View {
             }
 
             Section {
-                HStack {
-                    Text("Version")
-                    Spacer()
-                    Text(viewModel.appVersion)
-                        .foregroundStyle(.secondary)
+                // ViewThatFits: side-by-side at normal text sizes, stacked at large Dynamic Type
+                // so the version string never truncates/clips against the row's fixed width.
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(viewModel.appVersion)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Version")
+                        Text(viewModel.appVersion)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("App version \(viewModel.appVersion)")

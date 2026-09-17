@@ -182,4 +182,24 @@ xcodebuild test \
   -maximum-concurrent-test-simulator-destinations 1 \
   -quiet >"$TEST_LOG" 2>&1 || fail_with_log "test" "$TEST_LOG"
 
+# ---------------------------------------------------------------------------
+# 6) design gate — Dynamic Type matrix (opt-in via IOS_GATE_DESIGN=1). Off by
+# default so the everyday gate stays fast/unchanged; ios-gate-green / release
+# runs turn it on. Pinned to the single sim booted above via --devices
+# "$SIM_NAME" — never lets ios-layout-check's own smallest+largest default
+# boot a second simulator. This script already holds the machine-wide sim
+# lock from step 1 for its whole run, so the child ios-layout-check call
+# opts out of re-acquiring it (IOS_SIM_NO_LOCK=1) instead of deadlocking
+# against itself; it still only ever runs serialized under this gate's lock.
+# ---------------------------------------------------------------------------
+if [ "${IOS_GATE_DESIGN:-0}" = "1" ]; then
+  IOS_SUITE_DIR="${IOS_SUITE_DIR:-$HOME/coding/ios-suite}"
+  [ -x "$IOS_SUITE_DIR/bin/ios-layout-check" ] \
+    || die "ios-layout-check not found at $IOS_SUITE_DIR/bin (set IOS_SUITE_DIR)"
+  export PATH="$IOS_SUITE_DIR/bin:$PATH"
+  log "ios-layout-check --design ($SIM_NAME only)"
+  IOS_SIM_NO_LOCK=1 ios-layout-check --design --devices "$SIM_NAME" --app "$ROOT/ios" \
+    || die "ios-layout-check --design"
+fi
+
 log "gate passed"

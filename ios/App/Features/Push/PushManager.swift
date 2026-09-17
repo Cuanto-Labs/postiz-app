@@ -16,7 +16,8 @@ final class PushManager: NSObject {
     /// then still has somewhere to go once wiring finishes.
     var registrationViewModel: PushRegistrationViewModel?
 
-    /// Notification tap/action forwarding. `push-deeplink` card wires this to `DeepLinkRouter`.
+    /// Notification tap/action forwarding. `RootView` wires this to `DeepLinkRouter`, using
+    /// `PushManager.route(from:)` below to resolve `userInfo` into a `DeepLinkRoute`.
     var onAction: (@MainActor (_ categoryId: String, _ actionId: String, _ userInfo: [AnyHashable: Any]) -> Void)?
 
     private override init() {
@@ -54,6 +55,13 @@ final class PushManager: NSObject {
     /// the raw token here.
     func didRegisterForRemoteNotifications(deviceToken: Data) {
         Task { await registrationViewModel?.didReceiveToken(deviceToken) }
+    }
+
+    /// Resolves a notification's `userInfo` payload into a `DeepLinkRoute` via
+    /// `PushPayloadRoute`, so `onAction` callers don't have to duplicate the `kind`/`link`
+    /// parsing that mirrors `PushService`'s payload shape.
+    static func route(from userInfo: [AnyHashable: Any]) -> DeepLinkRoute? {
+        PushPayloadRoute.route(from: userInfo)
     }
 
     private static func notificationAction(for action: PushAction) -> UNNotificationAction {

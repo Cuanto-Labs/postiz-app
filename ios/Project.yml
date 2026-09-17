@@ -247,6 +247,24 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CuantoSocials.app/CuantoSocials"
         BUNDLE_LOADER: "$(TEST_HOST)"
         GENERATE_INFOPLIST_FILE: YES
+  CuantoSocialsUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: CuantoSocials
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials.uitests
+        TEST_TARGET_NAME: CuantoSocials
+        GENERATE_INFOPLIST_FILE: YES
+        # Override the project-wide MainActor default isolation (line 21) for this target only:
+        # XCTestCase's setUp()/init overrides are imported as nonisolated, and the project default
+        # collides with them ("has different actor isolation from nonisolated overridden
+        # declaration"). UI test code runs out-of-process from the app under test, so nothing here
+        # needs MainActor isolation.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
 schemes:
   CuantoSocials:
     build:
@@ -257,6 +275,7 @@ schemes:
         CuantoSocialsWidgets: all
         CuantoSocialsIntents: all
         CuantoSocialsTests: [test]
+        CuantoSocialsUITests: [test]
     run:
       config: Debug
     test:
@@ -264,6 +283,7 @@ schemes:
       parallelizable: false
       targets:
         - CuantoSocialsTests
+        - CuantoSocialsUITests
   CuantoSocials-Staging:
     build:
       parallelizeBuild: true

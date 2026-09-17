@@ -22,13 +22,26 @@ struct AnalyticsSeriesCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(series.label)
-                    .font(.headline)
-                Spacer()
-                Label(changeText, systemImage: isUp ? "arrow.up" : "arrow.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(isUp ? .green : .red)
+            // ViewThatFits: side-by-side label + change badge at normal text sizes, stacked at
+            // large Dynamic Type so neither gets clipped/overlapped in the fixed-width header row.
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text(series.label)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer()
+                    Label(changeText, systemImage: isUp ? "arrow.up" : "arrow.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isUp ? .green : .red)
+                        .lineLimit(1)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(series.label)
+                        .font(.headline)
+                    Label(changeText, systemImage: isUp ? "arrow.up" : "arrow.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isUp ? .green : .red)
+                }
             }
 
             if series.data.isEmpty {
