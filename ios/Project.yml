@@ -12,6 +12,8 @@ configs:
 packages:
   CuantoKit:
     path: ../../cuanto-kit
+  SocialsCore:
+    path: Packages/SocialsCore
 settings:
   base:
     SWIFT_VERSION: "6"
@@ -89,6 +91,10 @@ targets:
         product: CuantoNotify
       - package: CuantoKit
         product: CuantoAnalytics
+      - package: SocialsCore
+        product: SocialsCore
+      - package: CuantoKit
+        product: CuantoTesting
       # The extension targets, embedded + signed into the app bundle. These
       # MUST stay in the same `dependencies:` list as the packages above —
       # YAML keeps only the last of two identical keys, so a second
@@ -212,6 +218,8 @@ targets:
       - target: CuantoSocials
       - package: CuantoKit
         product: CuantoTesting
+      - package: SocialsCore
+        product: SocialsCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials.tests

@@ -45,6 +45,8 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `POST` | `/mobile/v1/media/uploads/abort` | `MobileMediaAbortUploadDto` (`key`, `uploadId`) | `{ ok: true }` | aborts the R2 multipart upload; idempotent — an already-gone (`NoSuchUpload`) upload still returns `{ ok: true }` |
 | `GET` | `/mobile/v1/media/:id/status` | — (bearer) | `{ id, name, originalName, path, thumbnail, alt, status, processingError }` | `status` is `processing` \| `ready` \| `failed`; poll until it leaves `processing`; 404 `{ msg: 'Media not found' }` if the id doesn't exist (or belongs to another org) |
 | `GET` | `/mobile/v1/media?page=` | `MobileMediaListQueryDto` (`page?` int) | `{ pages, results: Array<{ id, name, originalName, path, thumbnail, alt, thumbnailTimestamp }> }` | 18 per page; excludes media still `processing` |
+| `GET` | `/mobile/v1/account/deletion-preview` | — (bearer) | `AccountDeletionPreview` = `{ orgsToDelete: { id, name }[], orgsToLeave: { id, name }[] }` | orgs where the caller is the sole `SUPERADMIN` land in `orgsToDelete` (will be fully deleted); the rest land in `orgsToLeave` (caller just leaves) |
+| `DELETE` | `/mobile/v1/account` | `MobileDeleteAccountDto` (`confirm`, must be exactly `'DELETE'`) | `{ ok: true, deletedOrgs, leftOrgs }` (both `{ id, name }[]`) | 400 if `confirm` isn't `'DELETE'`; `3/min` throttle; see `## Account deletion` for cascade order |
 
 `MobileTokens = { accessToken, refreshToken, expiresIn, sessionId }`.
 `MobileAuthResponse = MobileTokens & { user: { id, email, name?, lastName?, pictureId? }, orgs: Array<{ id, name, role, disabled }> }` (password stripped, disabled orgs filtered).
@@ -85,10 +87,28 @@ Allowed mimes (by file extension): `.jpg`/`.jpeg` → `image/jpeg`, `.png` → `
 
 Per-provider posting limits (`limits.media` on `GET /mobile/v1/channels`) narrow counts/duration/aspect-ratio on top of the global upload caps above — see `getMediaLimits`/`MEDIA_LIMITS` in `libraries/nestjs-libraries/src/mobile/media/media-limits.ts`.
 
+## Account deletion
+
+`DELETE /mobile/v1/account` (`MobileAccountService.deleteAccount`) cascades in this order:
+
+1. For each org the caller is deleting (see sole-admin rule below): terminate its running Temporal workflows — `post_<id>` for queued posts, `media_<id>` for processing media.
+2. Cancel the org's Stripe subscription at period end (`StripeService.setToCancel`); failure is logged and non-fatal, deletion continues.
+3. Soft-delete the org's integrations and posts (`IntegrationRepository.deleteIntegrationsForAccount`).
+4. Soft-delete the org's media (`softDeleteMedia`, sets `deletedAt`).
+5. Delete the organization (`OrganizationRepository.deleteOrganization`).
+6. For every other org the caller belongs to but isn't sole admin of: leave the org (`deleteTeamMember`) — the org and its data are untouched.
+7. Revoke every `MobileSession` and `PushDevice` row for the user (hard delete — all devices/sessions everywhere, not just the caller's org).
+8. Write an `AccountDeletionAudit` row: SHA-256 hash of `userId` only (no email/PII), plus the deleted/left org ids and `source: 'mobile'`.
+9. Send a "your account has been deleted" confirmation email (fire-and-forget, only if an email provider is configured) — sent while the address is still valid, before anonymization.
+10. Anonymize the `User` row: `email` → `deleted+<hash>@deleted.invalid`, `name`/`lastName`/`pictureId`/`password`/`bio` cleared, `providerId` replaced, `activated: false`, `deletedAt` set.
+
+**Sole-admin rule:** `GET /mobile/v1/account/deletion-preview` computes, per org the caller belongs to, whether the caller is `SUPERADMIN` with no other non-disabled `SUPERADMIN` in that org — if so the org is fully deleted (`orgsToDelete`); otherwise the caller just leaves it (`orgsToLeave`).
+
+**Retained:** the `AccountDeletionAudit` row (hashed `userId` only) and the anonymized `User` row (kept for referential integrity, no PII left).
+
 ## Pending (later milestones, not yet implemented)
 
 - `GET /mobile/v1/channels/connect/:provider`
-- `DELETE /mobile/v1/account`
 - `POST /mobile/v1/ai/*`
 
 See `docs/IOS-APP-PLAN.md` §4 for the per-milestone route specs.
