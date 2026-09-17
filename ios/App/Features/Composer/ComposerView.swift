@@ -14,6 +14,9 @@ struct ComposerView: View {
     @State private var isLoadingChannels = false
     @State private var loadError: String?
     @State private var showScheduleSheet = false
+    @State private var showAIImage = false
+    @State private var showAIVideo = false
+    @State private var showCopilot = false
 
     var body: some View {
         NavigationStack {
@@ -29,6 +32,45 @@ struct ComposerView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .accessibilityLabel("Cancel")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu("AI", systemImage: "sparkles") {
+                        Button("Image", systemImage: "photo") { showAIImage = true }
+                        Button("Video", systemImage: "video") { showAIVideo = true }
+                        Button("Assist", systemImage: "wand.and.stars") { showCopilot = true }
+                    }
+                    .accessibilityLabel("AI")
+                }
+            }
+            .sheet(isPresented: $showAIImage) {
+                if let viewModel {
+                    AIImageView(
+                        viewModel: AIImageViewModel(api: environment.api),
+                        onGenerated: { result in
+                            viewModel.attachAIMedia(result)
+                            showAIImage = false
+                        })
+                }
+            }
+            .sheet(isPresented: $showAIVideo) {
+                if let viewModel {
+                    AIVideoView(
+                        viewModel: AIVideoViewModel(api: environment.api),
+                        onGenerated: { result in
+                            viewModel.attachAIMedia(result)
+                            showAIVideo = false
+                        })
+                }
+            }
+            .sheet(isPresented: $showCopilot) {
+                if let viewModel {
+                    CopilotSheet(
+                        content: viewModel.globalDraft.content,
+                        viewModel: CopilotViewModel(api: environment.api),
+                        onApply: { text in
+                            viewModel.applySuggestion(text)
+                            showCopilot = false
+                        })
                 }
             }
             .safeAreaInset(edge: .bottom) {

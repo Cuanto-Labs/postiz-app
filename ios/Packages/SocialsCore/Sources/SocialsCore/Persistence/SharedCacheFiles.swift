@@ -30,6 +30,22 @@ public struct SharedCacheFiles: Sendable {
         guard FileManager.default.fileExists(atPath: snapshotURL.path) else { return }
         try FileManager.default.removeItem(at: snapshotURL)
     }
+
+    /// Encodes `snapshot` as JSON and writes it as the widget's snapshot.
+    public func writeWidgetSnapshot(_ snapshot: WidgetSnapshot) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try writeWidgetSnapshot(try encoder.encode(snapshot))
+    }
+
+    /// Reads and decodes the widget snapshot, or `nil` if none has been written yet (or it's
+    /// unreadable/corrupt — the widget falls back to its placeholder rather than crashing).
+    public func readWidgetSnapshot() -> WidgetSnapshot? {
+        guard let data = try? Data(contentsOf: snapshotURL) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(WidgetSnapshot.self, from: data)
+    }
 }
 
 /// Sign-out helper: wipes the SwiftData cache/outbox and the App Group widget
