@@ -18,6 +18,9 @@ public final class PostDetailViewModel {
 
     public private(set) var isRetrying = false
 
+    public private(set) var isDeleting = false
+    public private(set) var isDeleted = false
+
     public private(set) var previewPosts: [PostGroupDTO] = []
     public private(set) var isLoadingPreview = false
 
@@ -67,6 +70,25 @@ public final class PostDetailViewModel {
         do {
             _ = try await api.reschedule(group: postId, date: Self.iso(.now), action: "schedule")
             await load()
+        } catch let error as SocialsAPIError {
+            errorMessage = Self.message(for: error)
+        } catch {
+            errorMessage = "Something went wrong. Please try again."
+        }
+    }
+
+    // MARK: - Delete
+
+    /// Deletes this post group (mirrors web's `calendar.tsx` `deletePost`: `DELETE /posts/:group`,
+    /// then the caller reloads its list). Sets `isDeleted` on success so the view can dismiss
+    /// itself; leaves `errorMessage` set on failure so the view can surface a retry.
+    public func delete() async {
+        isDeleting = true
+        errorMessage = nil
+        defer { isDeleting = false }
+        do {
+            _ = try await api.deletePost(group: postId)
+            isDeleted = true
         } catch let error as SocialsAPIError {
             errorMessage = Self.message(for: error)
         } catch {
