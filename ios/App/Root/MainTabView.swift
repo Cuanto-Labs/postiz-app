@@ -1,14 +1,40 @@
 import SocialsCore
 import SwiftUI
 
-/// Signed-in tab shell: Calendar, Channels, Media, Notifications, Analytics, Settings, each
-/// wrapped in its own `NavigationStack` with the org switcher in the toolbar. `RootView` shows
-/// this once the session gate resolves to `.signedIn`.
+/// The tabs `MainTabView` actually renders — one fewer than `DeepLinkTab`, since Analytics and
+/// Settings live inside the "More" tab rather than getting one each. Kept separate from
+/// `DeepLinkTab` (which also names URL route segments, and has no "more" of its own) so this
+/// stays a pure UI/tab-selection concern.
+private enum MainTab: Hashable {
+    case calendar
+    case channels
+    case media
+    case notifications
+    case more
+}
+
+/// Row shown in the "More" tab's list — the destinations that don't get a tab of their own.
+private enum MoreDestination: Hashable {
+    case analytics
+    case settings
+}
+
+/// Signed-in tab shell: Calendar, Channels, Media, Notifications, and a "More" tab holding
+/// Analytics and Settings, each of the first four wrapped in its own `NavigationStack` with the
+/// org switcher in the toolbar. `RootView` shows this once the session gate resolves to
+/// `.signedIn`.
+///
+/// Analytics and Settings aren't real tabs: with all six as tabs, iPhone's compact width
+/// collapses the last two into UIKit's automatic "More" tab, whose `UIMoreNavigationController`
+/// wraps our own `NavigationStack` — any push inside then shows two stacked back buttons. A
+/// single hand-rolled "More" tab (list of rows, one `NavigationStack`) avoids the double wrapper.
 ///
 /// Also reacts to `DeepLinkRouter.pendingRoute` (from `RootView`'s `onOpenURL`, or a push
-/// notification via `PushPayloadRoute`): a `.tab` route just switches `selectedTab`; `.postDetail`
-/// and `.channelsReconnect` land on the closest tab that surfaces them today, since neither
-/// `PostDetailView` nor an in-tab reconnect flow is wired into the tab tree yet.
+/// notification via `PushPayloadRoute`): a `.tab` route to `.calendar`/`.channels`/`.media`/
+/// `.notifications` just switches `selectedTab`; `.analytics`/`.settings` select the More tab and
+/// push the matching row onto `morePath`. `.postDetail` and `.channelsReconnect` land on the
+/// closest tab that surfaces them today, since neither `PostDetailView` nor an in-tab reconnect
+/// flow is wired into the tab tree yet.
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.scenePhase) private var scenePhase
@@ -20,7 +46,8 @@ struct MainTabView: View {
     /// surface `unreadCount` as a tab badge, mirroring how every other tab's screen owns its
     /// view model independently.
     @State private var badgeViewModel: NotificationsViewModel?
-    @State private var selectedTab: DeepLinkTab = .calendar
+    @State private var selectedTab: MainTab = .calendar
+    @State private var morePath = NavigationPath()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,7 +62,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Calendar", systemImage: "calendar")
             }
-            .tag(DeepLinkTab.calendar)
+            .tag(MainTab.calendar)
 
             NavigationStack {
                 ChannelsListView()
@@ -48,7 +75,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Channels", systemImage: "antenna.radiowaves.left.and.right")
             }
-            .tag(DeepLinkTab.channels)
+            .tag(MainTab.channels)
 
             NavigationStack {
                 MediaLibraryView(
@@ -65,7 +92,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Media", systemImage: "photo.on.rectangle")
             }
-            .tag(DeepLinkTab.media)
+            .tag(MainTab.media)
 
             NavigationStack {
                 NotificationsView()
@@ -79,33 +106,32 @@ struct MainTabView: View {
                 Label("Notifications", systemImage: "bell")
             }
             .badge(badgeViewModel?.unreadCount ?? 0)
-            .tag(DeepLinkTab.notifications)
+            .tag(MainTab.notifications)
 
-            NavigationStack {
-                AnalyticsView()
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            OrgSwitcherMenu()
-                        }
+            NavigationStack(path: $morePath) {
+                List {
+                    NavigationLink("Analytics", value: MoreDestination.analytics)
+                    NavigationLink("Settings", value: MoreDestination.settings)
+                }
+                .navigationTitle("More")
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        OrgSwitcherMenu()
                     }
+                }
+                .navigationDestination(for: MoreDestination.self) { destination in
+                    switch destination {
+                    case .analytics:
+                        AnalyticsView()
+                    case .settings:
+                        SettingsView()
+                    }
+                }
             }
             .tabItem {
-                Label("Analytics", systemImage: "chart.bar")
+                Label("More", systemImage: "ellipsis")
             }
-            .tag(DeepLinkTab.analytics)
-
-            NavigationStack {
-                SettingsView()
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            OrgSwitcherMenu()
-                        }
-                    }
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
-            }
-            .tag(DeepLinkTab.settings)
+            .tag(MainTab.more)
         }
         .task {
             if badgeViewModel == nil {
@@ -121,8 +147,20 @@ struct MainTabView: View {
         .onChange(of: deepLinkRouter.pendingRoute) { _, route in
             guard let route else { return }
             switch route {
-            case .tab(let tab):
-                selectedTab = tab
+            case .tab(.calendar):
+                selectedTab = .calendar
+            case .tab(.channels):
+                selectedTab = .channels
+            case .tab(.media):
+                selectedTab = .media
+            case .tab(.notifications):
+                selectedTab = .notifications
+            case .tab(.analytics):
+                selectedTab = .more
+                morePath = NavigationPath([MoreDestination.analytics])
+            case .tab(.settings):
+                selectedTab = .more
+                morePath = NavigationPath([MoreDestination.settings])
             case .postDetail:
                 // Not wired to a dedicated screen yet — Calendar is the closest tab that
                 // surfaces individual posts.
