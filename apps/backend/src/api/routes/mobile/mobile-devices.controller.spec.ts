@@ -25,8 +25,27 @@ jest.mock(
   '@gitroom/nestjs-libraries/integrations/integration.manager',
   () => ({ IntegrationManager: class IntegrationManager {} })
 );
+// MobileModule also registers MobilePostsController/MobileMeController,
+// which pull in PostsService/PermissionsService; PermissionsService in turn
+// reaches IntegrationManager -> nostr.provider.ts -> nostr-tools (ESM), same
+// issue as above. Only the class reference is needed here.
+jest.mock(
+  '@gitroom/backend/services/auth/permissions/permissions.service',
+  () => ({ PermissionsService: class PermissionsService {} })
+);
+jest.mock(
+  '@gitroom/nestjs-libraries/database/prisma/posts/posts.service',
+  () => ({ PostsService: class PostsService {} })
+);
 
 import { MobileDevicesController } from '@gitroom/backend/api/routes/mobile/mobile-devices.controller';
+import { MobileMeController } from '@gitroom/backend/api/routes/mobile/mobile-me.controller';
+import { MobileConfigController } from '@gitroom/backend/api/routes/mobile/mobile-config.controller';
+import { MobileChannelsController } from '@gitroom/backend/api/routes/mobile/mobile-channels.controller';
+import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile-posts.controller';
+import { IdempotencyRepository } from '@gitroom/nestjs-libraries/mobile/idempotency.repository';
+import { MobileIdempotencyInterceptor } from '@gitroom/backend/api/routes/mobile/mobile-idempotency.interceptor';
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
 import { MobileModule } from '@gitroom/backend/api/routes/mobile/mobile.module';
 
 describe('MobileDevicesController', () => {
@@ -76,5 +95,18 @@ describe('MobileDevicesController', () => {
 
   it('MobileModule.prototype.configure exists', () => {
     expect(typeof MobileModule.prototype.configure).toBe('function');
+  });
+
+  it('registers the mobile controllers and idempotency/permissions providers', () => {
+    const controllers = Reflect.getMetadata('controllers', MobileModule);
+    expect(controllers).toContain(MobileMeController);
+    expect(controllers).toContain(MobileConfigController);
+    expect(controllers).toContain(MobileChannelsController);
+    expect(controllers).toContain(MobilePostsController);
+
+    const providers = Reflect.getMetadata('providers', MobileModule);
+    expect(providers).toContain(IdempotencyRepository);
+    expect(providers).toContain(MobileIdempotencyInterceptor);
+    expect(providers).toContain(PermissionsService);
   });
 });
