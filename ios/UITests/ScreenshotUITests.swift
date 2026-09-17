@@ -29,7 +29,67 @@ final class ScreenshotUITests: XCTestCase {
     func testWalkthrough() {
         app.launch()
         XCTAssertTrue(app.staticTexts["Sign in"].firstMatch.waitForExistence(timeout: 30), "launch screen")
-        UITestKit.shot("01-sign-in", dir: dir)
+        UITestKit.shot("07-sign-in", dir: dir)
+    }
+
+    /// The App Store screenshot set. Runs the app behind `-uiTestStub` (`AppEnvironment.preview()`
+    /// + `UITestFixtures`, same fixtures `SignInComposeScheduleFlowTests` drives) so the store
+    /// listing shows the app actually in use — a signed-out sign-in screen on its own reads as an
+    /// empty app to a reviewer (Guideline 2.3.3). Fixture literals are hardcoded for the same
+    /// reason as in that test: the UITest target can't import the App target's fixtures.
+    func testAppStoreScreenshots() {
+        app.launchArguments += ["-uiTestStub"]
+        app.launch()
+
+        let email = app.textFields["signIn.email"]
+        XCTAssertTrue(email.waitForExistence(timeout: 30), "sign-in email field")
+        email.tap()
+        email.typeText("uitest@cuantolabs.com")
+        let password = app.secureTextFields["signIn.password"]
+        XCTAssertTrue(password.waitForExistence(timeout: 5), "sign-in password field")
+        password.tap()
+        password.typeText("uitest-password")
+        app.buttons["signIn.submit"].tap()
+
+        let calendarTab = UITestKit.tab(app, "Calendar")
+        XCTAssertTrue(calendarTab.waitForExistence(timeout: 20), "Calendar tab after sign-in")
+        UITestKit.shot("01-calendar", dir: dir)
+
+        // Composer, with a channel picked so the editor itself renders (ComposerView gates the
+        // editor behind "Pick at least one channel").
+        let newPost = app.buttons["calendar.newPost"]
+        XCTAssertTrue(newPost.waitForExistence(timeout: 10), "Calendar new-post button")
+        newPost.tap()
+        let channelChip = app.buttons["UITest Channel"]
+        XCTAssertTrue(channelChip.waitForExistence(timeout: 10), "composer channel chip")
+        channelChip.tap()
+        let editor = app.textViews["Global post content"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "composer global editor")
+        editor.tap()
+        editor.typeText("Product launch goes live Thursday — same copy, every channel.")
+        UITestKit.shot("02-composer", dir: dir)
+
+        // Schedule sheet on top of the filled composer.
+        let addToCalendar = app.buttons["Add to calendar"]
+        XCTAssertTrue(addToCalendar.waitForExistence(timeout: 5), "Add to calendar button")
+        addToCalendar.tap()
+        XCTAssertTrue(app.buttons["Confirm schedule"].waitForExistence(timeout: 10), "schedule sheet")
+        UITestKit.shot("03-schedule", dir: dir)
+        app.buttons["Confirm schedule"].tap()
+        XCTAssertTrue(newPost.waitForExistence(timeout: 15), "back on Calendar after scheduling")
+
+        for (tabName, shotName) in [("Channels", "04-channels"), ("Media", "05-media"),
+                                    ("Notifications", "06-notifications")] {
+            let tab = UITestKit.tab(app, tabName)
+            guard tab.waitForExistence(timeout: 10) else {
+                XCTFail("\(tabName) tab missing")
+                continue
+            }
+            // TabView tab-bar buttons can report a {-1,-1} hit point and swallow `.tap()`
+            // silently (gotchas #18's sibling failure mode) — tap the element's own centre.
+            tab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            UITestKit.shot(shotName, dir: dir)
+        }
     }
 
     /// Driven by `bin/ios-layout-check`. Not part of the App Store screenshot set — writes into
