@@ -179,7 +179,8 @@ public final class SignInViewModel {
         case .validation(let message): return message ?? "Check your details and try again."
         case .forbidden(let message): return message ?? "That account can't sign in right now."
         case .offline: return "You're offline. Check your connection and try again."
-        case .server, .notFound, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted:
+        case .server, .notFound, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted,
+            .aiConsentRequired:
             return "Something went wrong. Please try again."
         case .cancelled: return ""
         }

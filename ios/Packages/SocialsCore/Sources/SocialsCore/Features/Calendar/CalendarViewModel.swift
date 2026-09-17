@@ -149,7 +149,7 @@ public final class CalendarViewModel {
         case .forbidden(let message): return message ?? "That action isn't allowed."
         case .validation(let message): return message ?? "Check your details and try again."
         case .notFound: return "That couldn't be found."
-        case .server, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted:
+        case .server, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted, .aiConsentRequired:
             return "Something went wrong. Please try again."
         case .cancelled: return ""
         }

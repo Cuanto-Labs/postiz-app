@@ -418,6 +418,22 @@ public actor StubSocialsAPI: SocialsAPI {
         return try next(&completeUploadResults, "completeUpload")
     }
 
+    // MARK: - Notifications
+
+    public var notificationsCountResults: [Result<NotificationsCountResponse, Error>] = []
+    public private(set) var notificationsCountCallCount = 0
+    public func notificationsCount() async throws -> NotificationsCountResponse {
+        notificationsCountCallCount += 1
+        return try next(&notificationsCountResults, "notificationsCount")
+    }
+
+    public var notificationsListResults: [Result<NotificationsListResponse, Error>] = []
+    public private(set) var notificationsListCallCount = 0
+    public func notificationsList() async throws -> NotificationsListResponse {
+        notificationsListCallCount += 1
+        return try next(&notificationsListResults, "notificationsList")
+    }
+
     // MARK: - Push
 
     public var upsertPushDeviceResults: [Result<PushDeviceResponse, Error>] = []
@@ -469,5 +485,128 @@ public actor StubSocialsAPI: SocialsAPI {
     public func aiGenerateVideo(_ body: AIVideoRequest) async throws -> AIMediaResult {
         aiGenerateVideoCalls.append(body)
         return try next(&aiGenerateVideoResults, "aiGenerateVideo")
+    }
+
+    public var aiConsentResults: [Result<AIConsentResponse, Error>] = []
+    public private(set) var aiConsentCallCount = 0
+    public func aiConsent() async throws -> AIConsentResponse {
+        aiConsentCallCount += 1
+        return try next(&aiConsentResults, "aiConsent")
+    }
+
+    public var setAIConsentResults: [Result<AIConsentResponse, Error>] = []
+    public private(set) var setAIConsentCalls: [Bool] = []
+    public func setAIConsent(_ body: AIConsentRequest) async throws -> AIConsentResponse {
+        setAIConsentCalls.append(body.granted)
+        return try next(&setAIConsentResults, "setAIConsent")
+    }
+
+    public var aiSuggestResults: [Result<AISuggestResponse, Error>] = []
+    public private(set) var aiSuggestCalls: [AISuggestRequest] = []
+    public func aiSuggest(_ body: AISuggestRequest) async throws -> AISuggestResponse {
+        aiSuggestCalls.append(body)
+        return try next(&aiSuggestResults, "aiSuggest")
+    }
+
+    // MARK: - Analytics
+
+    public var channelAnalyticsResults: [Result<[AnalyticsSeries], Error>] = []
+    public private(set) var channelAnalyticsCalls: [(String, AnalyticsRange)] = []
+    public func channelAnalytics(integrationId: String, range: AnalyticsRange) async throws
+        -> [AnalyticsSeries]
+    {
+        channelAnalyticsCalls.append((integrationId, range))
+        return try next(&channelAnalyticsResults, "channelAnalytics")
+    }
+
+    public var postAnalyticsResults: [Result<[AnalyticsSeries], Error>] = []
+    public private(set) var postAnalyticsCalls: [(String, AnalyticsRange)] = []
+    public func postAnalytics(postId: String, range: AnalyticsRange) async throws
+        -> [AnalyticsSeries]
+    {
+        postAnalyticsCalls.append((postId, range))
+        return try next(&postAnalyticsResults, "postAnalytics")
+    }
+
+    // MARK: - Org settings
+
+    public var teamMembersResults: [Result<TeamListResponse, Error>] = []
+    public func teamMembers() async throws -> TeamListResponse {
+        try next(&teamMembersResults, "teamMembers")
+    }
+
+    public var addTeamMemberResults: [Result<OkResponse, Error>] = []
+    public private(set) var addTeamMemberCalls: [AddTeamMemberRequest] = []
+    public func addTeamMember(_ body: AddTeamMemberRequest) async throws -> OkResponse {
+        addTeamMemberCalls.append(body)
+        return try next(&addTeamMemberResults, "addTeamMember")
+    }
+
+    public var removeTeamMemberResults: [Result<OkResponse, Error>] = []
+    public private(set) var removeTeamMemberCalls: [String] = []
+    public func removeTeamMember(_ id: String) async throws -> OkResponse {
+        removeTeamMemberCalls.append(id)
+        return try next(&removeTeamMemberResults, "removeTeamMember")
+    }
+
+    public var shortlinkResults: [Result<ShortlinkPreferenceResponse, Error>] = []
+    public func shortlinkPreference() async throws -> ShortlinkPreferenceResponse {
+        try next(&shortlinkResults, "shortlinkPreference")
+    }
+
+    public var setShortlinkResults: [Result<ShortlinkPreferenceResponse, Error>] = []
+    public private(set) var setShortlinkCalls: [ShortlinkPreference] = []
+    public func setShortlinkPreference(_ shortlink: ShortlinkPreference) async throws
+        -> ShortlinkPreferenceResponse
+    {
+        setShortlinkCalls.append(shortlink)
+        return try next(&setShortlinkResults, "setShortlinkPreference")
+    }
+
+    public var webhooksResults: [Result<[MobileWebhook], Error>] = []
+    public func webhooks() async throws -> [MobileWebhook] {
+        try next(&webhooksResults, "webhooks")
+    }
+
+    // MARK: - Account settings
+
+    public var personalDetailsResults: [Result<PersonalDetails, Error>] = []
+    public func personalDetails() async throws -> PersonalDetails {
+        try next(&personalDetailsResults, "personalDetails")
+    }
+
+    public var updatePersonalDetailsResults: [Result<PersonalDetails, Error>] = []
+    public private(set) var updatePersonalDetailsCalls: [PersonalDetailsRequest] = []
+    public func updatePersonalDetails(_ body: PersonalDetailsRequest) async throws
+        -> PersonalDetails
+    {
+        updatePersonalDetailsCalls.append(body)
+        return try next(&updatePersonalDetailsResults, "updatePersonalDetails")
+    }
+
+    public var emailPrefsResults: [Result<EmailNotificationPrefs, Error>] = []
+    public func emailNotificationPrefs() async throws -> EmailNotificationPrefs {
+        try next(&emailPrefsResults, "emailNotificationPrefs")
+    }
+
+    public var updateEmailPrefsResults: [Result<EmailNotificationPrefs, Error>] = []
+    public private(set) var updateEmailPrefsCalls: [EmailNotificationPrefs] = []
+    public func updateEmailNotificationPrefs(_ body: EmailNotificationPrefs) async throws
+        -> EmailNotificationPrefs
+    {
+        updateEmailPrefsCalls.append(body)
+        return try next(&updateEmailPrefsResults, "updateEmailNotificationPrefs")
+    }
+
+    public var deletionPreviewResults: [Result<DeletionPreview, Error>] = []
+    public func deletionPreview() async throws -> DeletionPreview {
+        try next(&deletionPreviewResults, "deletionPreview")
+    }
+
+    public var deleteAccountResults: [Result<DeleteAccountResponse, Error>] = []
+    public private(set) var deleteAccountCalls: Int = 0
+    public func deleteAccount() async throws -> DeleteAccountResponse {
+        deleteAccountCalls += 1
+        return try next(&deleteAccountResults, "deleteAccount")
     }
 }

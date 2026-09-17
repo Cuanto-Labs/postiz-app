@@ -90,7 +90,8 @@ public final class RegisterViewModel {
         case .unauthorized:
             return "Something went wrong. Please try again."
         case .offline: return "You're offline. Check your connection and try again."
-        case .server, .notFound, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted:
+        case .server, .notFound, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted,
+            .aiConsentRequired:
             return "Something went wrong. Please try again."
         case .cancelled: return ""
         }

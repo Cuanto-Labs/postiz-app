@@ -37,7 +37,7 @@ public final class LiveSocialsAPI: SocialsAPI {
             switch code {
             case 400: return SocialsAPIError.validation(message: message)
             case 402: return mapAIPaymentError(body: body, message: message)
-            case 403: return SocialsAPIError.forbidden(message: message)
+            case 403: return mapForbiddenError(message: message)
             case 404: return SocialsAPIError.notFound(message: message)
             case 422: return SocialsAPIError.idempotencyConflict
             default: return SocialsAPIError.server(code: code, message: message)
@@ -64,6 +64,15 @@ public final class LiveSocialsAPI: SocialsAPI {
             return SocialsAPIError.aiCreditsExhausted
         }
         return SocialsAPIError.server(code: 402, message: message)
+    }
+
+    /// 403 on `aiSuggest` is `{msg: 'AI consent required'}` (`MobileAiService.requireConsent`)
+    /// when the org hasn't granted AI text consent yet; any other 403 stays `.forbidden`.
+    private static func mapForbiddenError(message: String?) -> Error {
+        if let message, message.localizedCaseInsensitiveContains("AI consent required") {
+            return SocialsAPIError.aiConsentRequired
+        }
+        return SocialsAPIError.forbidden(message: message)
     }
 
     // MARK: - Auth
@@ -326,6 +335,16 @@ public final class LiveSocialsAPI: SocialsAPI {
         try await send(SocialsEndpoints.completeMediaUpload(body, orgId: await orgProvider()))
     }
 
+    // MARK: - Notifications
+
+    public func notificationsCount() async throws -> NotificationsCountResponse {
+        try await send(SocialsEndpoints.notificationsCount(orgId: orgProvider()))
+    }
+
+    public func notificationsList() async throws -> NotificationsListResponse {
+        try await send(SocialsEndpoints.notificationsList(orgId: orgProvider()))
+    }
+
     // MARK: - Push
 
     public func upsertPushDevice(_ body: PushDeviceUpsert) async throws -> PushDeviceResponse {
@@ -360,5 +379,92 @@ public final class LiveSocialsAPI: SocialsAPI {
 
     public func aiGenerateVideo(_ body: AIVideoRequest) async throws -> AIMediaResult {
         try await send(SocialsEndpoints.aiGenerateVideo(body, orgId: orgProvider()))
+    }
+
+    public func aiConsent() async throws -> AIConsentResponse {
+        try await send(SocialsEndpoints.aiConsent())
+    }
+
+    public func setAIConsent(_ body: AIConsentRequest) async throws -> AIConsentResponse {
+        try await send(SocialsEndpoints.setAiConsent(body))
+    }
+
+    public func aiSuggest(_ body: AISuggestRequest) async throws -> AISuggestResponse {
+        try await send(SocialsEndpoints.aiSuggest(body))
+    }
+
+    // MARK: - Analytics
+
+    public func channelAnalytics(integrationId: String, range: AnalyticsRange) async throws
+        -> [AnalyticsSeries]
+    {
+        try await send(
+            AnalyticsEndpoints.channel(integration: integrationId, date: range, orgId: orgProvider()))
+    }
+
+    public func postAnalytics(postId: String, range: AnalyticsRange) async throws
+        -> [AnalyticsSeries]
+    {
+        try await send(AnalyticsEndpoints.post(postId: postId, date: range, orgId: orgProvider()))
+    }
+
+    // MARK: - Org settings
+
+    public func teamMembers() async throws -> TeamListResponse {
+        try await send(OrgEndpoints.team(orgId: orgProvider()))
+    }
+
+    public func addTeamMember(_ body: AddTeamMemberRequest) async throws -> OkResponse {
+        try await send(OrgEndpoints.addTeamMember(body, orgId: orgProvider()))
+    }
+
+    public func removeTeamMember(_ id: String) async throws -> OkResponse {
+        try await send(OrgEndpoints.removeTeamMember(id, orgId: orgProvider()))
+    }
+
+    public func shortlinkPreference() async throws -> ShortlinkPreferenceResponse {
+        try await send(OrgEndpoints.shortlink(orgId: orgProvider()))
+    }
+
+    public func setShortlinkPreference(_ shortlink: ShortlinkPreference) async throws
+        -> ShortlinkPreferenceResponse
+    {
+        try await send(
+            OrgEndpoints.updateShortlink(
+                ShortlinkPreferenceRequest(shortlink: shortlink), orgId: orgProvider()))
+    }
+
+    public func webhooks() async throws -> [MobileWebhook] {
+        try await send(OrgEndpoints.webhooks(orgId: orgProvider()))
+    }
+
+    // MARK: - Account settings
+
+    public func personalDetails() async throws -> PersonalDetails {
+        try await send(AccountSettingsEndpoints.personal())
+    }
+
+    public func updatePersonalDetails(_ body: PersonalDetailsRequest) async throws
+        -> PersonalDetails
+    {
+        try await send(AccountSettingsEndpoints.updatePersonal(body))
+    }
+
+    public func emailNotificationPrefs() async throws -> EmailNotificationPrefs {
+        try await send(AccountSettingsEndpoints.emailNotifications())
+    }
+
+    public func updateEmailNotificationPrefs(_ body: EmailNotificationPrefs) async throws
+        -> EmailNotificationPrefs
+    {
+        try await send(AccountSettingsEndpoints.updateEmailNotifications(body))
+    }
+
+    public func deletionPreview() async throws -> DeletionPreview {
+        try await send(AccountSettingsEndpoints.deletionPreview())
+    }
+
+    public func deleteAccount() async throws -> DeleteAccountResponse {
+        try await send(AccountSettingsEndpoints.deleteAccount(DeleteAccountRequest()))
     }
 }

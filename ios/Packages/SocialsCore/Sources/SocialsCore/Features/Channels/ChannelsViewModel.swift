@@ -141,7 +141,8 @@ public final class ChannelsViewModel {
         case .forbidden(let message): return message ?? "That action isn't available right now."
         case .notFound: return "That channel couldn't be found."
         case .cancelled: return ""
-        case .unauthorized, .idempotencyConflict, .server, .aiNotInPlan, .aiCreditsExhausted:
+        case .unauthorized, .idempotencyConflict, .server, .aiNotInPlan, .aiCreditsExhausted,
+            .aiConsentRequired:
             return "Something went wrong. Please try again."
         }
     }

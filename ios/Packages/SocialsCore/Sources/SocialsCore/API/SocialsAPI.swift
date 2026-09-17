@@ -87,6 +87,11 @@ public protocol SocialsAPI: Sendable {
     func completeUpload(_ body: MediaCompleteUploadRequest) async throws
         -> MediaCompleteUploadResponse
 
+    // MARK: - Notifications
+
+    func notificationsCount() async throws -> NotificationsCountResponse
+    func notificationsList() async throws -> NotificationsListResponse
+
     // MARK: - Push
 
     func upsertPushDevice(_ body: PushDeviceUpsert) async throws -> PushDeviceResponse
@@ -99,6 +104,35 @@ public protocol SocialsAPI: Sendable {
     func aiCredits(type: String) async throws -> AICreditsResponse
     func aiGenerateImage(prompt: String) async throws -> AIMediaResult
     func aiGenerateVideo(_ body: AIVideoRequest) async throws -> AIMediaResult
+    func aiConsent() async throws -> AIConsentResponse
+    func setAIConsent(_ body: AIConsentRequest) async throws -> AIConsentResponse
+    func aiSuggest(_ body: AISuggestRequest) async throws -> AISuggestResponse
+
+    // MARK: - Analytics
+
+    func channelAnalytics(integrationId: String, range: AnalyticsRange) async throws
+        -> [AnalyticsSeries]
+    func postAnalytics(postId: String, range: AnalyticsRange) async throws -> [AnalyticsSeries]
+
+    // MARK: - Org settings
+
+    func teamMembers() async throws -> TeamListResponse
+    func addTeamMember(_ body: AddTeamMemberRequest) async throws -> OkResponse
+    func removeTeamMember(_ id: String) async throws -> OkResponse
+    func shortlinkPreference() async throws -> ShortlinkPreferenceResponse
+    func setShortlinkPreference(_ shortlink: ShortlinkPreference) async throws
+        -> ShortlinkPreferenceResponse
+    func webhooks() async throws -> [MobileWebhook]
+
+    // MARK: - Account settings
+
+    func personalDetails() async throws -> PersonalDetails
+    func updatePersonalDetails(_ body: PersonalDetailsRequest) async throws -> PersonalDetails
+    func emailNotificationPrefs() async throws -> EmailNotificationPrefs
+    func updateEmailNotificationPrefs(_ body: EmailNotificationPrefs) async throws
+        -> EmailNotificationPrefs
+    func deletionPreview() async throws -> DeletionPreview
+    func deleteAccount() async throws -> DeleteAccountResponse
 }
 
 /// Typed errors `SocialsAPI` conformers surface, mapped from `CuantoNet.APIError` + the mobile
@@ -121,4 +155,7 @@ public enum SocialsAPIError: Error, Sendable, Equatable {
     /// 402 on AI credits/image/video endpoints — the org's plan includes AI, but its
     /// image/video generation credits are used up for the current billing period.
     case aiCreditsExhausted
+    /// 403 `{msg: 'AI consent required'}` on `aiSuggest` — the org hasn't granted AI text
+    /// consent yet (`MobileAiService.requireConsent`); triggers the consent sheet.
+    case aiConsentRequired
 }

@@ -153,6 +153,8 @@ public final class PostDetailViewModel {
         case .notFound: return "That couldn't be found."
         case .server, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted:
             return "Something went wrong. Please try again."
+        case .aiConsentRequired:
+            return "AI text suggestions need your consent first."
         case .cancelled: return ""
         }
     }

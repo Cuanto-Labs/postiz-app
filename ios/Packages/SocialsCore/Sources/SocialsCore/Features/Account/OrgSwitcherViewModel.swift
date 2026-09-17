@@ -55,7 +55,8 @@ public final class OrgSwitcherViewModel {
         case .offline: return "You're offline. Check your connection and try again."
         case .forbidden(let message): return message ?? "That action isn't allowed."
         case .validation(let message): return message ?? "Check your details and try again."
-        case .server, .notFound, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted:
+        case .server, .notFound, .idempotencyConflict, .aiNotInPlan, .aiCreditsExhausted,
+            .aiConsentRequired:
             return "Something went wrong. Please try again."
         case .cancelled: return ""
         }
