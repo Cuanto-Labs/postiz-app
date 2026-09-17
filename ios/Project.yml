@@ -48,11 +48,19 @@ targets:
       - path: App
       - path: App/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Fonts
+        buildPhase: resources
       - path: Sources
     info:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Cuanto Socials
+        # Plus Jakarta Sans (OFL, ios/Fonts/OFL.txt) — the web app's family, so both
+        # platforms set type identically. See ios/brand-spec.md § Type.
+        UIAppFonts:
+          - PlusJakartaSans-Medium.ttf
+          - PlusJakartaSans-SemiBold.ttf
+          - PlusJakartaSans-Bold.ttf
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         UILaunchScreen: {}
