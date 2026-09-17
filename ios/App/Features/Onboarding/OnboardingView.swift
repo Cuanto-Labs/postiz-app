@@ -7,6 +7,10 @@ struct OnboardingView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel: OnboardingViewModel?
 
+    /// Called when the user taps "Get started" on the last panel. `RootView` persists that
+    /// onboarding is done and swaps to the signed-in home.
+    var onFinish: () -> Void = {}
+
     var body: some View {
         Group {
             if let viewModel {
@@ -54,7 +58,7 @@ struct OnboardingView: View {
                 Spacer()
 
                 if viewModel.isOnFirstChannelStep {
-                    Button("Get started") {}
+                    Button("Get started") { onFinish() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!viewModel.canFinish)
                         .accessibilityLabel("Get started")

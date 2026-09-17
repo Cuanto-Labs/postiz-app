@@ -9,7 +9,13 @@ struct SignInView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel: SignInViewModel?
     @State private var appleCoordinator = AppleSignInCoordinator()
+    @State private var showRegister = false
     @FocusState private var focusedField: Field?
+
+    /// Called once `sessionStore.state` reflects a successful sign-in (email, Apple, or
+    /// Google). The view models don't expose a dedicated "succeeded" phase, so this re-reads
+    /// session state after each load finishes rather than adding one — see `onLoadingChange`.
+    var onSignedIn: () -> Void = {}
 
     private enum Field {
         case email, password
@@ -34,6 +40,21 @@ struct SignInView: View {
                     callbackURLScheme: AppIdentifiers.urlScheme)
             }
         }
+        .sheet(isPresented: $showRegister) {
+            RegisterView(onSignedIn: {
+                showRegister = false
+                onSignedIn()
+            })
+        }
+    }
+
+    private func onLoadingChange(_ isLoading: Bool) {
+        guard !isLoading else { return }
+        Task {
+            if case .signedIn = await environment.sessionStore.state {
+                onSignedIn()
+            }
+        }
     }
 
     @ViewBuilder
@@ -52,11 +73,13 @@ struct SignInView: View {
                         .autocorrectionDisabled()
                         .focused($focusedField, equals: .email)
                         .accessibilityLabel("Email")
+                        .accessibilityIdentifier("signIn.email")
 
                     SecureField("Password", text: $viewModel.password)
                         .textContentType(.password)
                         .focused($focusedField, equals: .password)
                         .accessibilityLabel("Password")
+                        .accessibilityIdentifier("signIn.password")
                 }
                 .textFieldStyle(.roundedBorder)
 
@@ -81,6 +104,7 @@ struct SignInView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!viewModel.canSubmitEmail || viewModel.isLoading)
                 .accessibilityLabel("Sign in with email")
+                .accessibilityIdentifier("signIn.submit")
 
                 Button {
                     Task {
@@ -104,8 +128,19 @@ struct SignInView: View {
                 .buttonStyle(.bordered)
                 .disabled(viewModel.isLoading)
                 .accessibilityLabel("Sign in with Google")
+
+                Button("Create an account") {
+                    showRegister = true
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isLoading)
+                .accessibilityLabel("Create an account")
+                .accessibilityIdentifier("signIn.registerLink")
             }
             .padding()
+        }
+        .onChange(of: viewModel.isLoading, initial: false) { _, isLoading in
+            onLoadingChange(isLoading)
         }
     }
 

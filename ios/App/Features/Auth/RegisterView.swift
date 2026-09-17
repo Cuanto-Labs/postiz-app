@@ -10,6 +10,10 @@ struct RegisterView: View {
     @State private var viewModel: RegisterViewModel?
     @FocusState private var focusedField: Field?
 
+    /// Called once `sessionStore.state` reflects a successful registration (the
+    /// `.authenticated` branch of `RegisterResult`). Mirrors `SignInView.onSignedIn`.
+    var onSignedIn: () -> Void = {}
+
     private enum Field {
         case email, password, company, inviteCode
     }
@@ -29,6 +33,15 @@ struct RegisterView: View {
                     sessionStore: environment.sessionStore,
                     deviceId: Self.deviceId(),
                     deviceName: UIDevice.current.name)
+            }
+        }
+    }
+
+    private func onLoadingChange(_ isLoading: Bool) {
+        guard !isLoading else { return }
+        Task {
+            if case .signedIn = await environment.sessionStore.state {
+                onSignedIn()
             }
         }
     }
@@ -97,6 +110,9 @@ struct RegisterView: View {
                 }
             }
             .padding()
+        }
+        .onChange(of: viewModel.isLoading, initial: false) { _, isLoading in
+            onLoadingChange(isLoading)
         }
     }
 

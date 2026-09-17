@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 @main
@@ -10,23 +11,20 @@ struct CuantoSocialsApp: App {
                 if let environment {
                     RootView().environment(environment)
                 } else {
-                    RootView()
+                    ProgressView()
                 }
             }
             .task {
                 if environment == nil {
-                    environment = await AppEnvironment.live()
+                    // UI tests launch with `-uiTestStub` to get `StubSocialsAPI` + in-memory
+                    // storage instead of the real network/Keychain. No other stub use.
+                    if ProcessInfo.processInfo.arguments.contains("-uiTestStub") {
+                        environment = await AppEnvironment.preview()
+                    } else {
+                        environment = await AppEnvironment.live()
+                    }
                 }
             }
-        }
-    }
-}
-
-struct RootView: View {
-    var body: some View {
-        VStack {
-            Text("Cuanto Socials")
-            Text(BuildConfig.apiBaseURL.absoluteString)
         }
     }
 }
