@@ -10,14 +10,31 @@ jest.mock('@gitroom/nestjs-libraries/integrations/integration.manager', () => ({
 }));
 
 import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile-posts.controller';
+import { MobileIdempotencyInterceptor } from '@gitroom/backend/api/routes/mobile/mobile-idempotency.interceptor';
+import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 
 describe('MobilePostsController', () => {
   const org = { id: 'org-1' };
+
+  const validRow = {
+    identifier: 'integration-1',
+    name: 'channel',
+    valid: true,
+    errors: true,
+    tooLong: false,
+    emptyContent: false,
+    settingsError: '',
+  };
 
   const makeController = () => {
     const postsService = {
       getPostsMinified: jest.fn(),
       getPostsByGroup: jest.fn(),
+      validatePosts: jest.fn().mockResolvedValue([validRow]),
+      mapTypeToPost: jest.fn().mockImplementation((body) => body),
+      createPost: jest.fn().mockResolvedValue([{ id: 'post-1' }]),
+      deletePost: jest.fn().mockResolvedValue(undefined),
+      changeDate: jest.fn().mockResolvedValue(undefined),
     };
 
     const controller = new MobilePostsController(postsService as any);
@@ -76,5 +93,99 @@ describe('MobilePostsController', () => {
         response: { msg: 'Post not found' },
       }
     );
+  });
+
+  it('create applies MobileIdempotencyInterceptor', () => {
+    const { controller } = makeController();
+    const interceptors = Reflect.getMetadata(
+      '__interceptors__',
+      controller.create
+    );
+    expect(interceptors).toContain(MobileIdempotencyInterceptor);
+  });
+
+  it('create rejects emptyContent posts via PostValidationException', async () => {
+    const { controller, postsService } = makeController();
+    postsService.validatePosts.mockResolvedValue([
+      { ...validRow, emptyContent: true },
+    ]);
+
+    await expect(
+      controller.create(org as any, { posts: [{}] })
+    ).rejects.toBeInstanceOf(PostValidationException);
+    expect(postsService.createPost).not.toHaveBeenCalled();
+  });
+
+  it('create passes WEB as the creation method', async () => {
+    const { controller, postsService } = makeController();
+    const rawBody = { posts: [{}], type: 'now' };
+
+    await controller.create(org as any, rawBody);
+
+    expect(postsService.createPost).toHaveBeenCalledWith(
+      'org-1',
+      rawBody,
+      'WEB'
+    );
+  });
+
+  it('update forces the group onto every post and defaults type to update', async () => {
+    const { controller, postsService } = makeController();
+    const rawBody = { posts: [{ group: 'old' }, { group: 'old' }] };
+
+    await controller.update(org as any, 'group-1', rawBody);
+
+    expect(rawBody.posts.every((p: any) => p.group === 'group-1')).toBe(true);
+    expect(postsService.createPost).toHaveBeenCalledWith(
+      'org-1',
+      expect.objectContaining({ type: 'update' }),
+      'WEB'
+    );
+  });
+
+  it('reschedule calls changeDate once per root post with the update default', async () => {
+    const { controller, postsService } = makeController();
+    postsService.getPostsByGroup.mockResolvedValue({
+      group: 'group-1',
+      posts: [
+        { id: 'post-1', parentPostId: null },
+        { id: 'post-2', parentPostId: 'post-1' },
+      ],
+    });
+
+    const result = await controller.reschedule(org as any, 'group-1', {
+      date: '2026-01-02',
+    } as any);
+
+    expect(postsService.changeDate).toHaveBeenCalledTimes(1);
+    expect(postsService.changeDate).toHaveBeenCalledWith(
+      'org-1',
+      'post-1',
+      '2026-01-02',
+      'update',
+      false
+    );
+    expect(result).toEqual({ group: 'group-1', date: '2026-01-02' });
+  });
+
+  it('reschedule throws 404 when the group has no posts', async () => {
+    const { controller, postsService } = makeController();
+    postsService.getPostsByGroup.mockResolvedValue({ posts: [] });
+
+    await expect(
+      controller.reschedule(org as any, 'missing', { date: '2026-01-02' } as any)
+    ).rejects.toMatchObject({
+      status: 404,
+      response: { msg: 'Post not found' },
+    });
+  });
+
+  it('remove deletes the group and returns ok', async () => {
+    const { controller, postsService } = makeController();
+
+    const result = await controller.remove(org as any, 'group-1');
+
+    expect(postsService.deletePost).toHaveBeenCalledWith('org-1', 'group-1');
+    expect(result).toEqual({ ok: true });
   });
 });

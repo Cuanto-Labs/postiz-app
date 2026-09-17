@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class MobilePostsQueryDto {
   @IsDateString()
@@ -10,4 +10,13 @@ export class MobilePostsQueryDto {
   @IsOptional()
   @IsString()
   customer?: string;
+}
+
+export class MobileRescheduleDto {
+  @IsDateString()
+  date: string;
+
+  @IsOptional()
+  @IsIn(['schedule', 'update'])
+  action?: 'schedule' | 'update';
 }

@@ -1,10 +1,37 @@
-import { Controller, Get, HttpException, Param, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  UseInterceptors,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Organization } from '@prisma/client';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
-import { MobilePostsQueryDto } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-posts.dto';
+import {
+  MobilePostsQueryDto,
+  MobileRescheduleDto,
+} from '@gitroom/nestjs-libraries/dtos/mobile/mobile-posts.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
+import { MobileIdempotencyInterceptor } from './mobile-idempotency.interceptor';
 
 @ApiTags('Mobile Posts')
 @ApiBearerAuth()
@@ -40,5 +67,113 @@ export class MobilePostsController {
     }
 
     return result;
+  }
+
+  private async _validateAndCreate(org: Organization, rawBody: any) {
+    // Server-side validation — never trust the client to have validated.
+    const validation = await this._postsService.validatePosts(
+      org.id,
+      rawBody?.posts || []
+    );
+
+    const fail = (item: (typeof validation)[number], error: string) => {
+      throw new PostValidationException({
+        provider: item.identifier,
+        name: item.name,
+        error,
+      });
+    };
+
+    for (const item of validation) {
+      if (item.emptyContent) {
+        fail(
+          item,
+          'Your post should have at least one character or one image.'
+        );
+      }
+    }
+
+    if (rawBody?.type !== 'draft') {
+      for (const item of validation) {
+        if (!item.valid) {
+          fail(item, item.settingsError || 'Please fix your settings');
+        }
+        if (item.errors !== true) {
+          fail(item, item.errors as string);
+        }
+        if (item.tooLong) {
+          fail(item, 'post is too long, please fix it');
+        }
+      }
+    }
+
+    const body = await this._postsService.mapTypeToPost(rawBody, org.id);
+    return this._postsService.createPost(org.id, body, 'WEB');
+  }
+
+  @Post('/')
+  @UseInterceptors(MobileIdempotencyInterceptor)
+  @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
+  @ApiOperation({ summary: 'Create a post' })
+  @ApiHeader({ name: 'Idempotency-Key', required: false })
+  async create(@GetOrgFromRequest() org: Organization, @Body() rawBody: any) {
+    return this._validateAndCreate(org, rawBody);
+  }
+
+  @Put('/:group')
+  @UseInterceptors(MobileIdempotencyInterceptor)
+  @ApiOperation({ summary: 'Update a post group' })
+  @ApiHeader({ name: 'Idempotency-Key', required: false })
+  async update(
+    @GetOrgFromRequest() org: Organization,
+    @Param('group') group: string,
+    @Body() rawBody: any
+  ) {
+    if (rawBody?.posts) {
+      for (const post of rawBody.posts) {
+        post.group = group;
+      }
+    }
+    rawBody.type = rawBody?.type ?? 'update';
+
+    return this._validateAndCreate(org, rawBody);
+  }
+
+  @Patch('/:group/date')
+  @ApiOperation({ summary: 'Reschedule every root post in a group' })
+  async reschedule(
+    @GetOrgFromRequest() org: Organization,
+    @Param('group') group: string,
+    @Body() body: MobileRescheduleDto
+  ) {
+    const result = await this._postsService.getPostsByGroup(org.id, group);
+
+    if (!result?.posts?.length) {
+      throw new HttpException({ msg: 'Post not found' }, 404);
+    }
+
+    for (const post of result.posts) {
+      if (!post.parentPostId) {
+        await this._postsService.changeDate(
+          org.id,
+          post.id,
+          body.date,
+          body.action ?? 'update',
+          false
+        );
+      }
+    }
+
+    return { group, date: body.date };
+  }
+
+  @Delete('/:group')
+  @ApiOperation({ summary: 'Delete a post group' })
+  async remove(
+    @GetOrgFromRequest() org: Organization,
+    @Param('group') group: string
+  ) {
+    await this._postsService.deletePost(org.id, group);
+    return { ok: true };
   }
 }
