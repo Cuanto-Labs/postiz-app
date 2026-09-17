@@ -9,9 +9,12 @@ import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile
 import { MobilePushController } from '@gitroom/backend/api/routes/mobile/mobile-push.controller';
 import { MobileMediaController } from '@gitroom/backend/api/routes/mobile/mobile-media.controller';
 import { MobileAccountController } from '@gitroom/backend/api/routes/mobile/mobile-account.controller';
+import { MobileAiController } from '@gitroom/backend/api/routes/mobile/mobile-ai.controller';
 import { MobileMediaUploadService } from '@gitroom/nestjs-libraries/mobile/media/mobile-media-upload.service';
 import { MobileAccountService } from '@gitroom/nestjs-libraries/mobile/account/mobile-account.service';
 import { AccountDeletionRepository } from '@gitroom/nestjs-libraries/mobile/account/account-deletion.repository';
+import { AiConsentRepository } from '@gitroom/nestjs-libraries/mobile/ai/ai-consent.repository';
+import { MobileAiService } from '@gitroom/nestjs-libraries/mobile/ai/mobile-ai.service';
 import { MobileAuthService } from '@gitroom/nestjs-libraries/mobile/mobile-auth.service';
 import { MobileTokenService } from '@gitroom/nestjs-libraries/mobile/mobile-token.service';
 import { MobileSessionRepository } from '@gitroom/nestjs-libraries/mobile/mobile-session.repository';
@@ -29,6 +32,7 @@ const authenticatedControllers = [
   MobilePushController,
   MobileMediaController,
   MobileAccountController,
+  MobileAiController,
 ];
 
 @Module({
@@ -50,6 +54,8 @@ const authenticatedControllers = [
     MobileMediaUploadService,
     MobileAccountService,
     AccountDeletionRepository,
+    AiConsentRepository,
+    MobileAiService,
   ],
 })
 export class MobileModule implements NestModule {

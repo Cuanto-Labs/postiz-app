@@ -1,0 +1,158 @@
+import CuantoNet
+import Foundation
+
+/// `SocialsAPI` backed by a real `CuantoNet.APIClient` against `/mobile/v1`
+/// (`SocialsEndpoints`). `orgProvider` is asked for the current org id on every
+/// authenticated call, which `SocialsEndpoints` turns into a `showorg` header
+/// (docs/MOBILE-API.md § Base URL & auth — org selection); return `nil` to omit it.
+public final class LiveSocialsAPI: SocialsAPI {
+    private let client: APIClient
+    private let orgProvider: @Sendable () async -> String?
+
+    public init(
+        client: APIClient, orgProvider: @escaping @Sendable () async -> String? = { nil }
+    ) {
+        self.client = client
+        self.orgProvider = orgProvider
+    }
+
+    /// Sends `endpoint`, mapping any thrown `APIError` to `SocialsAPIError`.
+    private func send<Response>(_ endpoint: Endpoint<Response>) async throws -> Response {
+        do {
+            return try await client.send(endpoint)
+        } catch {
+            throw Self.mapError(error)
+        }
+    }
+
+    /// Maps `APIError` (docs/MOBILE-API.md error shapes) to `SocialsAPIError`.
+    /// `.offline`/`.cancelled` (and anything not itself an `APIError`) pass through unchanged.
+    static func mapError(_ error: Error) -> Error {
+        guard let apiError = error as? APIError else { return error }
+        switch apiError {
+        case .unauthorized:
+            return SocialsAPIError.unauthorized
+        case .status(let code, let body):
+            let message = ServerErrorMessage.parse(body)
+            switch code {
+            case 400: return SocialsAPIError.validation(message: message)
+            case 403: return SocialsAPIError.forbidden(message: message)
+            case 404: return SocialsAPIError.notFound(message: message)
+            case 422: return SocialsAPIError.idempotencyConflict
+            default: return SocialsAPIError.server(code: code, message: message)
+            }
+        case .transport, .decoding, .offline, .cancelled:
+            return apiError
+        }
+    }
+
+    // MARK: - Auth
+
+    public func login(_ body: LoginRequest) async throws -> MobileAuthResponse {
+        try await send(SocialsEndpoints.login(body))
+    }
+
+    public func register(_ body: RegisterRequest) async throws -> RegisterResult {
+        try await send(SocialsEndpoints.register(body))
+    }
+
+    public func refresh(_ body: RefreshRequest) async throws -> MobileTokens {
+        try await send(SocialsEndpoints.refresh(body))
+    }
+
+    public func logout(_ body: LogoutRequest) async throws -> OkResponse {
+        try await send(SocialsEndpoints.logout(body))
+    }
+
+    public func signInWithApple(_ body: AppleNativeRequest) async throws -> MobileAuthResponse {
+        try await send(SocialsEndpoints.appleNative(body))
+    }
+
+    public func oauthStart(_ body: OAuthStartRequest) async throws -> OAuthStartResponse {
+        try await send(SocialsEndpoints.oauthStart(body))
+    }
+
+    public func oauthExchange(_ body: OAuthExchangeRequest) async throws -> MobileAuthResponse {
+        try await send(SocialsEndpoints.oauthExchange(body))
+    }
+
+    public func config() async throws -> ConfigResponse {
+        try await send(SocialsEndpoints.config())
+    }
+
+    // MARK: - Account
+
+    public func me() async throws -> MeResponse {
+        try await send(SocialsEndpoints.me(orgId: orgProvider()))
+    }
+
+    public func devices() async throws -> DevicesResponse {
+        try await send(SocialsEndpoints.devices(orgId: orgProvider()))
+    }
+
+    public func deleteDevice(_ id: String) async throws -> OkResponse {
+        try await send(SocialsEndpoints.deleteDevice(id, orgId: orgProvider()))
+    }
+
+    public func channels() async throws -> ChannelsResponse {
+        try await send(SocialsEndpoints.channels(orgId: orgProvider()))
+    }
+
+    // MARK: - Posts
+
+    public func posts(from: String, to: String, customer: String?) async throws -> PostsResponse
+    {
+        try await send(
+            SocialsEndpoints.posts(from: from, to: to, customer: customer, orgId: orgProvider()))
+    }
+
+    public func post(group: String) async throws -> PostGroupDTO {
+        try await send(SocialsEndpoints.post(group, orgId: orgProvider()))
+    }
+
+    public func createPost(body: CreatePostBody, key: IdempotencyKey?) async throws
+        -> PostGroupDTO
+    {
+        try await send(
+            SocialsEndpoints.createPost(body, idempotencyKey: key, orgId: orgProvider()))
+    }
+
+    public func updatePost(group: String, body: CreatePostBody, key: IdempotencyKey?) async throws
+        -> PostGroupDTO
+    {
+        try await send(
+            SocialsEndpoints.updatePost(
+                group, body: body, idempotencyKey: key, orgId: orgProvider()))
+    }
+
+    public func reschedule(group: String, date: String, action: String?) async throws
+        -> RescheduleResponse
+    {
+        try await send(
+            SocialsEndpoints.reschedule(group, date: date, action: action, orgId: orgProvider()))
+    }
+
+    public func deletePost(group: String) async throws -> OkResponse {
+        try await send(SocialsEndpoints.deletePost(group, orgId: orgProvider()))
+    }
+
+    // MARK: - Push
+
+    public func upsertPushDevice(_ body: PushDeviceUpsert) async throws -> PushDeviceResponse {
+        try await send(SocialsEndpoints.upsertPushDevice(body, orgId: orgProvider()))
+    }
+
+    public func deletePushDevice(token: String) async throws -> OkResponse {
+        try await send(SocialsEndpoints.deletePushDevice(token, orgId: orgProvider()))
+    }
+
+    public func pushPrefs(token: String) async throws -> PushPrefsResponse {
+        try await send(SocialsEndpoints.pushPrefs(token: token, orgId: orgProvider()))
+    }
+
+    public func updatePushPrefs(_ body: PushPrefsUpdateRequest) async throws
+        -> PushPrefsResponse
+    {
+        try await send(SocialsEndpoints.updatePushPrefs(body, orgId: orgProvider()))
+    }
+}
