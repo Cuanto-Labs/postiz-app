@@ -1,0 +1,24 @@
+{
+  "user": {
+    "id": "usr_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+    "email": "eliran@cuantolabs.com",
+    "name": "Eliran",
+    "lastName": "Yihye",
+    "pictureId": "pic_01HZX3QW7K9F0M1N2P3Q4R5S6T"
+  },
+  "org": {
+    "id": "org_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+    "name": "Cuanto Labs",
+    "role": "OWNER",
+    "disabled": false
+  },
+  "orgs": [
+    { "id": "org_01HZX3QW7K9F0M1N2P3Q4R5S6T", "name": "Cuanto Labs", "role": "OWNER", "disabled": false },
+    { "id": "org_01HZX3QW7K9F0M1N2P3Q4R5S6U", "name": "Archived Org", "role": "MEMBER", "disabled": true }
+  ],
+  "plan": {
+    "tier": "pro",
+    "options": { "customBranding": true, "teamSeats": false }
+  },
+  "sessionId": "sess_01HZX3QW7K9F0M1N2P3Q4R5S6T"
+}
