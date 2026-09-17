@@ -81,6 +81,21 @@ log "xcodegen generate"
 xcodegen generate --spec Project.yml --project . || die "xcodegen generate"
 
 # ---------------------------------------------------------------------------
+# 2b) accessibility lint — cheap, fail fast before booting a simulator.
+# Scoped to the dirs already fixed this milestone; other Features/* dirs are
+# owned by other cards/lanes and not yet clean — widen A11Y_SCOPE as those
+# land instead of scanning the whole tree here.
+# ---------------------------------------------------------------------------
+log "a11y-lint.sh"
+bash "$ROOT/ios/scripts/a11y-lint.sh" \
+  "$ROOT/ios/App/Features/Notifications" \
+  "$ROOT/ios/App/Features/AI" \
+  "$ROOT/ios/App/Features/Analytics" \
+  "$ROOT/ios/App/Features/Settings" \
+  "$ROOT/ios/App/Features/Push" \
+  || die "a11y-lint"
+
+# ---------------------------------------------------------------------------
 # 3) resolve UDID for SIM_NAME (create if missing), single booted sim
 # ---------------------------------------------------------------------------
 UDID="$(xcrun simctl list devices -j | python3 -c "

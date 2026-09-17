@@ -57,7 +57,9 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UIBackgroundModes: [remote-notification]
+        UIBackgroundModes: [remote-notification, fetch, processing]
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.cuantolabs.socials.refresh
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - cuantosocials
@@ -116,6 +118,8 @@ targets:
     platform: iOS
     sources:
       - path: ShareExtension
+      - path: ShareExtension/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: Sources/Core/Shared
     info:
       path: ShareExtension/Info.plist
@@ -143,6 +147,8 @@ targets:
         product: CuantoCore
       - package: CuantoKit
         product: CuantoUI
+      - package: SocialsCore
+        product: SocialsCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).share
@@ -153,6 +159,8 @@ targets:
     platform: iOS
     sources:
       - path: Widgets
+      - path: Widgets/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: Sources/Core/Shared
     info:
       path: Widgets/Info.plist
@@ -173,6 +181,8 @@ targets:
         product: CuantoCore
       - package: CuantoKit
         product: CuantoUI
+      - package: SocialsCore
+        product: SocialsCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).widgets
@@ -186,7 +196,14 @@ targets:
     platform: iOS
     sources:
       - path: Intents
+      - path: Intents/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: Sources/Core/Shared
+      - path: Sources/Intents
+      # DraftPostIntent/SchedulePostIntent/TodayScheduleIntent also compile into the
+      # container app via the `CuantoSocials` target's blanket `- path: Sources`
+      # (AppShortcutsProvider needs the intent types in the same module) — see
+      # Sources/Intents for the shared App Intents.
     info:
       path: Intents/Info.plist
       properties:
@@ -204,6 +221,10 @@ targets:
     dependencies:
       - package: CuantoKit
         product: CuantoCore
+      - package: CuantoKit
+        product: CuantoNet
+      - package: SocialsCore
+        product: SocialsCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).intents

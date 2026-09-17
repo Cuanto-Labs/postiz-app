@@ -8,7 +8,7 @@ struct AICreditsMeter: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "sparkles")
+            Image(systemName: "sparkles") // a11y-ok: labeled via .accessibilityElement(children: .combine) below
                 .foregroundStyle(.secondary)
             Text("\(credits) credit\(credits == 1 ? "" : "s") left")
                 .font(.footnote)
