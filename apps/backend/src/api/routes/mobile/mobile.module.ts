@@ -8,7 +8,10 @@ import { MobileConfigController } from '@gitroom/backend/api/routes/mobile/mobil
 import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile-posts.controller';
 import { MobilePushController } from '@gitroom/backend/api/routes/mobile/mobile-push.controller';
 import { MobileMediaController } from '@gitroom/backend/api/routes/mobile/mobile-media.controller';
+import { MobileAccountController } from '@gitroom/backend/api/routes/mobile/mobile-account.controller';
 import { MobileMediaUploadService } from '@gitroom/nestjs-libraries/mobile/media/mobile-media-upload.service';
+import { MobileAccountService } from '@gitroom/nestjs-libraries/mobile/account/mobile-account.service';
+import { AccountDeletionRepository } from '@gitroom/nestjs-libraries/mobile/account/account-deletion.repository';
 import { MobileAuthService } from '@gitroom/nestjs-libraries/mobile/mobile-auth.service';
 import { MobileTokenService } from '@gitroom/nestjs-libraries/mobile/mobile-token.service';
 import { MobileSessionRepository } from '@gitroom/nestjs-libraries/mobile/mobile-session.repository';
@@ -25,6 +28,7 @@ const authenticatedControllers = [
   MobilePostsController,
   MobilePushController,
   MobileMediaController,
+  MobileAccountController,
 ];
 
 @Module({
@@ -44,6 +48,8 @@ const authenticatedControllers = [
     MobileIdempotencyInterceptor,
     PermissionsService,
     MobileMediaUploadService,
+    MobileAccountService,
+    AccountDeletionRepository,
   ],
 })
 export class MobileModule implements NestModule {
