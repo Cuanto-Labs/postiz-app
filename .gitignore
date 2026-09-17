@@ -71,3 +71,5 @@ ios/CuantoSocials.xcodeproj/
 ios/.derived/
 ios/.build/
 ios/*.log
+ios/.design/
+ios/Packages/*/.build/
