@@ -75,3 +75,36 @@ Local code-complete gate on `feat/ios-app`, all green on one simulator (iPhone 1
 - Intentionally not done (Decision 8): T078–T083 AI usage tables, superseded by web CheckPolicies/Credits.
 
 Everything in the table above remains external and pending.
+
+## 2026-09-17 — merged, ASC prepared, TestFlight push in progress
+
+- `feat/ios-app` merged to `main` as `9c370216` (PR #2, 79 commits). Gates green on the merged tree:
+  `scripts/mobile-gate.sh` (35 suites / 267 tests), `ios/scripts/gate.sh`, `SocialsCore` 506 tests.
+- ASC app record `6813092005` already existed with all four bundle IDs registered; version record
+  renamed `1.0` → `1.0.0` to match `MARKETING_VERSION`.
+- Pushed via `ios-asc`: listing (name/subtitle/description/keywords/promo/URLs), pricing (Free, USA
+  $0 base), availability (all 175 territories), age rating (all-NONE/false), content rights
+  (does not use third-party content), copyright, review contact info.
+- Listing source of truth is now `ios/AppStore/metadata.md`; App Privacy answers are written there
+  but still have to be entered once in the ASC web UI (no API).
+- Screenshot set regenerated from a signed-in stub walkthrough (`ScreenshotUITests
+  .testAppStoreScreenshots`) — the previous set was the sign-in screen alone.
+
+### Blocking the App Store submission (not TestFlight upload)
+
+1. **Backend not deployed.** `https://api.socials.cuantolabs.com/mobile/v1/*` returns 404 — the
+   merged `/mobile/v1` surface is not on the live `pz-app` container (deb, `postiz/app:current`).
+   Release builds point at that host, so the app cannot sign in and App Review would fail on
+   launch. Needs an image build from `main` + `prisma migrate deploy` + container recreate.
+2. **No demo account.** `appStoreReviewDetail.demoAccountRequired` is currently `false` because
+   there is nothing to hand Apple; the app is account-gated, so this is the standard Guideline 2.1
+   rejection. Create the account on the deployed backend, then re-run `ios-asc review-info` with
+   `ASC_DEMO_USER`/`ASC_DEMO_PASSWORD`.
+3. **APNs `.p8` still unset** — push is inert without it (`PushService` no-ops), which is
+   acceptable for review but means the notification features are untestable.
+
+### ios-suite fixes made while running this
+- `whatsNew` first-release guard now asks ASC whether any version ever shipped instead of
+  string-matching `"1.0"` (a `1.0.0` first release 409'd).
+- age-rating sweep no longer sends `ageRatingOverride` alongside `ageRatingOverrideV2` (409
+  `AGE_RATING_OVERRIDE_V1_AND_V2_NOT_ALLOWED`), and skips `kidsAgeBand`/`developerAgeRatingInfoUrl`.
