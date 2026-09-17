@@ -77,11 +77,14 @@ export class PushDeviceRepository {
     });
   }
 
-  listActiveForUsers(userIds: string[]) {
+  listActiveForUsers(userIds: string[], orgId?: string) {
     return this._pushDevice.model.pushDevice.findMany({
       where: {
         userId: { in: userIds },
         disabledAt: null,
+        ...(orgId
+          ? { OR: [{ organizationId: orgId }, { organizationId: null }] }
+          : {}),
       },
     });
   }

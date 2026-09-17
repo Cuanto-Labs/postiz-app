@@ -59,9 +59,11 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 - APNs categories: `POST_PUBLISHED`, `POST_FAILED`, `CHANNEL_RECONNECT` (one per prefs key, `CATEGORY_BY_KIND` in `push.service.ts`).
 - Payload shape: `{ aps: { alert: { title, body }, sound, category, thread-id }, kind, link }`.
 - `environment` on the device record (`sandbox`/`production`) selects the APNs host per device at send time.
-- `410`/`BadDeviceToken`/`Unregistered` from APNs → the device's `disabledAt` is set and it's dropped from future sends.
+- Registering a device token that's already bound to a different user re-assigns it to the new user (`upsertByToken` is keyed by `apnsToken`) — this is how account switching on the same device works; the previous owner stops receiving pushes to that token.
+- `410`/`BadDeviceToken`/`Unregistered` from APNs → the device is soft-disabled (`disabledAt` is set) and it's dropped from future sends.
 - `429`/`5xx` from APNs → 3 attempts with exponential backoff (`500ms * 2^attempt`); still failing after 3 → the send for that device is marked failed.
-- Push is fired from `NotificationService.inAppNotification` (`PushService.notifyFromNotification`), so the web notification feed and push stay in step — no separate push-only code path.
+- Fan-out is per-org: `notifyOrg` loads every user in the notification's `orgId` via `OrganizationRepository.getAllUsersOrgs` and sends only to that org's active devices — users outside the org never receive the push.
+- Push is fired from `NotificationService.inAppNotification` (`PushService.notifyFromNotification`), so the web notification feed and push stay in step — no separate push-only code path. The call is fire-and-forget (`void ... .catch(() => {})`): it never delays or blocks the email/workflow path that follows.
 - No push is sent when `APNS_KEY_ID`/`APNS_TEAM_ID`/`APNS_PRIVATE_KEY` are unset (`ApnsClient` returns `not_configured`).
 
 ## Pending (later milestones, not yet implemented)

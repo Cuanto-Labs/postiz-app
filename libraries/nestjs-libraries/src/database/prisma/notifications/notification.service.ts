@@ -49,14 +49,10 @@ export class NotificationService {
     type: NotificationType = 'success'
   ) {
     await this._notificationRepository.createNotification(orgId, message);
-    try {
-      await this._pushService.notifyFromNotification(
-        orgId,
-        subject,
-        message,
-        type
-      ); // fork: mobile push
-    } catch {}
+    // fire-and-forget: mobile push must never delay email/workflow delivery
+    void this._pushService
+      .notifyFromNotification(orgId, subject, message, type)
+      .catch(() => {});
     if (!sendEmail) {
       return;
     }

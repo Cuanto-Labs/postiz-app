@@ -19,7 +19,9 @@ describe('NotificationService push hook', () => {
   const emailFake = {};
   const orgRepoFake = {};
   const temporalFake = {};
-  const pushFake = { notifyFromNotification: jest.fn() };
+  const pushFake = {
+    notifyFromNotification: jest.fn(() => Promise.resolve()),
+  };
 
   const build = () =>
     new NotificationService(
@@ -62,6 +64,17 @@ describe('NotificationService push hook', () => {
 
   it('does not reject when push rejects', async () => {
     pushFake.notifyFromNotification.mockRejectedValueOnce(new Error('boom'));
+    const service = build();
+
+    await expect(
+      service.inAppNotification('org', 's', 'm', false, false, 'info')
+    ).resolves.toBeUndefined();
+  });
+
+  it('returns without awaiting a never-resolving push promise', async () => {
+    pushFake.notifyFromNotification.mockImplementationOnce(
+      () => new Promise(() => {})
+    );
     const service = build();
 
     await expect(

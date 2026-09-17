@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 
 const APNS_TOKEN_REGEX = /^[0-9a-f]{64,200}$/i;
+const BUNDLE_ID_REGEX = /^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z0-9-]+)+$/;
 
 export class MobilePushDeviceDto {
   @IsString()
@@ -19,6 +20,8 @@ export class MobilePushDeviceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(128)
+  @Matches(BUNDLE_ID_REGEX)
   bundleId?: string;
 
   @IsOptional()

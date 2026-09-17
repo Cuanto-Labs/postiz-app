@@ -157,7 +157,7 @@ describe('PushService', () => {
           token: 't1',
           environment: 'sandbox',
           topic: 'com.cuantolabs.socials',
-          collapseId: 'https://x.com/1',
+          collapseId: expect.any(String),
           payload: expect.objectContaining({
             aps: expect.objectContaining({
               category: 'CHANNEL_RECONNECT',
@@ -166,7 +166,75 @@ describe('PushService', () => {
           }),
         })
       );
+      const sentCollapseId = apnsClient.send.mock.calls[0][0].collapseId;
+      expect(sentCollapseId).not.toBe('https://x.com/1');
+      expect(Buffer.byteLength(sentCollapseId, 'utf8')).toBeLessThanOrEqual(64);
       expect(result).toEqual({ sent: 1, failed: 0, disabled: 0 });
+    });
+
+    it('derives a collapseId <= 64 bytes from a very long link instead of using the raw URL', async () => {
+      const { service, organizationRepository, pushDeviceRepository, apnsClient } =
+        makeDeps();
+      organizationRepository.getAllUsersOrgs.mockResolvedValue({
+        users: [{ user: { id: 'u1' } }],
+      });
+      pushDeviceRepository.listActiveForUsers.mockResolvedValue([
+        {
+          apnsToken: 't1',
+          environment: 'production',
+          bundleId: 'com.cuantolabs.socials',
+          prefs: {},
+        },
+      ]);
+      apnsClient.send.mockResolvedValue({ ok: true, status: 200, unregistered: false });
+
+      const longLink = 'https://x.com/status/' + '1'.repeat(500);
+      await service.notifyOrg('org1', {
+        kind: 'post.published',
+        title: 't',
+        body: 'b',
+        link: longLink,
+      });
+
+      const sentCollapseId = apnsClient.send.mock.calls[0][0].collapseId;
+      expect(sentCollapseId).not.toBe(longLink);
+      expect(Buffer.byteLength(sentCollapseId, 'utf8')).toBeLessThanOrEqual(64);
+    });
+
+    it('sends fan-out in parallel and passes orgId to the device lookup', async () => {
+      const { service, organizationRepository, pushDeviceRepository, apnsClient } =
+        makeDeps();
+      organizationRepository.getAllUsersOrgs.mockResolvedValue({
+        users: [{ user: { id: 'u1' } }, { user: { id: 'u2' } }],
+      });
+      pushDeviceRepository.listActiveForUsers.mockResolvedValue([
+        {
+          apnsToken: 't1',
+          environment: 'production',
+          bundleId: 'com.cuantolabs.socials',
+          prefs: {},
+        },
+        {
+          apnsToken: 't2',
+          environment: 'production',
+          bundleId: 'com.cuantolabs.socials',
+          prefs: {},
+        },
+      ]);
+      apnsClient.send.mockResolvedValue({ ok: true, status: 200, unregistered: false });
+
+      const result = await service.notifyOrg('org1', {
+        kind: 'post.published',
+        title: 't',
+        body: 'b',
+      });
+
+      expect(pushDeviceRepository.listActiveForUsers).toHaveBeenCalledWith(
+        ['u1', 'u2'],
+        'org1'
+      );
+      expect(apnsClient.send).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ sent: 2, failed: 0, disabled: 0 });
     });
   });
 
@@ -185,6 +253,49 @@ describe('PushService', () => {
       await expect(
         service.setPrefs('u1', 't1', { 'post.published': true })
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects a non-boolean (nested) pref value', async () => {
+      const { service } = makeDeps();
+      await expect(
+        service.setPrefs('u1', 't1', {
+          'post.published': { nested: true },
+        } as any)
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('registerDevice', () => {
+    it('rejects an unknown pref key', async () => {
+      const { service } = makeDeps();
+      await expect(
+        service.registerDevice('u1', 'org1', {
+          apnsToken: 't1',
+          environment: 'production',
+          prefs: { 'not.a.kind': true } as any,
+        })
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects a non-boolean pref value', async () => {
+      const { service } = makeDeps();
+      await expect(
+        service.registerDevice('u1', 'org1', {
+          apnsToken: 't1',
+          environment: 'production',
+          prefs: { 'post.published': 'yes' } as any,
+        })
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('accepts valid boolean prefs', async () => {
+      const { service, pushDeviceRepository } = makeDeps();
+      await service.registerDevice('u1', 'org1', {
+        apnsToken: 't1',
+        environment: 'production',
+        prefs: { 'post.published': true },
+      });
+      expect(pushDeviceRepository.upsertByToken).toHaveBeenCalled();
     });
   });
 

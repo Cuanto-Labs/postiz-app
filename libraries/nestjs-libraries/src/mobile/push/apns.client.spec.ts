@@ -1,6 +1,50 @@
 import { generateKeyPairSync } from 'crypto';
 import { ApnsClient, ApnsTransport } from './apns.client';
 
+const fakeSessions: any[] = [];
+
+jest.mock('http2', () => ({
+  connect: jest.fn(() => {
+    const { EventEmitter: EE } = require('events');
+    const session = new (class extends EE {
+      closed = false;
+      destroyed = false;
+      streams: any[] = [];
+      setTimeout(ms: number, cb: () => void) {
+        (this as any).timeoutMs = ms;
+        (this as any).timeoutCallback = cb;
+      }
+      request() {
+        const stream = new EE();
+        (stream as any).setTimeout = function (ms: number, cb: () => void) {
+          (stream as any).timeoutMs = ms;
+          (stream as any).timeoutCallback = cb;
+        };
+        (stream as any).setEncoding = function () {};
+        (stream as any).destroy = function (err?: Error) {
+          stream.emit('error', err || new Error('destroyed'));
+        };
+        (stream as any).end = function () {};
+        this.streams.push(stream);
+        return stream;
+      }
+      close() {
+        this.closed = true;
+        this.emit('close');
+      }
+      destroy() {
+        this.destroyed = true;
+        this.emit('close');
+      }
+    })();
+    fakeSessions.push(session as any);
+    return session;
+  }),
+}));
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { Http2ApnsTransport } = require('./apns.client');
+
 class FakeTransport implements ApnsTransport {
   calls: Array<{
     host: string;
@@ -163,5 +207,82 @@ describe('ApnsClient', () => {
     expect(transport.calls[0].headers.authorization).not.toBe(
       transport.calls[1].headers.authorization
     );
+  });
+});
+
+describe('Http2ApnsTransport', () => {
+  beforeEach(() => {
+    fakeSessions.length = 0;
+  });
+
+  it('rejects when the request times out', async () => {
+    const transport = new Http2ApnsTransport();
+    const promise = transport.send({
+      host: 'https://api.push.apple.com',
+      path: '/3/device/tok',
+      headers: {},
+      body: '{}',
+    });
+
+    const session = fakeSessions[0];
+    const stream = session.streams[0];
+    expect(typeof stream.timeoutCallback).toBe('function');
+    stream.timeoutCallback();
+
+    await expect(promise).rejects.toThrow();
+  });
+
+  it('reuses one session per host across sends', async () => {
+    const transport = new Http2ApnsTransport();
+
+    const first = transport.send({
+      host: 'https://api.push.apple.com',
+      path: '/3/device/tok1',
+      headers: {},
+      body: '{}',
+    });
+    fakeSessions[0].streams[0].emit('response', { ':status': 200 });
+    fakeSessions[0].streams[0].emit('end');
+    await first;
+
+    const second = transport.send({
+      host: 'https://api.push.apple.com',
+      path: '/3/device/tok2',
+      headers: {},
+      body: '{}',
+    });
+    fakeSessions[0].streams[1].emit('response', { ':status': 200 });
+    fakeSessions[0].streams[1].emit('end');
+    await second;
+
+    expect(fakeSessions.length).toBe(1);
+  });
+
+  it('recreates the session after it closes', async () => {
+    const transport = new Http2ApnsTransport();
+
+    const first = transport.send({
+      host: 'https://api.push.apple.com',
+      path: '/3/device/tok1',
+      headers: {},
+      body: '{}',
+    });
+    fakeSessions[0].streams[0].emit('response', { ':status': 200 });
+    fakeSessions[0].streams[0].emit('end');
+    await first;
+
+    fakeSessions[0].emit('close');
+
+    const second = transport.send({
+      host: 'https://api.push.apple.com',
+      path: '/3/device/tok2',
+      headers: {},
+      body: '{}',
+    });
+    fakeSessions[1].streams[0].emit('response', { ':status': 200 });
+    fakeSessions[1].streams[0].emit('end');
+    await second;
+
+    expect(fakeSessions.length).toBe(2);
   });
 });

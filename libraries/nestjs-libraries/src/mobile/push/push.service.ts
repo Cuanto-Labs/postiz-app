@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { PushDeviceRepository } from '@gitroom/nestjs-libraries/mobile/push/push-device.repository';
 import { ApnsClient } from '@gitroom/nestjs-libraries/mobile/push/apns.client';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
@@ -17,6 +18,7 @@ export interface PushEvent {
   title: string;
   body: string;
   link?: string;
+  groupId?: string;
 }
 
 export type PushPrefs = Partial<Record<PushEventKind, boolean>>;
@@ -30,6 +32,37 @@ export const CATEGORY_BY_KIND: Record<PushEventKind, string> = {
 const URL_REGEX = /https?:\/\/\S+/;
 const RECONNECT_REGEX = /(could not refresh|reconnect|refresh)/i;
 const PUBLISHED_REGEX = /has been published/i;
+const MAX_COLLAPSE_ID_BYTES = 64;
+
+function buildCollapseId(event: PushEvent): string | undefined {
+  if (event.groupId) {
+    return Buffer.from(event.groupId, 'utf8')
+      .subarray(0, MAX_COLLAPSE_ID_BYTES)
+      .toString('utf8');
+  }
+  if (event.link) {
+    return createHash('sha256').update(event.link).digest('hex').slice(0, 32);
+  }
+  return undefined;
+}
+
+function assertValidPrefs(prefs: unknown): void {
+  if (prefs === undefined) {
+    return;
+  }
+  if (typeof prefs !== 'object' || prefs === null || Array.isArray(prefs)) {
+    throw new BadRequestException('prefs must be an object');
+  }
+  const validKinds = Object.keys(CATEGORY_BY_KIND);
+  for (const [key, value] of Object.entries(prefs as Record<string, unknown>)) {
+    if (!validKinds.includes(key)) {
+      throw new BadRequestException(`unknown pref key: ${key}`);
+    }
+    if (typeof value !== 'boolean') {
+      throw new BadRequestException(`pref value for ${key} must be a boolean`);
+    }
+  }
+}
 
 @Injectable()
 export class PushService {
@@ -51,6 +84,7 @@ export class PushService {
       prefs?: PushPrefs;
     }
   ) {
+    assertValidPrefs(dto.prefs);
     return this._pushDeviceRepository.upsertByToken({
       userId,
       organizationId: orgId,
@@ -83,13 +117,7 @@ export class PushService {
   }
 
   async setPrefs(userId: string, apnsToken: string, prefs: PushPrefs) {
-    const validKinds = Object.keys(CATEGORY_BY_KIND);
-    const unknownKey = Object.keys(prefs || {}).find(
-      (key) => !validKinds.includes(key)
-    );
-    if (unknownKey) {
-      throw new BadRequestException(`unknown pref key: ${unknownKey}`);
-    }
+    assertValidPrefs(prefs);
 
     const result = await this._pushDeviceRepository.updatePrefs(
       userId,
@@ -152,39 +180,55 @@ export class PushService {
     }
 
     const devices = await this._pushDeviceRepository.listActiveForUsers(
-      userIds
+      userIds,
+      orgId
     );
 
-    for (const device of devices) {
-      if ((device.prefs as PushPrefs)?.[event.kind] === false) {
+    const collapseId = buildCollapseId(event);
+    const activeDevices = devices.filter(
+      (device) => (device.prefs as PushPrefs)?.[event.kind] !== false
+    );
+
+    const outcomes = await Promise.allSettled(
+      activeDevices.map(async (device) => {
+        const result = await this._apnsClient.send({
+          token: device.apnsToken,
+          environment: device.environment as any,
+          topic: device.bundleId,
+          collapseId,
+          payload: {
+            aps: {
+              alert: { title: event.title, body: event.body },
+              sound: 'default',
+              category: CATEGORY_BY_KIND[event.kind],
+              'thread-id': event.kind,
+            },
+            kind: event.kind,
+            link: event.link,
+          },
+        });
+
+        if (result.unregistered) {
+          await this._pushDeviceRepository.disableByToken(device.apnsToken);
+        }
+
+        return result;
+      })
+    );
+
+    for (const outcome of outcomes) {
+      if (outcome.status !== 'fulfilled') {
+        failed++;
         continue;
       }
 
-      const result = await this._apnsClient.send({
-        token: device.apnsToken,
-        environment: device.environment as any,
-        topic: device.bundleId,
-        collapseId: event.link,
-        payload: {
-          aps: {
-            alert: { title: event.title, body: event.body },
-            sound: 'default',
-            category: CATEGORY_BY_KIND[event.kind],
-            'thread-id': event.kind,
-          },
-          kind: event.kind,
-          link: event.link,
-        },
-      });
-
-      if (result.ok) {
+      if (outcome.value.ok) {
         sent++;
       } else {
         failed++;
       }
 
-      if (result.unregistered) {
-        await this._pushDeviceRepository.disableByToken(device.apnsToken);
+      if (outcome.value.unregistered) {
         disabled++;
       }
     }

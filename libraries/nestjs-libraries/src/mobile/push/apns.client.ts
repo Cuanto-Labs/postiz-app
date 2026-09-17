@@ -11,7 +11,34 @@ export interface ApnsTransport {
   }): Promise<{ status: number; body: string }>;
 }
 
+const APNS_TIMEOUT_MS = 10_000;
+
 export class Http2ApnsTransport implements ApnsTransport {
+  private sessions = new Map<string, http2.ClientHttp2Session>();
+
+  private getSession(host: string): http2.ClientHttp2Session {
+    const existing = this.sessions.get(host);
+    if (existing && !existing.closed && !existing.destroyed) {
+      return existing;
+    }
+
+    const session = http2.connect(host);
+    session.setTimeout(APNS_TIMEOUT_MS, () => {
+      session.destroy();
+    });
+    const drop = () => {
+      if (this.sessions.get(host) === session) {
+        this.sessions.delete(host);
+      }
+    };
+    session.on('close', drop);
+    session.on('goaway', drop);
+    session.on('error', drop);
+
+    this.sessions.set(host, session);
+    return session;
+  }
+
   send(input: {
     host: string;
     path: string;
@@ -19,17 +46,28 @@ export class Http2ApnsTransport implements ApnsTransport {
     body: string;
   }): Promise<{ status: number; body: string }> {
     return new Promise((resolve, reject) => {
-      const client = http2.connect(input.host);
-      client.on('error', (err) => reject(err));
+      const session = this.getSession(input.host);
 
-      const req = client.request({
+      const onSessionError = (err: Error) => reject(err);
+      session.once('error', onSessionError);
+
+      const req = session.request({
         ':method': 'POST',
         ':path': input.path,
         ...input.headers,
       });
 
+      req.setTimeout(APNS_TIMEOUT_MS, () => {
+        req.destroy(new Error('apns request timed out'));
+      });
+
       let status = 0;
       let body = '';
+      let settled = false;
+
+      const cleanup = () => {
+        session.removeListener('error', onSessionError);
+      };
 
       req.on('response', (headers) => {
         status = Number(headers[':status']) || 0;
@@ -41,12 +79,16 @@ export class Http2ApnsTransport implements ApnsTransport {
       });
 
       req.on('end', () => {
-        client.close();
+        if (settled) return;
+        settled = true;
+        cleanup();
         resolve({ status, body });
       });
 
       req.on('error', (err) => {
-        client.close();
+        if (settled) return;
+        settled = true;
+        cleanup();
         reject(err);
       });
 
