@@ -111,6 +111,12 @@ export const getTemporalModule = (
                 workerOptions: {
                   ...workerMemoryOptions,
                   maxConcurrentActivityTaskExecutions: concurrency ?? 1000000,
+                  // By default the SDK throttles heartbeat sends to 60s, so
+                  // against the workflow's heartbeatTimeout one dropped send
+                  // or a minute of event-loop lag eats most of the margin.
+                  // Sending every 15s keeps the recorded heartbeat fresh even
+                  // when individual sends fail or fire late.
+                  maxHeartbeatThrottleInterval: '15s',
                 },
               };
             }),

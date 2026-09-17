@@ -41,6 +41,10 @@ const STRIP_REQUEST_HEADERS = new Set([
   'x-forwarded-host',
 ]);
 
+// fetch() hands back a decoded body, so the origin's encoding headers no longer
+// describe it and must not reach the client.
+const STRIP_RESPONSE_HEADERS = ['content-encoding', 'content-length', 'transfer-encoding'];
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // undici collapses every transport failure into 'fetch failed' and hides the real
@@ -89,12 +93,19 @@ async function proxy(request: Request, path: string[]): Promise<Response> {
         continue;
       }
 
-      // Pass the response through untouched — Postiz reads auth/showorg/reload/
-      // onboarding/logout off these headers to drive the client session.
+      // Pass the headers through — Postiz reads auth/showorg/reload/onboarding/
+      // logout off them to drive the client session. The encoding headers are the
+      // exception: undici already decompressed the body, so forwarding the origin's
+      // content-encoding (br since the 2026-09-16 image) makes the browser try to
+      // decode plain JSON and every /api call arrives empty.
+      const responseHeaders = new Headers(response.headers);
+      for (const name of STRIP_RESPONSE_HEADERS) {
+        responseHeaders.delete(name);
+      }
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers,
+        headers: responseHeaders,
       });
     } catch (error) {
       lastError = error;
