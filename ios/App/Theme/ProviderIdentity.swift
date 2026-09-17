@@ -43,13 +43,21 @@ struct ProviderBadge: View {
     let identifier: String
     var size: CGFloat = 18
 
+    @Environment(\.cuantoTheme) private var theme
+
     var body: some View {
         Circle()
             .fill(ProviderIdentity.color(for: identifier))
             .overlay {
+                // Sized by frame rather than a font size so it scales with the disc without
+                // pinning a point size, and tinted with the theme's foreground token (white on
+                // the brand disc in dark, resolved per appearance in the adaptive palette).
                 Image(systemName: ProviderIdentity.symbol(for: identifier))
-                    .font(.system(size: size * 0.5, weight: .bold))
-                    .foregroundStyle(.white)
+                    .resizable()
+                    .scaledToFit()
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.token(.foreground, in: theme))
+                    .frame(width: size * 0.5, height: size * 0.5)
             }
             .overlay(Circle().strokeBorder(.background, lineWidth: 1.5))
             .frame(width: size, height: size)
