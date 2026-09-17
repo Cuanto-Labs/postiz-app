@@ -1,3 +1,4 @@
+import SocialsCore
 import SwiftUI
 
 /// Text editor + character counter, shared by the global editor and each per-channel customize
@@ -9,6 +10,12 @@ struct ComposerEditorPane: View {
     let charLimit: Int
     var placeholder: String = "What's on your mind?"
     var accessibilityLabel: String = "Post content"
+    /// When set, shows an "AI copilot" trigger that presents `CopilotSheet`; its "Use" action
+    /// forwards the picked suggestion to `ComposerViewModel.applySuggestion(_:mode:)`.
+    var copilotViewModel: CopilotViewModel?
+    var applySuggestion: ((String) -> Void)?
+
+    @State private var showCopilot = false
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
@@ -24,7 +31,23 @@ struct ComposerEditorPane: View {
                     .frame(minHeight: 140)
                     .accessibilityLabel(accessibilityLabel)
             }
-            CharacterCounterView(count: charCount, limit: charLimit)
+            HStack {
+                if let copilotViewModel, applySuggestion != nil {
+                    Button {
+                        showCopilot = true
+                    } label: {
+                        Label("AI copilot", systemImage: "sparkles")
+                    }
+                    .accessibilityLabel("Open AI copilot")
+                    .sheet(isPresented: $showCopilot) {
+                        CopilotSheet(
+                            content: content.wrappedValue, viewModel: copilotViewModel,
+                            onApply: { suggestion in applySuggestion?(suggestion) })
+                    }
+                }
+                Spacer()
+                CharacterCounterView(count: charCount, limit: charLimit)
+            }
         }
     }
 }

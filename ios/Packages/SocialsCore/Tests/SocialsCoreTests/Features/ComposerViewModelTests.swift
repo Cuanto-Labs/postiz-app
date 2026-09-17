@@ -289,10 +289,103 @@ struct ComposerViewModelTests {
         #expect(!success)
         #expect(viewModel.errorMessage == "You're offline. Check your connection and try again.")
     }
+
+    @Test
+    func submitUpdatesExistingGroupInsteadOfCreating() async {
+        let ch = channel()
+        let api = StubSocialsAPI()
+        await api.setUpdatePostResults([
+            .success(
+                PostGroupDTO(
+                    id: "1", group: "g1", publishDate: nil, status: "now", integration: nil,
+                    content: nil))
+        ])
+        let viewModel = ComposerViewModel(api: api, channels: [ch])
+        viewModel.existingGroup = "g1"
+        viewModel.toggleChannel(ch)
+        viewModel.setGlobalContent("hello")
+
+        let success = await viewModel.submit(type: "now")
+
+        #expect(success)
+        let updateCalls = await api.updatePostCalls
+        #expect(updateCalls.count == 1)
+        #expect(updateCalls.first?.group == "g1")
+        let createCalls = await api.createPostCalls
+        #expect(createCalls.isEmpty)
+        #expect(viewModel.existingGroup == nil)
+    }
+
+    // MARK: - Find slot
+
+    @Test
+    func findSlotStoresReturnedDate() async {
+        let api = StubSocialsAPI()
+        await api.setFindSlotResults([.success(FindSlotResponse(date: "2026-09-20T10:00:00Z"))])
+        let viewModel = ComposerViewModel(api: api, channels: [])
+
+        await viewModel.findSlot()
+
+        #expect(viewModel.scheduleDate == "2026-09-20T10:00:00Z")
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
+    func findSlotSurfacesAPIError() async {
+        let api = StubSocialsAPI()
+        await api.setFindSlotResults([.failure(SocialsAPIError.offline)])
+        let viewModel = ComposerViewModel(api: api, channels: [])
+
+        await viewModel.findSlot()
+
+        #expect(viewModel.scheduleDate == nil)
+        #expect(viewModel.errorMessage == "You're offline. Check your connection and try again.")
+    }
+
+    // MARK: - Delete
+
+    @Test
+    func deleteRemovesExistingGroupOnSuccess() async {
+        let api = StubSocialsAPI()
+        await api.setDeletePostResults([.success(OkResponse(ok: true))])
+        let viewModel = ComposerViewModel(api: api, channels: [])
+        viewModel.existingGroup = "g1"
+
+        let success = await viewModel.delete()
+
+        #expect(success)
+        let calls = await api.deletePostCalls
+        #expect(calls == ["g1"])
+        #expect(viewModel.existingGroup == nil)
+    }
+
+    @Test
+    func deleteWithoutExistingGroupIsNoOp() async {
+        let api = StubSocialsAPI()
+        let viewModel = ComposerViewModel(api: api, channels: [])
+
+        let success = await viewModel.delete()
+
+        #expect(!success)
+        let calls = await api.deletePostCalls
+        #expect(calls.isEmpty)
+    }
 }
 
 extension StubSocialsAPI {
     fileprivate func setCreatePostResults(_ results: [Result<PostGroupDTO, Error>]) {
         createPostResults = results
+    }
+
+    fileprivate func setUpdatePostResults(_ results: [Result<PostGroupDTO, Error>]) {
+        updatePostResults = results
+    }
+
+    fileprivate func setDeletePostResults(_ results: [Result<OkResponse, Error>]) {
+        deletePostResults = results
+    }
+
+    fileprivate func setFindSlotResults(_ results: [Result<FindSlotResponse, Error>]) {
+        findSlotResults = results
     }
 }

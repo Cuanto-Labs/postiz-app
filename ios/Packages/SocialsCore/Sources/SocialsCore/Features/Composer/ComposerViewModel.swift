@@ -24,7 +24,16 @@ public final class ComposerViewModel {
     public private(set) var customizedChannelIds: Set<String> = []
     public private(set) var perChannelDrafts: [String: ComposerDraft] = [:]
     public private(set) var isSaving = false
+    public private(set) var isFindingSlot = false
     public private(set) var errorMessage: String?
+
+    /// Non-`nil` once the composer is editing an existing post rather than creating a new one:
+    /// `submit()` calls `SocialsAPI.updatePost` instead of `createPost`, and `ComposerActionsBar`
+    /// swaps in Update/Delete for Save draft/Add to calendar/Post now.
+    public var existingGroup: String?
+    /// The chosen schedule date (ISO 8601, server format), set by `ScheduleSheet` either from a
+    /// manual pick or from `findSlot()`. `nil` means "post now".
+    public var scheduleDate: String?
 
     private let api: any SocialsAPI
     private let draftStore: (any DraftStoring)?
@@ -196,11 +205,33 @@ public final class ComposerViewModel {
         globalDraft = ComposerDraft()
         customizedChannelIds = []
         perChannelDrafts = [:]
+        existingGroup = nil
+        scheduleDate = nil
         draftStore?.clearDraft()
+    }
+
+    // MARK: - Schedule
+
+    /// Fetches the next free posting slot via `SocialsAPI.findSlot` and stores it as
+    /// `scheduleDate`, mirrors web's "find a slot for me" button in the schedule picker.
+    public func findSlot(integrationId: String? = nil) async {
+        isFindingSlot = true
+        errorMessage = nil
+        defer { isFindingSlot = false }
+        do {
+            let response = try await api.findSlot(integrationId: integrationId)
+            scheduleDate = response.date
+        } catch let error as SocialsAPIError {
+            errorMessage = Self.message(for: error)
+        } catch {
+            errorMessage = "Something went wrong. Please try again."
+        }
     }
 
     // MARK: - Submit
 
+    /// Creates a new post, or updates `existingGroup` when editing one, mirrors web's
+    /// `add.edit.modal.tsx` submit which branches on whether a post `group` is already known.
     public func submit(type: String = "now", date: String? = nil, tags: [PostTagRef]? = nil)
         async -> Bool
     {
@@ -209,8 +240,31 @@ public final class ComposerViewModel {
         errorMessage = nil
         defer { isSaving = false }
         do {
-            _ = try await api.createPost(
-                body: buildCreatePostBody(type: type, date: date, tags: tags), key: nil)
+            let body = buildCreatePostBody(type: type, date: date, tags: tags)
+            if let group = existingGroup {
+                _ = try await api.updatePost(group: group, body: body, key: nil)
+            } else {
+                _ = try await api.createPost(body: body, key: nil)
+            }
+            clearDraft()
+            return true
+        } catch let error as SocialsAPIError {
+            errorMessage = Self.message(for: error)
+            return false
+        } catch {
+            errorMessage = "Something went wrong. Please try again."
+            return false
+        }
+    }
+
+    /// Deletes `existingGroup`, mirrors `PostDetailViewModel.delete()`'s destructive-action flow.
+    public func delete() async -> Bool {
+        guard let group = existingGroup else { return false }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+        do {
+            _ = try await api.deletePost(group: group)
             clearDraft()
             return true
         } catch let error as SocialsAPIError {

@@ -89,7 +89,7 @@ public final class AppEnvironment {
         let outbox = PendingActionOutbox(modelContainer: modelContainer)
         let syncEngine = SyncEngine(
             outbox: outbox,
-            executor: UnimplementedActionExecutor(),
+            executor: LiveActionExecutor(api: api),
             connectivity: NetworkConnectivity(),
             clock: ContinuousClock()
         )
@@ -116,9 +116,10 @@ public final class AppEnvironment {
         let modelContainer = try! SocialsSchema.makeContainer(inMemory: true)
         let cacheStore = CacheStore(modelContainer: modelContainer)
         let outbox = PendingActionOutbox(modelContainer: modelContainer)
+        let api = StubSocialsAPI()
         let syncEngine = SyncEngine(
             outbox: outbox,
-            executor: UnimplementedActionExecutor(),
+            executor: LiveActionExecutor(api: api),
             connectivity: NetworkConnectivity(),
             clock: ContinuousClock()
         )
@@ -128,18 +129,9 @@ public final class AppEnvironment {
         let analyticsService = AnalyticsService.noop(optOutStore: analyticsOptOutStore)
 
         return AppEnvironment(
-            sessionStore: sessionStore, api: StubSocialsAPI(), modelContainer: modelContainer,
+            sessionStore: sessionStore, api: api, modelContainer: modelContainer,
             cacheStore: cacheStore, syncEngine: syncEngine,
             analyticsOptOutStore: analyticsOptOutStore, analyticsService: analyticsService,
             sharedCacheFiles: sharedCacheFiles)
-    }
-}
-
-/// Placeholder `ActionExecutor`: no live outbox-draining implementation exists yet (tracked
-/// separately), so queued actions stay pending rather than being silently dropped or
-/// mis-dispatched. Replace with a `LiveSocialsAPI`-backed executor when that card lands.
-private struct UnimplementedActionExecutor: ActionExecutor {
-    func execute(_ action: PendingActionSnapshot) async throws {
-        throw SyncError.retryable("ActionExecutor not implemented yet")
     }
 }

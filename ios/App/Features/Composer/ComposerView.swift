@@ -13,6 +13,7 @@ struct ComposerView: View {
     @State private var selectedTab = ComposerTab.global
     @State private var isLoadingChannels = false
     @State private var loadError: String?
+    @State private var showScheduleSheet = false
 
     var body: some View {
         NavigationStack {
@@ -23,14 +24,27 @@ struct ComposerView: View {
                     ProgressView()
                 }
             }
-            .navigationTitle("New Post")
+            .navigationTitle(viewModel?.existingGroup == nil ? "New Post" : "Edit Post")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .accessibilityLabel("Cancel")
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    postButton
+            }
+            .safeAreaInset(edge: .bottom) {
+                if let viewModel {
+                    ComposerActionsBar(
+                        viewModel: viewModel,
+                        onSchedule: { showScheduleSheet = true },
+                        onDeleted: { dismiss() }
+                    )
+                    .padding()
+                    .background(.bar)
+                }
+            }
+            .sheet(isPresented: $showScheduleSheet) {
+                if let viewModel {
+                    ScheduleSheet(viewModel: viewModel, onScheduled: { dismiss() })
                 }
             }
             .task {
@@ -42,24 +56,6 @@ struct ComposerView: View {
                     await loadChannels(into: model)
                 }
             }
-        }
-    }
-
-    @ViewBuilder
-    private var postButton: some View {
-        if let viewModel, viewModel.isSaving {
-            ProgressView()
-        } else {
-            Button("Post") {
-                guard let viewModel else { return }
-                Task {
-                    if await viewModel.submit(type: "now") {
-                        dismiss()
-                    }
-                }
-            }
-            .disabled(viewModel?.isValid != true)
-            .accessibilityLabel("Post")
         }
     }
 
