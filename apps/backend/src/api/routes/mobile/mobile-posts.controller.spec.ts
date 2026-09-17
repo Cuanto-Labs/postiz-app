@@ -42,6 +42,9 @@ describe('MobilePostsController', () => {
       getStatistics: jest.fn(),
       getMissingContent: jest.fn(),
       separatePosts: jest.fn(),
+      getComments: jest.fn(),
+      createComment: jest.fn(),
+      getPostsRecursively: jest.fn(),
     };
 
     const controller = new MobilePostsController(postsService as any);
@@ -327,5 +330,50 @@ describe('MobilePostsController', () => {
       10
     );
     expect(result).toEqual(separated);
+  });
+
+  it('getComments delegates to PostsService.getComments', async () => {
+    const { controller, postsService } = makeController();
+    const comments = [{ id: 'comment-1' }];
+    postsService.getComments.mockResolvedValue(comments);
+
+    const result = await controller.getComments('post-1');
+
+    expect(postsService.getComments).toHaveBeenCalledWith('post-1');
+    expect(result).toEqual({ comments });
+  });
+
+  it('createComment delegates to PostsService.createComment', async () => {
+    const { controller, postsService } = makeController();
+    const user = { id: 'user-1' };
+    postsService.createComment.mockResolvedValue({ id: 'comment-1' });
+
+    const result = await controller.createComment(
+      org as any,
+      user as any,
+      'post-1',
+      { comment: 'nice post' } as any
+    );
+
+    expect(postsService.createComment).toHaveBeenCalledWith(
+      'org-1',
+      'user-1',
+      'post-1',
+      'nice post'
+    );
+    expect(result).toEqual({ id: 'comment-1' });
+  });
+
+  it('getPreview delegates to PostsService.getPostsRecursively', async () => {
+    const { controller, postsService } = makeController();
+    postsService.getPostsRecursively.mockResolvedValue([{ id: 'post-1' }]);
+
+    const result = await controller.getPreview('post-1');
+
+    expect(postsService.getPostsRecursively).toHaveBeenCalledWith(
+      'post-1',
+      true
+    );
+    expect(result).toEqual([{ id: 'post-1' }]);
   });
 });

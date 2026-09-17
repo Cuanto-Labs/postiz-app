@@ -40,6 +40,12 @@ public protocol SocialsAPI: Sendable {
     func deletePushDevice(token: String) async throws -> OkResponse
     func pushPrefs(token: String) async throws -> PushPrefsResponse
     func updatePushPrefs(_ body: PushPrefsUpdateRequest) async throws -> PushPrefsResponse
+
+    // MARK: - AI
+
+    func aiCredits(type: String) async throws -> AICreditsResponse
+    func aiGenerateImage(prompt: String) async throws -> AIMediaResult
+    func aiGenerateVideo(_ body: AIVideoRequest) async throws -> AIMediaResult
 }
 
 /// Typed errors `SocialsAPI` conformers surface, mapped from `CuantoNet.APIError` + the mobile

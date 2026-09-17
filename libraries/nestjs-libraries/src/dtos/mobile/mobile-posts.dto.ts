@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsIn,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -40,4 +41,10 @@ export class MobileSeparatePostsDto {
   @IsNumber()
   @Min(1)
   len: number;
+}
+
+export class MobileCommentDto {
+  @IsString()
+  @IsNotEmpty()
+  comment: string;
 }

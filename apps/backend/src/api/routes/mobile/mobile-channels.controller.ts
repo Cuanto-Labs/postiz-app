@@ -24,11 +24,19 @@ import {
   Sections,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
+import { IntegrationFunctionDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.function.dto';
 import {
   MobileChannelGroupDto,
   MobileChannelNameDto,
   MobileChannelSettingsDto,
 } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-channels.dto';
+import {
+  Disconnect,
+  RefreshToken,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
+import { timer } from '@gitroom/helpers/utils/timer';
+import { uniqBy } from 'lodash';
 
 @ApiTags('Mobile Channels')
 @ApiBearerAuth()
@@ -37,7 +45,8 @@ export class MobileChannelsController {
   constructor(
     private _integrationService: IntegrationService,
     private _integrationManager: IntegrationManager,
-    private _postService: PostsService
+    private _postService: PostsService,
+    private _refreshIntegrationService: RefreshIntegrationService
   ) {}
 
   @Get('/')
@@ -140,6 +149,134 @@ export class MobileChannelsController {
       id,
       body.additionalSettings
     );
+  }
+
+  @Post('/mentions')
+  @ApiOperation({ summary: 'Search cached mentions for a channel' })
+  async mentions(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: IntegrationFunctionDto
+  ) {
+    const getIntegration = await this._integrationService.getIntegrationById(
+      org.id,
+      body.id
+    );
+    if (!getIntegration) {
+      throw new Error('Invalid integration');
+    }
+
+    let newList: any[] | { none: true } = [];
+    try {
+      newList = (await this.functionIntegration(org, body)) || [];
+    } catch (err) {
+      console.log(err);
+    }
+
+    if (!Array.isArray(newList) && newList?.none) {
+      return newList;
+    }
+
+    const list = await this._integrationService.getMentions(
+      getIntegration.providerIdentifier,
+      body?.data?.query
+    );
+
+    if (Array.isArray(newList) && newList.length) {
+      await this._integrationService.insertMentions(
+        getIntegration.providerIdentifier,
+        newList
+          .map((p: any) => ({
+            name: p.label || '',
+            username: p.id || '',
+            image: p.image || '',
+            doNotCache: p.doNotCache || false,
+          }))
+          .filter((f: any) => f.name && !f.doNotCache)
+      );
+    }
+
+    return uniqBy(
+      [
+        ...list.map((p) => ({
+          id: p.username,
+          image: p.image,
+          label: p.name,
+        })),
+        ...(newList as any[]),
+      ],
+      (p) => p.id
+    ).filter((f) => f.label && f.id);
+  }
+
+  @Post('/function')
+  @ApiOperation({ summary: 'Dispatch a provider-specific function call' })
+  async functionIntegration(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: IntegrationFunctionDto
+  ): Promise<any> {
+    const getIntegration = await this._integrationService.getIntegrationById(
+      org.id,
+      body.id
+    );
+    if (!getIntegration) {
+      throw new Error('Invalid integration');
+    }
+
+    const integrationProvider = this._integrationManager.getSocialIntegration(
+      getIntegration.providerIdentifier
+    );
+    if (!integrationProvider) {
+      throw new Error('Invalid provider');
+    }
+
+    // @ts-ignore
+    if (integrationProvider[body.name]) {
+      try {
+        // @ts-ignore
+        const load = await integrationProvider[body.name](
+          getIntegration.token,
+          body.data,
+          getIntegration.internalId,
+          getIntegration
+        );
+
+        return load;
+      } catch (err) {
+        // The platform will keep rejecting this channel until the user
+        // re-connects it: mark it as needing a refresh instead of retrying.
+        if (err instanceof Disconnect) {
+          await this._integrationService.disconnectChannel(
+            org.id,
+            getIntegration
+          );
+          return false;
+        }
+
+        if (err instanceof RefreshToken) {
+          const data = await this._refreshIntegrationService.refresh(
+            getIntegration
+          );
+
+          if (!data) {
+            return;
+          }
+
+          const { accessToken } = data;
+
+          if (accessToken) {
+            if (integrationProvider.refreshWait) {
+              await timer(10000);
+            }
+            return this.functionIntegration(org, body);
+          }
+
+          return false;
+        }
+
+        return false;
+      }
+    }
+    throw new Error('Function not found');
   }
 
   @Post('/:id/disable')

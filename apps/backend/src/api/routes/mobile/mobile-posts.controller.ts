@@ -17,10 +17,12 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Organization } from '@prisma/client';
+import { Organization, User } from '@prisma/client';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
+import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import {
+  MobileCommentDto,
   MobileOldPostsQueryDto,
   MobilePostsQueryDto,
   MobileRescheduleDto,
@@ -121,6 +123,31 @@ export class MobilePostsController {
     @Param('id') id: string
   ) {
     return this._postsService.getMissingContent(org.id, id);
+  }
+
+  @Get('/:id/comments')
+  @ApiOperation({ summary: 'Get comments for a post' })
+  async getComments(@Param('id') id: string) {
+    return { comments: await this._postsService.getComments(id) };
+  }
+
+  @Post('/:id/comments')
+  @ApiOperation({ summary: 'Create a comment on a post' })
+  async createComment(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string,
+    @Body() body: MobileCommentDto
+  ) {
+    return this._postsService.createComment(org.id, user.id, id, body.comment);
+  }
+
+  @Get('/:id/preview')
+  @ApiOperation({ summary: 'Get a post preview' })
+  async getPreview(@Param('id') id: string) {
+    return (await this._postsService.getPostsRecursively(id, true)).map(
+      (p) => p
+    );
   }
 
   @Post('/separate')

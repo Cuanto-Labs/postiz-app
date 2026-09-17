@@ -31,6 +31,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
 import { MobileChannelsController } from '@gitroom/backend/api/routes/mobile/mobile-channels.controller';
 import { MobileModule } from '@gitroom/backend/api/routes/mobile/mobile.module';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { Disconnect } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 
 describe('MobileChannelsController', () => {
   const org = { id: 'org-1' };
@@ -47,6 +48,10 @@ describe('MobileChannelsController', () => {
       enableChannel: jest.fn(),
       getPostsForChannel: jest.fn(),
       deleteChannel: jest.fn(),
+      getIntegrationById: jest.fn(),
+      getMentions: jest.fn(),
+      insertMentions: jest.fn(),
+      disconnectChannel: jest.fn(),
     };
     const integrationManager = {
       getSocialIntegration: jest.fn(),
@@ -55,14 +60,24 @@ describe('MobileChannelsController', () => {
     const postService = {
       deletePost: jest.fn().mockResolvedValue(undefined),
     };
+    const refreshIntegrationService = {
+      refresh: jest.fn(),
+    };
 
     const controller = new MobileChannelsController(
       integrationService as any,
       integrationManager as any,
-      postService as any
+      postService as any,
+      refreshIntegrationService as any
     );
 
-    return { controller, integrationService, integrationManager, postService };
+    return {
+      controller,
+      integrationService,
+      integrationManager,
+      postService,
+      refreshIntegrationService,
+    };
   };
 
   it('exposes the /mobile/v1/channels path', () => {
@@ -336,6 +351,121 @@ describe('MobileChannelsController', () => {
         org.id,
         'int-1'
       );
+    });
+  });
+
+  describe('functionIntegration', () => {
+    it('calls provider[name] with token, data, internalId, integration', async () => {
+      const { controller, integrationService, integrationManager } =
+        makeController();
+      const integration = {
+        id: 'int-1',
+        providerIdentifier: 'x',
+        token: 'tok',
+        internalId: 'internal-1',
+      };
+      integrationService.getIntegrationById.mockResolvedValue(integration);
+      const customFn = jest.fn().mockResolvedValue({ ok: true });
+      integrationManager.getSocialIntegration.mockReturnValue({
+        customFn,
+      });
+
+      const result = await controller.functionIntegration(org as any, {
+        id: 'int-1',
+        name: 'customFn',
+        data: { foo: 'bar' },
+      } as any);
+
+      expect(customFn).toHaveBeenCalledWith(
+        'tok',
+        { foo: 'bar' },
+        'internal-1',
+        integration
+      );
+      expect(result).toEqual({ ok: true });
+    });
+
+    it('disconnects the channel and returns false on Disconnect', async () => {
+      const { controller, integrationService, integrationManager } =
+        makeController();
+      const integration = {
+        id: 'int-1',
+        providerIdentifier: 'x',
+        token: 'tok',
+        internalId: 'internal-1',
+      };
+      integrationService.getIntegrationById.mockResolvedValue(integration);
+      integrationManager.getSocialIntegration.mockReturnValue({
+        customFn: jest.fn().mockRejectedValue(new Disconnect()),
+      });
+
+      const result = await controller.functionIntegration(org as any, {
+        id: 'int-1',
+        name: 'customFn',
+        data: {},
+      } as any);
+
+      expect(integrationService.disconnectChannel).toHaveBeenCalledWith(
+        org.id,
+        integration
+      );
+      expect(result).toBe(false);
+    });
+
+    it('throws when the function is not found on the provider', async () => {
+      const { controller, integrationService, integrationManager } =
+        makeController();
+      integrationService.getIntegrationById.mockResolvedValue({
+        id: 'int-1',
+        providerIdentifier: 'x',
+      });
+      integrationManager.getSocialIntegration.mockReturnValue({});
+
+      await expect(
+        controller.functionIntegration(org as any, {
+          id: 'int-1',
+          name: 'missingFn',
+          data: {},
+        } as any)
+      ).rejects.toThrow('Function not found');
+    });
+  });
+
+  describe('mentions', () => {
+    it('merges cached mentions with fresh results and caches the fresh ones', async () => {
+      const { controller, integrationService, integrationManager } =
+        makeController();
+      const integration = {
+        id: 'int-1',
+        providerIdentifier: 'x',
+        token: 'tok',
+        internalId: 'internal-1',
+      };
+      integrationService.getIntegrationById.mockResolvedValue(integration);
+      integrationManager.getSocialIntegration.mockReturnValue({
+        mentions: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'fresh-1', label: 'Fresh One', image: 'img' },
+          ]),
+      });
+      integrationService.getMentions.mockResolvedValue([
+        { username: 'cached-1', name: 'Cached One', image: 'img2' },
+      ]);
+
+      const result = await controller.mentions(org as any, {
+        id: 'int-1',
+        name: 'mentions',
+        data: { query: 'foo' },
+      } as any);
+
+      expect(integrationService.insertMentions).toHaveBeenCalledWith('x', [
+        { name: 'Fresh One', username: 'fresh-1', image: 'img', doNotCache: false },
+      ]);
+      expect(result).toEqual([
+        { id: 'cached-1', image: 'img2', label: 'Cached One' },
+        { id: 'fresh-1', label: 'Fresh One', image: 'img' },
+      ]);
     });
   });
 

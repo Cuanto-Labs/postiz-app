@@ -183,4 +183,27 @@ public actor StubSocialsAPI: SocialsAPI {
         updatePushPrefsCalls.append(body)
         return try next(&updatePushPrefsResults, "updatePushPrefs")
     }
+
+    // MARK: - AI
+
+    public var aiCreditsResults: [Result<AICreditsResponse, Error>] = []
+    public private(set) var aiCreditsCalls: [String] = []
+    public func aiCredits(type: String) async throws -> AICreditsResponse {
+        aiCreditsCalls.append(type)
+        return try next(&aiCreditsResults, "aiCredits")
+    }
+
+    public var aiGenerateImageResults: [Result<AIMediaResult, Error>] = []
+    public private(set) var aiGenerateImageCalls: [String] = []
+    public func aiGenerateImage(prompt: String) async throws -> AIMediaResult {
+        aiGenerateImageCalls.append(prompt)
+        return try next(&aiGenerateImageResults, "aiGenerateImage")
+    }
+
+    public var aiGenerateVideoResults: [Result<AIMediaResult, Error>] = []
+    public private(set) var aiGenerateVideoCalls: [AIVideoRequest] = []
+    public func aiGenerateVideo(_ body: AIVideoRequest) async throws -> AIMediaResult {
+        aiGenerateVideoCalls.append(body)
+        return try next(&aiGenerateVideoResults, "aiGenerateVideo")
+    }
 }
