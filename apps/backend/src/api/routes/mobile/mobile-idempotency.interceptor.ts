@@ -34,11 +34,18 @@ export class MobileIdempotencyInterceptor implements NestInterceptor {
       throw new BadRequestException({ msg: 'Invalid Idempotency-Key' });
     }
 
+    // Scope the key per authenticated user so two users in the same org
+    // reusing the same client-generated key don't replay each other.
+    const scopedKey = `${req.user?.id}:${key}`;
+
     const requestHash = createHash('sha256')
       .update(req.method + req.path + JSON.stringify(req.body || {}))
       .digest('hex');
 
-    const existing = await this._idempotencyRepository.find(req.org.id, key);
+    const existing = await this._idempotencyRepository.find(
+      req.org.id,
+      scopedKey
+    );
 
     if (existing) {
       if (existing.requestHash !== requestHash) {
@@ -56,7 +63,7 @@ export class MobileIdempotencyInterceptor implements NestInterceptor {
         try {
           await this._idempotencyRepository.save({
             organizationId: req.org.id,
-            key,
+            key: scopedKey,
             method: req.method,
             path: req.path,
             requestHash,

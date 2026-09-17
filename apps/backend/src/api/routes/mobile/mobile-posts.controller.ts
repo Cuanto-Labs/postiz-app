@@ -122,6 +122,7 @@ export class MobilePostsController {
 
   @Put('/:group')
   @UseInterceptors(MobileIdempotencyInterceptor)
+  @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
   @ApiOperation({ summary: 'Update a post group' })
   @ApiHeader({ name: 'Idempotency-Key', required: false })
   async update(

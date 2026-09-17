@@ -10,6 +10,7 @@ import { MobileIdempotencyInterceptor } from '@gitroom/backend/api/routes/mobile
 
 describe('MobileIdempotencyInterceptor', () => {
   const org = { id: 'org-1' };
+  const user = { id: 'user-1' };
 
   const makeRequest = (overrides: any = {}) => ({
     method: 'POST',
@@ -17,6 +18,7 @@ describe('MobileIdempotencyInterceptor', () => {
     body: { a: 1 },
     headers: {},
     org,
+    user,
     ...overrides,
   });
 
@@ -78,10 +80,60 @@ describe('MobileIdempotencyInterceptor', () => {
     expect(idempotencyRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: org.id,
-        key: 'abcdefgh',
+        key: `${user.id}:abcdefgh`,
         requestHash: hashFor(req),
         statusCode: 200,
         response: JSON.stringify({ ok: true }),
+      })
+    );
+  });
+
+  it('two different users reusing the same key in the same org do not replay each other', async () => {
+    const userA = { id: 'user-a' };
+    const userB = { id: 'user-b' };
+    const reqA = makeRequest({
+      headers: { 'idempotency-key': 'abcdefgh' },
+      user: userA,
+    });
+    const reqB = makeRequest({
+      headers: { 'idempotency-key': 'abcdefgh' },
+      user: userB,
+    });
+
+    // Simulate the repository: userA already has a stored row for this key,
+    // userB does not.
+    const find = jest.fn(async (_orgId: string, key: string) =>
+      key === `${userA.id}:abcdefgh`
+        ? {
+            requestHash: hashFor(reqA),
+            statusCode: 201,
+            response: JSON.stringify({ owner: 'a' }),
+          }
+        : null
+    );
+    const { interceptor, idempotencyRepository } = makeInterceptor({ find });
+
+    const resA = { status: jest.fn() };
+    const nextA = { handle: jest.fn().mockReturnValue(of({ owner: 'a' })) };
+    const resultA = await interceptor.intercept(
+      makeContext(reqA, resA) as any,
+      nextA as any
+    );
+    await expect(lastValueFrom(resultA)).resolves.toEqual({ owner: 'a' });
+    expect(nextA.handle).not.toHaveBeenCalled();
+
+    const resB = { status: jest.fn(), statusCode: 200 };
+    const nextB = { handle: jest.fn().mockReturnValue(of({ owner: 'b' })) };
+    const resultB = await interceptor.intercept(
+      makeContext(reqB, resB) as any,
+      nextB as any
+    );
+    await expect(lastValueFrom(resultB)).resolves.toEqual({ owner: 'b' });
+    expect(nextB.handle).toHaveBeenCalled();
+    expect(idempotencyRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `${userB.id}:abcdefgh`,
+        response: JSON.stringify({ owner: 'b' }),
       })
     );
   });

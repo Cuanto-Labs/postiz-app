@@ -6,6 +6,7 @@ import { MobileChannelsController } from '@gitroom/backend/api/routes/mobile/mob
 import { MobileMeController } from '@gitroom/backend/api/routes/mobile/mobile-me.controller';
 import { MobileConfigController } from '@gitroom/backend/api/routes/mobile/mobile-config.controller';
 import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile-posts.controller';
+import { MobilePushController } from '@gitroom/backend/api/routes/mobile/mobile-push.controller';
 import { MobileAuthService } from '@gitroom/nestjs-libraries/mobile/mobile-auth.service';
 import { MobileTokenService } from '@gitroom/nestjs-libraries/mobile/mobile-token.service';
 import { MobileSessionRepository } from '@gitroom/nestjs-libraries/mobile/mobile-session.repository';
@@ -20,6 +21,7 @@ const authenticatedControllers = [
   MobileMeController,
   MobileChannelsController,
   MobilePostsController,
+  MobilePushController,
 ];
 
 @Module({

@@ -44,8 +44,8 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 
 - Optional request header on `POST /mobile/v1/posts` and `PUT /mobile/v1/posts/:group` (`MobileIdempotencyInterceptor`).
 - 8–128 chars; outside that range → `400 { msg: 'Invalid Idempotency-Key' }`.
-- Scoped per org (`organizationId` + `key`), 24h TTL (`IDEMPOTENCY_TTL_MS`).
-- Same key + same request (method + path + body hash) → replayed: original status code and body returned, handler not re-run.
+- Scoped per org (`organizationId`) and per authenticated user: the stored key is `${req.user.id}:${key}`, so two different users in the same org reusing the same client-generated key never replay each other. 24h TTL (`IDEMPOTENCY_TTL_MS`).
+- Same key + same request (method + path + body hash) → replayed: original status code and body returned, handler not re-run. The status returned on a hit is whatever `res.statusCode` was on the original call (e.g. if the handler didn't explicitly set `201`, a replay of a `POST` returns the default `200`, not `201`) — the interceptor never invents a status.
 - Same key + different payload → `422 { msg: 'Idempotency-Key reused with a different payload' }`.
 - Stored in the `IdempotencyKey` table (`libraries/nestjs-libraries/src/mobile/idempotency.repository.ts`); a concurrent duplicate write is swallowed (Prisma `P2002`), not treated as an error.
 

@@ -12,6 +12,7 @@ jest.mock('@gitroom/nestjs-libraries/integrations/integration.manager', () => ({
 import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile-posts.controller';
 import { MobileIdempotencyInterceptor } from '@gitroom/backend/api/routes/mobile/mobile-idempotency.interceptor';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
+import { CHECK_POLICIES_KEY } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 
 describe('MobilePostsController', () => {
   const org = { id: 'org-1' };
@@ -127,6 +128,21 @@ describe('MobilePostsController', () => {
       rawBody,
       'WEB'
     );
+  });
+
+  it('update carries the same policy metadata as create (plan-limit bypass guard)', () => {
+    const { controller } = makeController();
+    const createPolicies = Reflect.getMetadata(
+      CHECK_POLICIES_KEY,
+      controller.create
+    );
+    const updatePolicies = Reflect.getMetadata(
+      CHECK_POLICIES_KEY,
+      controller.update
+    );
+
+    expect(updatePolicies).toEqual(createPolicies);
+    expect(updatePolicies).toBeDefined();
   });
 
   it('update forces the group onto every post and defaults type to update', async () => {
