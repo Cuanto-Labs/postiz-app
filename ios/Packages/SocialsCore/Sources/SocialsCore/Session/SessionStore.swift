@@ -63,6 +63,11 @@ public actor SessionStore: TokenProvider {
 
     public var currentOrgId: String? { session?.currentOrgId }
 
+    /// The refresh token for the active session, if any — needed by callers (e.g. the settings
+    /// sign-out flow) that must include it in the `/mobile/v1/auth/logout` request body so the
+    /// server can revoke that specific session.
+    public var currentRefreshToken: String? { session?.tokens.refreshToken }
+
     /// Persists a fresh sign-in (defaults the active org to the first one returned).
     public func signIn(_ auth: MobileAuthResponse) async throws {
         let tokens = MobileTokens(
