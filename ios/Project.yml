@@ -28,7 +28,7 @@ settings:
   configs:
     Debug:
       BUNDLE_ID_SUFFIX: ""
-      API_BASE_URL: http://localhost:3000
+      API_BASE_URL: http://localhost:3800
     Debug-Staging:
       BUNDLE_ID_SUFFIX: .staging
       API_BASE_URL: https://api-staging.socials.cuantolabs.com
@@ -113,6 +113,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX)
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "CuantoSocials App Store"
   CuantoSocialsShare:
     type: app-extension
     platform: iOS
@@ -154,6 +159,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).share
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "CuantoSocials Share App Store"
   CuantoSocialsWidgets:
     type: app-extension
     platform: iOS
@@ -188,6 +198,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).widgets
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "CuantoSocials Widgets App Store"
   CuantoSocialsIntents:
     # FALLBACK: xcodegen 2.46.0 ships no `extensionkit-extension` settings
     # preset, so this uses the known-good `app-extension` product type with
@@ -230,6 +245,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuantolabs.socials$(BUNDLE_ID_SUFFIX).intents
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "CuantoSocials Intents App Store"
   CuantoSocialsTests:
     type: bundle.unit-test
     platform: iOS
