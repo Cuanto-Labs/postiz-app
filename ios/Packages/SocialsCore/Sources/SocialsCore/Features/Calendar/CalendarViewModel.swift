@@ -138,6 +138,104 @@ public final class CalendarViewModel {
         }
     }
 
+    // MARK: - Reschedule (optimistic + rollback)
+
+    public private(set) var isRescheduling = false
+
+    /// Drag-to-reschedule: updates `posts` immediately so the grid moves the card before the
+    /// network round trip, then confirms via `api.reschedule`. Rolls the local mutation back
+    /// and surfaces `errorMessage` on failure — mirrors web's `calendar.tsx` drag handler,
+    /// which optimistically moves the card and reverts on a failed `PUT`.
+    @discardableResult
+    public func reschedule(group: String, to date: Date) async -> Bool {
+        guard let index = posts.firstIndex(where: { $0.group == group }) else { return false }
+        let previous = posts[index]
+        let iso = Self.iso(date)
+        posts[index] = PostGroupDTO(
+            id: previous.id, group: previous.group, publishDate: iso, status: previous.status,
+            integration: previous.integration, content: previous.content)
+        isRescheduling = true
+        errorMessage = nil
+        defer { isRescheduling = false }
+        do {
+            _ = try await api.reschedule(group: group, date: iso, action: nil)
+            return true
+        } catch let error as SocialsAPIError {
+            posts[index] = previous
+            errorMessage = Self.message(for: error)
+            return false
+        } catch {
+            posts[index] = previous
+            errorMessage = "Something went wrong. Please try again."
+            return false
+        }
+    }
+
+    // MARK: - Duplicate
+
+    public private(set) var isDuplicating = false
+
+    /// Duplicates a post group by re-creating it with the same content and time, mirrors
+    /// web's `calendar.tsx` duplicate action (`editPost(post, true)`, which prefills the
+    /// editor from the original and submits a fresh `POST /posts`). Appends the created
+    /// group locally so the grid reflects it without a full refetch.
+    public func duplicate(_ post: PostGroupDTO) async {
+        isDuplicating = true
+        errorMessage = nil
+        defer { isDuplicating = false }
+        do {
+            let created = try await api.createPost(
+                body: CreatePostBody(type: "now", posts: [post], date: post.publishDate),
+                key: nil)
+            posts.append(created)
+        } catch let error as SocialsAPIError {
+            errorMessage = Self.message(for: error)
+        } catch {
+            errorMessage = "Something went wrong. Please try again."
+        }
+    }
+
+    // MARK: - Delete
+
+    public private(set) var isDeleting = false
+
+    /// Deletes a post group and removes it from whichever mode is active locally, mirrors
+    /// `PostDetailViewModel.delete()` plus web's `calendar.tsx` `deletePost` list removal.
+    public func delete(group: String) async {
+        isDeleting = true
+        errorMessage = nil
+        defer { isDeleting = false }
+        do {
+            _ = try await api.deletePost(group: group)
+            posts.removeAll { $0.group == group }
+            listPosts.removeAll { $0.group == group }
+        } catch let error as SocialsAPIError {
+            errorMessage = Self.message(for: error)
+        } catch {
+            errorMessage = "Something went wrong. Please try again."
+        }
+    }
+
+    // MARK: - Preview
+
+    public private(set) var previewPosts: [PostGroupDTO] = []
+    public private(set) var isLoadingPreview = false
+
+    /// Loads the shareable preview for a post group, mirrors `PostDetailViewModel.loadPreview()`.
+    public func loadPreview(group: String) async {
+        isLoadingPreview = true
+        errorMessage = nil
+        defer { isLoadingPreview = false }
+        do {
+            let response = try await api.preview(id: group)
+            previewPosts = response.posts
+        } catch let error as SocialsAPIError {
+            errorMessage = Self.message(for: error)
+        } catch {
+            errorMessage = "Something went wrong. Please try again."
+        }
+    }
+
     private static func iso(_ date: Date) -> String {
         ISO8601DateFormatter().string(from: date)
     }

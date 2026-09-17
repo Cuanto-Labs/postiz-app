@@ -101,6 +101,100 @@ struct CalendarViewModelTests {
 
         #expect(viewModel.posts.map(\.id) == ["net-1"])
     }
+
+    @Test("reschedule moves the card immediately and confirms via the API")
+    func rescheduleUpdatesOptimisticallyOnSuccess() async throws {
+        let api = StubSocialsAPI()
+        let cacheStore = try makeCacheStore()
+        let referenceDate = Date(timeIntervalSince1970: 1_726_000_000)
+        let post = postDTO(group: "g1", date: referenceDate)
+        await api.setPostsResults([.success(PostsResponse(posts: [post]))])
+        await api.setRescheduleResults([.success(RescheduleResponse(group: "g1", date: "2024-09-12T00:00:00Z"))])
+        let viewModel = CalendarViewModel(
+            api: api, cacheStore: cacheStore, orgId: "org-1", display: .week,
+            referenceDate: referenceDate)
+        await viewModel.refresh()
+        let newDate = referenceDate.addingTimeInterval(86_400)
+
+        let succeeded = await viewModel.reschedule(group: "g1", to: newDate)
+
+        #expect(succeeded)
+        #expect(viewModel.posts.first?.publishDate != post.publishDate)
+        #expect(viewModel.errorMessage == nil)
+        #expect(await api.rescheduleCalls.count == 1)
+    }
+
+    @Test("reschedule rolls back the local move when the API call fails")
+    func rescheduleRollsBackOnFailure() async throws {
+        let api = StubSocialsAPI()
+        let cacheStore = try makeCacheStore()
+        let referenceDate = Date(timeIntervalSince1970: 1_726_000_000)
+        let post = postDTO(group: "g1", date: referenceDate)
+        await api.setPostsResults([.success(PostsResponse(posts: [post]))])
+        await api.setRescheduleResults([.failure(SocialsAPIError.offline)])
+        let viewModel = CalendarViewModel(
+            api: api, cacheStore: cacheStore, orgId: "org-1", display: .week,
+            referenceDate: referenceDate)
+        await viewModel.refresh()
+        let newDate = referenceDate.addingTimeInterval(86_400)
+
+        let succeeded = await viewModel.reschedule(group: "g1", to: newDate)
+
+        #expect(!succeeded)
+        #expect(viewModel.posts.first?.publishDate == post.publishDate)
+        #expect(viewModel.errorMessage != nil)
+    }
+
+    @Test("duplicate creates a new post and appends it")
+    func duplicateAppendsCreatedPost() async throws {
+        let api = StubSocialsAPI()
+        let cacheStore = try makeCacheStore()
+        let referenceDate = Date(timeIntervalSince1970: 1_726_000_000)
+        let post = postDTO(group: "g1", date: referenceDate)
+        await api.setCreatePostResults([.success(postDTO(group: "g2", date: referenceDate))])
+        let viewModel = CalendarViewModel(api: api, cacheStore: cacheStore, orgId: "org-1")
+
+        await viewModel.duplicate(post)
+
+        #expect(viewModel.posts.map(\.id) == ["g2"])
+        #expect(viewModel.errorMessage == nil)
+        #expect(await api.createPostCalls.count == 1)
+    }
+
+    @Test("delete removes the post from the grid on success")
+    func deleteRemovesPostOnSuccess() async throws {
+        let api = StubSocialsAPI()
+        let cacheStore = try makeCacheStore()
+        let referenceDate = Date(timeIntervalSince1970: 1_726_000_000)
+        let post = postDTO(group: "g1", date: referenceDate)
+        await api.setPostsResults([.success(PostsResponse(posts: [post]))])
+        await api.setDeletePostResults([.success(OkResponse(ok: true))])
+        let viewModel = CalendarViewModel(
+            api: api, cacheStore: cacheStore, orgId: "org-1", display: .week,
+            referenceDate: referenceDate)
+        await viewModel.refresh()
+
+        await viewModel.delete(group: "g1")
+
+        #expect(viewModel.posts.isEmpty)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("loadPreview populates previewPosts on success")
+    func loadPreviewPopulatesPosts() async throws {
+        let api = StubSocialsAPI()
+        let cacheStore = try makeCacheStore()
+        let referenceDate = Date(timeIntervalSince1970: 1_726_000_000)
+        let post = postDTO(group: "g1", date: referenceDate)
+        await api.setPreviewResults([.success(PostPreviewResponse(posts: [post]))])
+        let viewModel = CalendarViewModel(api: api, cacheStore: cacheStore, orgId: "org-1")
+
+        await viewModel.loadPreview(group: "g1")
+
+        #expect(viewModel.previewPosts.map(\.id) == ["g1"])
+        #expect(!viewModel.isLoadingPreview)
+        #expect(viewModel.errorMessage == nil)
+    }
 }
 
 extension StubSocialsAPI {
@@ -109,5 +203,17 @@ extension StubSocialsAPI {
     }
     fileprivate func setPostsListResults(_ results: [Result<PostsListResponse, Error>]) {
         postsListResults = results
+    }
+    fileprivate func setRescheduleResults(_ results: [Result<RescheduleResponse, Error>]) {
+        rescheduleResults = results
+    }
+    fileprivate func setCreatePostResults(_ results: [Result<PostGroupDTO, Error>]) {
+        createPostResults = results
+    }
+    fileprivate func setDeletePostResults(_ results: [Result<OkResponse, Error>]) {
+        deletePostResults = results
+    }
+    fileprivate func setPreviewResults(_ results: [Result<PostPreviewResponse, Error>]) {
+        previewResults = results
     }
 }
