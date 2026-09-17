@@ -28,6 +28,18 @@ public struct ComposerMediaRef: Sendable, Equatable, Identifiable, Codable {
     }
 }
 
+extension ComposerMediaRef {
+    /// Cheap image/video guess from the file extension in `path`, used as a fallback for
+    /// per-kind media counts (``ProviderCrossFieldValidator``) when this ref's real kind isn't
+    /// known via ``SelectedMediaAttributes`` (e.g. media restored from a persisted draft, whose
+    /// local probe result never survives the app relaunch).
+    public var inferredKind: SelectedMediaAttributes.Kind {
+        let videoExtensions: Set<String> = ["mp4", "mov", "m4v", "webm", "avi"]
+        let ext = (path as NSString).pathExtension.lowercased()
+        return videoExtensions.contains(ext) ? .video : .image
+    }
+}
+
 /// Snapshot of in-progress composer state, persisted by `DraftStoring` conformers so a
 /// killed/backgrounded app can restore an unsent post — mirrors web's localStorage-backed
 /// draft recovery for the new-launch modal.

@@ -1,3 +1,4 @@
+import CuantoUI
 import SocialsCore
 import SwiftUI
 
@@ -9,6 +10,7 @@ import SwiftUI
 struct ComposerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.cuantoTheme) private var theme
     @State private var viewModel: ComposerViewModel?
     @State private var selectedTab = ComposerTab.global
     @State private var isLoadingChannels = false
@@ -17,6 +19,8 @@ struct ComposerView: View {
     @State private var showAIImage = false
     @State private var showAIVideo = false
     @State private var showCopilot = false
+    @State private var uploadQueue: UploadQueue?
+    @State private var mediaLibraryViewModel: MediaLibraryViewModel?
 
     var body: some View {
         NavigationStack {
@@ -95,6 +99,8 @@ struct ComposerView: View {
                         api: environment.api, draftStore: UserDefaultsDraftStore())
                     model.restoreDraft()
                     viewModel = model
+                    uploadQueue = UploadQueue(api: environment.api)
+                    mediaLibraryViewModel = MediaLibraryViewModel(api: environment.api)
                     await loadChannels(into: model)
                 }
             }
@@ -226,16 +232,48 @@ struct ComposerView: View {
         case .global:
             let limit = viewModel.selectedChannels.map(viewModel.charLimit(for:)).min()
                 ?? ComposerViewModel.defaultCharLimit
-            ComposerEditorPane(
-                content: Binding(
-                    get: { viewModel.globalDraft.content },
-                    set: { viewModel.setGlobalContent($0) }),
-                charCount: viewModel.globalDraft.content.count,
-                charLimit: limit,
-                accessibilityLabel: "Global post content")
+            VStack(alignment: .leading, spacing: 12) {
+                ComposerEditorPane(
+                    content: Binding(
+                        get: { viewModel.globalDraft.content },
+                        set: { viewModel.setGlobalContent($0) }),
+                    charCount: viewModel.globalDraft.content.count,
+                    charLimit: limit,
+                    accessibilityLabel: "Global post content")
+
+                if let uploadQueue, let mediaLibraryViewModel {
+                    MediaTrayView(
+                        uploadQueue: uploadQueue,
+                        onUploaded: { media, attributes in
+                            viewModel.attachMediaToGlobal(media, attributes: attributes)
+                        },
+                        providerIdentifiers: viewModel.selectedChannels.map(\.identifier),
+                        mediaLibraryViewModel: mediaLibraryViewModel)
+                }
+            }
+            previewsStrip(for: viewModel)
         case .channel(let channelId):
             if let channel = viewModel.selectedChannels.first(where: { $0.internalId == channelId }) {
                 perChannelPane(for: channel, viewModel: viewModel)
+                previewsStrip(for: viewModel)
+            }
+        }
+    }
+
+    /// One `ChannelPreviewCard` per selected channel, mirroring web's Post Preview panel — always
+    /// visible under whichever tab is active, since every channel's preview reflects its own
+    /// effective (global or customized) draft regardless of which tab the user is editing.
+    @ViewBuilder
+    private func previewsStrip(for viewModel: ComposerViewModel) -> some View {
+        if !viewModel.selectedChannels.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(viewModel.selectedChannels, id: \.internalId) { channel in
+                        ChannelPreviewCard(
+                            channel: channel, draft: viewModel.draft(for: channel.internalId),
+                            mediaAttributes: { viewModel.mediaAttributesByID[$0] })
+                    }
+                }
             }
         }
     }
@@ -260,6 +298,44 @@ struct ComposerView: View {
                 accessibilityLabel: "\(channel.name) post content")
             .disabled(!viewModel.isCustomized(channel.internalId))
             .opacity(viewModel.isCustomized(channel.internalId) ? 1 : 0.5)
+
+            if let uploadQueue, let mediaLibraryViewModel {
+                MediaTrayView(
+                    uploadQueue: uploadQueue,
+                    onUploaded: { media, attributes in
+                        viewModel.attachMedia(media, attributes: attributes, toChannel: channel.internalId)
+                    },
+                    providerIdentifiers: [channel.identifier],
+                    mediaLibraryViewModel: mediaLibraryViewModel)
+            }
+
+            if let schema = ProviderSettingsCatalog.schema(for: channel.identifier), !schema.fields.isEmpty {
+                ProviderSettingsFormView(
+                    schema: schema,
+                    values: Binding(
+                        get: { viewModel.settingsValues(for: channel.internalId) },
+                        set: { viewModel.setSettingsValues($0, for: channel.internalId) }))
+            }
+
+            channelViolations(for: channel, viewModel: viewModel)
+        }
+    }
+
+    /// Cross-field errors that aren't tied to one media item (e.g. "carousel needs 2+ images") —
+    /// per-item aspect-ratio/duration violations already render inline in `MediaTrayView`, next
+    /// to the offending thumbnail. Never a generic whole-post banner: scoped to this one channel.
+    @ViewBuilder
+    private func channelViolations(for channel: ChannelDTO, viewModel: ComposerViewModel) -> some View {
+        let errors = viewModel.crossFieldErrors(for: channel)
+        if !errors.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(errors.enumerated()), id: \.offset) { _, error in
+                    Text(error.message)
+                        .typeRole(.caption)
+                        .foregroundStyle(Color.token(.destructive, in: theme))
+                }
+            }
+            .accessibilityLabel("\(channel.name) needs changes before posting")
         }
     }
 }

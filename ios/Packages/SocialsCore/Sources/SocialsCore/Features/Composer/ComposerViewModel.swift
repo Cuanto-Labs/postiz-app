@@ -23,6 +23,15 @@ public final class ComposerViewModel {
     public var globalDraft = ComposerDraft()
     public private(set) var customizedChannelIds: Set<String> = []
     public private(set) var perChannelDrafts: [String: ComposerDraft] = [:]
+    /// Per-channel provider settings form state (`ProviderSettingsFormView`'s raw string values),
+    /// keyed by `ChannelDTO.internalId`. Not part of `PersistedComposerDraft` yet — a killed app
+    /// loses in-progress settings the same way it currently loses provider-settings edits, this
+    /// just adds validation on top of what's already there this session.
+    public private(set) var providerSettingsValues: [String: [String: String]] = [:]
+    /// Locally-probed technical attributes (aspect ratio/duration) for attached media, keyed by
+    /// `MediaDTO.id` — populated as media is attached, since the server's `MediaDTO` doesn't carry
+    /// this and it never round-trips through `PersistedComposerDraft`.
+    public private(set) var mediaAttributesByID: [String: SelectedMediaAttributes] = [:]
     public private(set) var isSaving = false
     public private(set) var isFindingSlot = false
     public private(set) var errorMessage: String?
@@ -136,6 +145,66 @@ public final class ComposerViewModel {
         charCount(for: channel) > charLimit(for: channel)
     }
 
+    // MARK: - Media
+
+    /// Attaches uploaded/picked media to the shared global draft, mirrors `setGlobalContent`.
+    public func attachMediaToGlobal(_ media: MediaDTO, attributes: SelectedMediaAttributes? = nil) {
+        globalDraft.media.append(ComposerMediaRef(id: media.id, path: media.path))
+        if let attributes { mediaAttributesByID[media.id] = attributes }
+    }
+
+    /// No-op unless `channelId` has customize on, mirrors `setContent(_:for:)`.
+    public func attachMedia(_ media: MediaDTO, attributes: SelectedMediaAttributes? = nil, toChannel channelId: String) {
+        guard customizedChannelIds.contains(channelId) else { return }
+        var draft = perChannelDrafts[channelId] ?? globalDraft
+        draft.media.append(ComposerMediaRef(id: media.id, path: media.path))
+        perChannelDrafts[channelId] = draft
+        if let attributes { mediaAttributesByID[media.id] = attributes }
+    }
+
+    public func removeMediaFromGlobal(_ mediaId: String) {
+        globalDraft.media.removeAll { $0.id == mediaId }
+    }
+
+    public func removeMedia(_ mediaId: String, fromChannel channelId: String) {
+        guard var draft = perChannelDrafts[channelId] else { return }
+        draft.media.removeAll { $0.id == mediaId }
+        perChannelDrafts[channelId] = draft
+    }
+
+    // MARK: - Provider settings
+
+    public func settingsValues(for channelId: String) -> [String: String] {
+        providerSettingsValues[channelId] ?? [:]
+    }
+
+    public func setSettingsValues(_ values: [String: String], for channelId: String) {
+        providerSettingsValues[channelId] = values
+    }
+
+    // MARK: - Media/cross-field violations
+
+    /// Aspect-ratio/duration violations for `channel`'s effective (global or customized) media,
+    /// tied to the offending item's id — see ``MediaLimits``.
+    public func mediaLimitViolations(for channel: ChannelDTO) -> [MediaLimitViolation] {
+        let attributes = draft(for: channel.internalId).media.compactMap { mediaAttributesByID[$0.id] }
+        return MediaLimits.violations(for: attributes, providerIdentifier: channel.identifier)
+    }
+
+    /// Settings-vs-media cross-field violations for `channel` — see ``ProviderCrossFieldValidator``.
+    public func crossFieldErrors(for channel: ChannelDTO) -> [ProviderCrossFieldError] {
+        let media = draft(for: channel.internalId).media
+        let imageCount = media.filter { kind(of: $0) == .image }.count
+        let videoCount = media.count - imageCount
+        return ProviderCrossFieldValidator.validate(
+            providerIdentifier: channel.identifier, settings: settingsValues(for: channel.internalId),
+            imageCount: imageCount, videoCount: videoCount)
+    }
+
+    private func kind(of ref: ComposerMediaRef) -> SelectedMediaAttributes.Kind {
+        mediaAttributesByID[ref.id]?.kind ?? ref.inferredKind
+    }
+
     // MARK: - Validation
 
     public func validate() -> [ComposerValidationError] {
@@ -152,6 +221,12 @@ public final class ComposerViewModel {
             let limit = charLimit(for: channel)
             if content.count > limit {
                 errors.append(.overCharLimit(channelId: channel.internalId, limit: limit))
+            }
+            if !mediaLimitViolations(for: channel).isEmpty {
+                errors.append(.mediaLimitViolation(channelId: channel.internalId))
+            }
+            if !crossFieldErrors(for: channel).isEmpty {
+                errors.append(.crossFieldViolation(channelId: channel.internalId))
             }
         }
         return errors
@@ -294,4 +369,6 @@ public enum ComposerValidationError: Sendable, Equatable {
     case noChannelsSelected
     case emptyContent(channelId: String)
     case overCharLimit(channelId: String, limit: Int)
+    case mediaLimitViolation(channelId: String)
+    case crossFieldViolation(channelId: String)
 }

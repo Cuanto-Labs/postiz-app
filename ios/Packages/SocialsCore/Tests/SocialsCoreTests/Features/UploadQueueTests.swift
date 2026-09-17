@@ -8,15 +8,20 @@ import Testing
 private actor StubPartUploader: PartUploader {
     private var etags: [String]
     private var errorToThrow: Error?
+    private var delayNanoseconds: UInt64
     private(set) var putCallCount = 0
     private(set) var putSizes: [Int] = []
 
-    init(etags: [String] = [], errorToThrow: Error? = nil) {
+    init(etags: [String] = [], errorToThrow: Error? = nil, delayNanoseconds: UInt64 = 0) {
         self.etags = etags
         self.errorToThrow = errorToThrow
+        self.delayNanoseconds = delayNanoseconds
     }
 
     func putPart(_ data: Data, to url: URL) async throws -> String {
+        if delayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: delayNanoseconds)
+        }
         putCallCount += 1
         putSizes.append(data.count)
         if let errorToThrow { throw errorToThrow }
@@ -136,6 +141,60 @@ struct UploadQueueTests {
 
         #expect(result == nil)
         #expect(queue.items[0].status == .failed("Upload failed. Please try again."))
+    }
+
+    @Test
+    func retryResubmitsOriginalBytesAfterFailure() async {
+        let api = StubSocialsAPI()
+        let part = MediaUploadPart(partNumber: 1, url: "https://r2.example.com/part1")
+        await api.setCreateUploadResults([
+            .failure(SocialsAPIError.offline),
+            .success(
+                MediaCreateUploadResponse(
+                    uploadId: "u1", key: "k1", partSize: 8_000_000, parts: [part],
+                    expiresAt: "2026-09-17T00:00:00Z")),
+        ])
+        let expectedMedia = media()
+        await api.setCompleteUploadResults([.success(MediaCompleteUploadResponse(media: expectedMedia))])
+        let partUploader = StubPartUploader(etags: ["etag-retry"])
+        let queue = UploadQueue(api: api, partUploader: partUploader)
+
+        let first = await queue.upload(data: Data([0x1, 0x2]), fileName: "a.jpg", contentType: "image/jpeg")
+        #expect(first == nil)
+        #expect(queue.items[0].status == .failed("You're offline. Check your connection and try again."))
+
+        let itemId = queue.items[0].id
+        let retried = await queue.retry(itemId)
+
+        #expect(retried == expectedMedia)
+        #expect(queue.items[0].status == .completed(expectedMedia))
+        let sizes = await partUploader.putSizes
+        #expect(sizes == [2], "retry must resend the original bytes, not an empty/new payload")
+    }
+
+    @Test
+    func cancelInterruptsAnInFlightUploadAndMarksItFailed() async {
+        let api = StubSocialsAPI()
+        let part = MediaUploadPart(partNumber: 1, url: "https://r2.example.com/part1")
+        await api.setCreateUploadResults([
+            .success(
+                MediaCreateUploadResponse(
+                    uploadId: "u1", key: "k1", partSize: 8_000_000, parts: [part],
+                    expiresAt: "2026-09-17T00:00:00Z"))
+        ])
+        let partUploader = StubPartUploader(etags: ["etag-1"], delayNanoseconds: 200_000_000)
+        let queue = UploadQueue(api: api, partUploader: partUploader)
+
+        async let result = queue.upload(data: Data([0x1]), fileName: "a.jpg", contentType: "image/jpeg")
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        let itemId = queue.items.first?.id
+        if let itemId { queue.cancel(itemId) }
+
+        let finished = await result
+        #expect(finished == nil)
+        if let itemId {
+            #expect(queue.items.first(where: { $0.id == itemId })?.status == .failed("Cancelled."))
+        }
     }
 
     @Test
