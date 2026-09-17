@@ -133,3 +133,33 @@ extension PushPrefs: Codable {
         try container.encode(values)
     }
 }
+
+/// `PUT /mobile/v1/push/devices` response → `{ device }` (docs/MOBILE-API.md).
+public struct PushDeviceResponse: Sendable, Codable, Equatable {
+    public let device: PushDeviceUpsert
+
+    public init(device: PushDeviceUpsert) {
+        self.device = device
+    }
+}
+
+/// `GET /mobile/v1/push/prefs` / `PUT /mobile/v1/push/prefs` response → `{ prefs }`
+/// (docs/MOBILE-API.md).
+public struct PushPrefsResponse: Sendable, Codable, Equatable {
+    public let prefs: PushPrefs
+
+    public init(prefs: PushPrefs) {
+        self.prefs = prefs
+    }
+}
+
+/// `PUT /mobile/v1/push/prefs` body — `MobilePushPrefsDto` (docs/MOBILE-API.md).
+public struct PushPrefsUpdateRequest: Sendable, Codable, Equatable {
+    public let apnsToken: String
+    public let prefs: PushPrefs
+
+    public init(apnsToken: String, prefs: PushPrefs) {
+        self.apnsToken = apnsToken
+        self.prefs = prefs
+    }
+}

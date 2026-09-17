@@ -230,6 +230,32 @@ public struct LoginRequest: Sendable, Codable, Equatable {
         self.deviceId = deviceId
         self.deviceName = deviceName
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case email, password, deviceId, deviceName
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        email = try container.decode(String.self, forKey: .email)
+        password = try container.decode(String.self, forKey: .password)
+        deviceId = try container.decode(String.self, forKey: .deviceId)
+        deviceName = try container.decodeIfPresent(String.self, forKey: .deviceName)
+    }
+
+    // Always emits `deviceName` (as JSON null when absent) rather than the
+    // synthesized `encodeIfPresent`, which would omit the key entirely.
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(email, forKey: .email)
+        try container.encode(password, forKey: .password)
+        try container.encode(deviceId, forKey: .deviceId)
+        if let deviceName {
+            try container.encode(deviceName, forKey: .deviceName)
+        } else {
+            try container.encodeNil(forKey: .deviceName)
+        }
+    }
 }
 
 public struct RegisterRequest: Sendable, Codable, Equatable {
