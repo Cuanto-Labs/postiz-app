@@ -383,6 +383,159 @@ struct EndpointTests {
         #expect(try bodyKeys(recorded.body) == ["apnsToken", "prefs"])
     }
 
+    // MARK: - Channel management
+
+    @Test("customers: GET, authed")
+    func customers() async throws {
+        let endpoint = SocialsEndpoints.customers(orgId: "org1")
+        let transport = MockTransport()
+        try await transport.enqueue(json: [ChannelCustomer]())
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .get)
+        #expect(recorded.request.path == "/mobile/v1/channels/customers")
+        #expect(recorded.request.headerFields[Self.showorgHeader] == "org1")
+    }
+
+    @Test("updateChannelCustomerName: PUT with id in path, JSON body")
+    func updateChannelCustomerName() async throws {
+        let endpoint = try SocialsEndpoints.updateChannelCustomerName(
+            "ch1", body: ChannelCustomerNameRequest(name: "New Name"))
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .put)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1/customer-name")
+        #expect(try bodyKeys(recorded.body) == ["name"])
+    }
+
+    @Test("updateChannelGroup: PUT with id in path, JSON body")
+    func updateChannelGroup() async throws {
+        let endpoint = try SocialsEndpoints.updateChannelGroup(
+            "ch1", body: ChannelGroupRequest(group: "team-a"))
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .put)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1/group")
+        #expect(try bodyKeys(recorded.body) == ["group"])
+    }
+
+    @Test("setChannelTimes: POST with id in path, JSON body")
+    func setChannelTimes() async throws {
+        let endpoint = try SocialsEndpoints.setChannelTimes(
+            "ch1", body: ChannelTimeRequest(time: [ChannelTimeSlot(time: 540)]))
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .post)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1/time")
+        #expect(try bodyKeys(recorded.body) == ["time"])
+    }
+
+    @Test("updateChannelSettings: POST with id in path, JSON body")
+    func updateChannelSettings() async throws {
+        let endpoint = try SocialsEndpoints.updateChannelSettings(
+            "ch1", body: ChannelSettingsRequest(additionalSettings: "[]"))
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .post)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1/settings")
+        #expect(try bodyKeys(recorded.body) == ["additionalSettings"])
+    }
+
+    @Test("channelMentions: POST /channels/mentions, JSON body")
+    func channelMentions() async throws {
+        let endpoint = try SocialsEndpoints.channelMentions(
+            ChannelFunctionRequest(name: "mentions", id: "ch1", data: "{\"query\":\"a\"}"))
+        let transport = MockTransport()
+        try await transport.enqueue(
+            json: ChannelMentionsResult(mentions: [ChannelMentionDTO(id: "u1", image: nil, label: "A")]))
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .post)
+        #expect(recorded.request.path == "/mobile/v1/channels/mentions")
+        #expect(try bodyKeys(recorded.body) == ["name", "id", "data"])
+    }
+
+    @Test("channelFunction: POST /channels/function, JSON body")
+    func channelFunction() async throws {
+        let endpoint = try SocialsEndpoints.channelFunction(
+            ChannelFunctionRequest(name: "someFn", id: "ch1"))
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .post)
+        #expect(recorded.request.path == "/mobile/v1/channels/function")
+    }
+
+    @Test("disableChannel: POST with id in path")
+    func disableChannel() async throws {
+        let endpoint = SocialsEndpoints.disableChannel("ch1", orgId: "org1")
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .post)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1/disable")
+        #expect(recorded.request.headerFields[Self.showorgHeader] == "org1")
+    }
+
+    @Test("enableChannel: POST with id in path")
+    func enableChannel() async throws {
+        let endpoint = SocialsEndpoints.enableChannel("ch1")
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .post)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1/enable")
+    }
+
+    @Test("deleteChannel: DELETE with id in path")
+    func deleteChannel() async throws {
+        let endpoint = SocialsEndpoints.deleteChannel("ch1")
+        let transport = MockTransport()
+        try await transport.enqueue(json: "ok")
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .delete)
+        #expect(recorded.request.path == "/mobile/v1/channels/ch1")
+    }
+
+    @Test("connectChannel: GET with refresh/externalUrl query")
+    func connectChannel() async throws {
+        let endpoint = SocialsEndpoints.connectChannel(
+            "instagram", refresh: "1", externalUrl: "https://ex.com", orgId: "org1")
+        let transport = MockTransport()
+        try await transport.enqueue(json: ChannelConnectResponse(url: "https://auth", state: "st1"))
+        _ = try await makeClient(transport).send(endpoint)
+
+        let recorded = await transport.recordedRequests.last!
+        #expect(recorded.request.method == .get)
+        let path = try #require(recorded.request.path)
+        #expect(path.hasPrefix("/mobile/v1/channels/connect/instagram?"))
+        #expect(path.contains("refresh=1"))
+        #expect(path.contains("externalUrl=https"))
+        #expect(recorded.request.headerFields[Self.showorgHeader] == "org1")
+    }
+
     // MARK: - IdempotencyKey
 
     @Test("IdempotencyKey(): UUID-based, 36 chars")

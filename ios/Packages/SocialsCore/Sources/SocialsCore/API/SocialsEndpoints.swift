@@ -6,14 +6,21 @@ import HTTPTypes
 /// Authenticated builders take `orgId: String?` and, when non-nil, set the `showorg`
 /// header (docs/MOBILE-API.md § Base URL & auth — org selection).
 public enum SocialsEndpoints {
-    private static let basePath = "/mobile/v1"
+    static let basePath = "/mobile/v1"
     private static let showorgHeader = HTTPField.Name("showorg")!
 
-    private static func withOrg<Response>(
+    static func withOrg<Response>(
         _ endpoint: Endpoint<Response>, _ orgId: String?
     ) -> Endpoint<Response> {
         guard let orgId else { return endpoint }
         return endpoint.header(showorgHeader, orgId)
+    }
+
+    /// Decode strategy for `OpaqueJSONResult`-typed endpoints: capture the raw response bytes
+    /// as a UTF-8 string rather than assuming a specific JSON shape.
+    private static let rawDecode: @Sendable (Data, JSONDecoder) throws -> OpaqueJSONResult = {
+        data, _ in
+        OpaqueJSONResult(raw: String(decoding: data, as: UTF8.self))
     }
 
     // MARK: - Auth (public)
@@ -84,6 +91,105 @@ public enum SocialsEndpoints {
 
     public static func channels(orgId: String? = nil) -> Endpoint<ChannelsResponse> {
         withOrg(Endpoint(path: "\(basePath)/channels"), orgId)
+    }
+
+    // MARK: - Channel management (settings, lifecycle, connect, function)
+
+    public static func customers(orgId: String? = nil) -> Endpoint<[ChannelCustomer]> {
+        withOrg(Endpoint(path: "\(basePath)/channels/customers"), orgId)
+    }
+
+    public static func updateChannelCustomerName(
+        _ id: String, body: ChannelCustomerNameRequest, orgId: String? = nil
+    ) throws -> Endpoint<OpaqueJSONResult> {
+        let endpoint = try Endpoint<OpaqueJSONResult>(
+            method: .put, path: "\(basePath)/channels/\(id)/customer-name", body: .json(body),
+            decode: rawDecode)
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func updateChannelGroup(
+        _ id: String, body: ChannelGroupRequest, orgId: String? = nil
+    ) throws -> Endpoint<OpaqueJSONResult> {
+        let endpoint = try Endpoint<OpaqueJSONResult>(
+            method: .put, path: "\(basePath)/channels/\(id)/group", body: .json(body),
+            decode: rawDecode)
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func setChannelTimes(
+        _ id: String, body: ChannelTimeRequest, orgId: String? = nil
+    ) throws -> Endpoint<OpaqueJSONResult> {
+        let endpoint = try Endpoint<OpaqueJSONResult>(
+            method: .post, path: "\(basePath)/channels/\(id)/time", body: .json(body),
+            decode: rawDecode)
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func updateChannelSettings(
+        _ id: String, body: ChannelSettingsRequest, orgId: String? = nil
+    ) throws -> Endpoint<OpaqueJSONResult> {
+        let endpoint = try Endpoint<OpaqueJSONResult>(
+            method: .post, path: "\(basePath)/channels/\(id)/settings", body: .json(body),
+            decode: rawDecode)
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func channelMentions(
+        _ body: ChannelFunctionRequest, orgId: String? = nil
+    ) throws -> Endpoint<ChannelMentionsResult> {
+        let endpoint = try Endpoint<ChannelMentionsResult>(
+            method: .post, path: "\(basePath)/channels/mentions", body: .json(body))
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func channelFunction(
+        _ body: ChannelFunctionRequest, orgId: String? = nil
+    ) throws -> Endpoint<OpaqueJSONResult> {
+        let endpoint = try Endpoint<OpaqueJSONResult>(
+            method: .post, path: "\(basePath)/channels/function", body: .json(body),
+            decode: rawDecode)
+        return withOrg(endpoint, orgId)
+    }
+
+    public static func disableChannel(_ id: String, orgId: String? = nil) -> Endpoint<
+        OpaqueJSONResult
+    > {
+        withOrg(
+            Endpoint(
+                method: .post, path: "\(basePath)/channels/\(id)/disable", decode: rawDecode),
+            orgId)
+    }
+
+    public static func enableChannel(_ id: String, orgId: String? = nil) -> Endpoint<
+        OpaqueJSONResult
+    > {
+        withOrg(
+            Endpoint(method: .post, path: "\(basePath)/channels/\(id)/enable", decode: rawDecode),
+            orgId)
+    }
+
+    public static func deleteChannel(_ id: String, orgId: String? = nil) -> Endpoint<
+        OpaqueJSONResult
+    > {
+        withOrg(
+            Endpoint(method: .delete, path: "\(basePath)/channels/\(id)", decode: rawDecode),
+            orgId)
+    }
+
+    public static func connectChannel(
+        _ provider: String, refresh: String? = nil, externalUrl: String? = nil,
+        orgId: String? = nil
+    ) -> Endpoint<ChannelConnectResponse> {
+        var endpoint = Endpoint<ChannelConnectResponse>(
+            path: "\(basePath)/channels/connect/\(provider)")
+        if let refresh {
+            endpoint = endpoint.query("refresh", refresh)
+        }
+        if let externalUrl {
+            endpoint = endpoint.query("externalUrl", externalUrl)
+        }
+        return withOrg(endpoint, orgId)
     }
 
     // MARK: - Posts

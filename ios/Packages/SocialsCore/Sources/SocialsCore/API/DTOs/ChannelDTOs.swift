@@ -78,6 +78,143 @@ public struct ChannelsResponse: Sendable, Codable, Equatable {
     }
 }
 
+// MARK: - Channel management (settings, lifecycle, connect, function)
+
+/// `PUT /mobile/v1/channels/:id/customer-name` body — `MobileChannelNameDto`.
+public struct ChannelCustomerNameRequest: Sendable, Codable, Equatable {
+    public let name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}
+
+/// `PUT /mobile/v1/channels/:id/group` body — `MobileChannelGroupDto`.
+public struct ChannelGroupRequest: Sendable, Codable, Equatable {
+    public let group: String
+
+    public init(group: String) {
+        self.group = group
+    }
+}
+
+/// `POST /mobile/v1/channels/:id/settings` body — `MobileChannelSettingsDto`.
+public struct ChannelSettingsRequest: Sendable, Codable, Equatable {
+    public let additionalSettings: String
+
+    public init(additionalSettings: String) {
+        self.additionalSettings = additionalSettings
+    }
+}
+
+/// One entry of `IntegrationTimeDto.time` — `IntegrationValidateTimeDto`.
+public struct ChannelTimeSlot: Sendable, Codable, Equatable {
+    public let time: Int
+
+    public init(time: Int) {
+        self.time = time
+    }
+}
+
+/// `POST /mobile/v1/channels/:id/time` body — `IntegrationTimeDto`.
+public struct ChannelTimeRequest: Sendable, Codable, Equatable {
+    public let time: [ChannelTimeSlot]
+
+    public init(time: [ChannelTimeSlot]) {
+        self.time = time
+    }
+}
+
+/// `POST /mobile/v1/channels/function` (and `/mentions`) body — `IntegrationFunctionDto`.
+/// `data` is a caller-serialized JSON string (mirrors `additionalSettings` above) since the
+/// backend accepts arbitrary provider-specific payloads here.
+public struct ChannelFunctionRequest: Sendable, Codable, Equatable {
+    public let name: String
+    public let id: String
+    public let data: String?
+
+    public init(name: String, id: String, data: String? = nil) {
+        self.name = name
+        self.id = id
+        self.data = data
+    }
+}
+
+/// One mention suggestion — element of the array `POST /mobile/v1/channels/mentions` can return.
+public struct ChannelMentionDTO: Sendable, Codable, Equatable {
+    public let id: String
+    public let image: String?
+    public let label: String
+
+    public init(id: String, image: String?, label: String) {
+        self.id = id
+        self.image = image
+        self.label = label
+    }
+}
+
+/// `POST /mobile/v1/channels/mentions` response — either an array of mentions or `{ none: true }`
+/// when the provider doesn't support mention search. Decodes the array when present, else falls
+/// back to an empty list (mirrors the `PushPrefs` custom-`Codable` precedent above).
+public struct ChannelMentionsResult: Sendable, Equatable {
+    public let mentions: [ChannelMentionDTO]
+    public let none: Bool
+
+    public init(mentions: [ChannelMentionDTO] = [], none: Bool = false) {
+        self.mentions = mentions
+        self.none = none
+    }
+}
+
+extension ChannelMentionsResult: Codable {
+    private struct NoneShape: Codable {
+        let none: Bool
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let list = try? container.decode([ChannelMentionDTO].self) {
+            self.init(mentions: list, none: false)
+        } else if let shape = try? container.decode(NoneShape.self) {
+            self.init(mentions: [], none: shape.none)
+        } else {
+            self.init(mentions: [], none: false)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if none {
+            try container.encode(NoneShape(none: true))
+        } else {
+            try container.encode(mentions)
+        }
+    }
+}
+
+/// `GET /mobile/v1/channels/connect/:provider` response.
+public struct ChannelConnectResponse: Sendable, Codable, Equatable {
+    public let url: String
+    public let state: String
+
+    public init(url: String, state: String) {
+        self.url = url
+        self.state = state
+    }
+}
+
+/// Catch-all for channel mutation responses whose shape isn't documented/stable
+/// (customer-name, group, settings, time, disable, enable, delete, function — these proxy
+/// straight through to provider-specific service calls). Carries the raw response bytes as a
+/// UTF-8 string rather than guessing a strict `Codable` shape; see `SocialsEndpoints.rawDecode`.
+public struct OpaqueJSONResult: Sendable, Codable, Equatable {
+    public let raw: String
+
+    public init(raw: String) {
+        self.raw = raw
+    }
+}
+
 // MARK: - Push
 
 /// `PUT /mobile/v1/push/devices` body (docs/MOBILE-API.md).

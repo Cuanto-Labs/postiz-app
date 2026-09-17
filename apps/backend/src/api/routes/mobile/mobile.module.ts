@@ -17,6 +17,7 @@ import { MobileSignaturesController } from '@gitroom/backend/api/routes/mobile/m
 import { MobileSetsController } from '@gitroom/backend/api/routes/mobile/mobile-sets.controller';
 import { MobileAutopostController } from '@gitroom/backend/api/routes/mobile/mobile-autopost.controller';
 import { MobileNotificationsController } from '@gitroom/backend/api/routes/mobile/mobile-notifications.controller';
+import { MobileOrgController } from '@gitroom/backend/api/routes/mobile/mobile-org.controller';
 import { MobileMediaUploadService } from '@gitroom/nestjs-libraries/mobile/media/mobile-media-upload.service';
 import { MobileAccountService } from '@gitroom/nestjs-libraries/mobile/account/mobile-account.service';
 import { AccountDeletionRepository } from '@gitroom/nestjs-libraries/mobile/account/account-deletion.repository';
@@ -47,6 +48,7 @@ const authenticatedControllers = [
   MobileSetsController,
   MobileAutopostController,
   MobileNotificationsController,
+  MobileOrgController,
 ];
 
 @Module({
