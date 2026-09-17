@@ -1,10 +1,16 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpException, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Organization } from '@prisma/client';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { getMediaLimits } from '@gitroom/nestjs-libraries/mobile/media/media-limits';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 @ApiTags('Mobile Channels')
 @ApiBearerAuth()
@@ -57,5 +63,62 @@ export class MobileChannelsController {
         };
       }),
     };
+  }
+
+  @Get('/connect/:provider')
+  @CheckPolicies([AuthorizationActions.Create, Sections.CHANNEL])
+  @ApiOperation({ summary: 'Start the OAuth flow for a provider (mobile)' })
+  async connect(
+    @Param('provider') provider: string,
+    @Query('refresh') refresh: string,
+    @Query('externalUrl') externalUrl: string,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    if (
+      !(await this._integrationManager.getAllowedSocialsIntegrations()).includes(
+        provider
+      )
+    ) {
+      throw new HttpException({ msg: 'Integration not allowed' }, 400);
+    }
+
+    const integrationProvider =
+      this._integrationManager.getSocialIntegration(provider);
+
+    if (integrationProvider.externalUrl && !externalUrl) {
+      throw new HttpException({ msg: 'Missing external url' }, 400);
+    }
+
+    const getExternalUrl = integrationProvider.externalUrl
+      ? {
+          ...(await integrationProvider.externalUrl(externalUrl)),
+          instanceUrl: externalUrl,
+        }
+      : undefined;
+
+    const { codeVerifier, state, url } =
+      await integrationProvider.generateAuthUrl(getExternalUrl);
+
+    if (refresh) {
+      await ioRedis.set(`refresh:${state}`, refresh, 'EX', 3600);
+    }
+
+    await ioRedis.set(`organization:${state}`, org.id, 'EX', 3600);
+    await ioRedis.set(`login:${state}`, codeVerifier, 'EX', 3600);
+    await ioRedis.set(
+      `external:${state}`,
+      JSON.stringify(getExternalUrl),
+      'EX',
+      3600
+    );
+    await ioRedis.set(`mobile:${state}`, '1', 'EX', 3600);
+    await ioRedis.set(
+      `redirect:${state}`,
+      `${process.env.FRONTEND_URL}/m/connected?provider=${provider}`,
+      'EX',
+      3600
+    );
+
+    return { url, state };
   }
 }

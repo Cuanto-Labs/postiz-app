@@ -24,9 +24,13 @@ jest.mock(
   '@gitroom/nestjs-libraries/integrations/integration.manager',
   () => ({ IntegrationManager: class IntegrationManager {} })
 );
+jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
+  ioRedis: { set: jest.fn() },
+}));
 
 import { MobileChannelsController } from '@gitroom/backend/api/routes/mobile/mobile-channels.controller';
 import { MobileModule } from '@gitroom/backend/api/routes/mobile/mobile.module';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 describe('MobileChannelsController', () => {
   const org = { id: 'org-1' };
@@ -37,6 +41,7 @@ describe('MobileChannelsController', () => {
     };
     const integrationManager = {
       getSocialIntegration: jest.fn(),
+      getAllowedSocialsIntegrations: jest.fn(),
     };
 
     const controller = new MobileChannelsController(
@@ -153,6 +158,65 @@ describe('MobileChannelsController', () => {
           },
         },
       ],
+    });
+  });
+
+  describe('connect', () => {
+    beforeEach(() => {
+      (ioRedis.set as jest.Mock).mockClear();
+      process.env.FRONTEND_URL = 'https://front.end';
+    });
+
+    it('rejects an unknown provider with 400', async () => {
+      const { controller, integrationManager } = makeController();
+      integrationManager.getAllowedSocialsIntegrations.mockResolvedValue([
+        'x',
+      ]);
+
+      await expect(
+        controller.connect('unknown', undefined as any, undefined as any, org as any)
+      ).rejects.toMatchObject({
+        response: { msg: 'Integration not allowed' },
+        status: 400,
+      });
+    });
+
+    it('generates the auth url, sets the mobile/redirect redis keys, and returns url+state', async () => {
+      const { controller, integrationManager } = makeController();
+      integrationManager.getAllowedSocialsIntegrations.mockResolvedValue([
+        'x',
+      ]);
+      integrationManager.getSocialIntegration.mockReturnValue({
+        generateAuthUrl: jest.fn().mockResolvedValue({
+          codeVerifier: 'verifier',
+          state: 'state-1',
+          url: 'https://provider.example/authorize',
+        }),
+      });
+
+      const result = await controller.connect(
+        'x',
+        undefined as any,
+        undefined as any,
+        org as any
+      );
+
+      expect(ioRedis.set).toHaveBeenCalledWith(
+        'mobile:state-1',
+        '1',
+        'EX',
+        3600
+      );
+      expect(ioRedis.set).toHaveBeenCalledWith(
+        'redirect:state-1',
+        'https://front.end/m/connected?provider=x',
+        'EX',
+        3600
+      );
+      expect(result).toEqual({
+        url: 'https://provider.example/authorize',
+        state: 'state-1',
+      });
     });
   });
 
