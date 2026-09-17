@@ -18,6 +18,8 @@ public final class AppEnvironment {
     public let modelContainer: ModelContainer
     public let cacheStore: CacheStore
     public let syncEngine: SyncEngine<ContinuousClock>
+    public let analyticsOptOutStore: AnalyticsOptOutStore
+    public let analyticsService: AnalyticsService
 
     private let sharedCacheFiles: SharedCacheFiles
     private var signOutTask: Task<Void, Never>?
@@ -28,6 +30,8 @@ public final class AppEnvironment {
         modelContainer: ModelContainer,
         cacheStore: CacheStore,
         syncEngine: SyncEngine<ContinuousClock>,
+        analyticsOptOutStore: AnalyticsOptOutStore,
+        analyticsService: AnalyticsService,
         sharedCacheFiles: SharedCacheFiles
     ) {
         self.sessionStore = sessionStore
@@ -35,6 +39,8 @@ public final class AppEnvironment {
         self.modelContainer = modelContainer
         self.cacheStore = cacheStore
         self.syncEngine = syncEngine
+        self.analyticsOptOutStore = analyticsOptOutStore
+        self.analyticsService = analyticsService
         self.sharedCacheFiles = sharedCacheFiles
 
         // Sign-out is the one lifecycle event the composition root reacts to itself: wipe the
@@ -90,9 +96,14 @@ public final class AppEnvironment {
         let sharedCacheFiles = SharedCacheFiles(
             containerURL: appGroupURL ?? FileManager.default.temporaryDirectory)
 
+        let analyticsOptOutStore = AnalyticsOptOutStore(defaults: .standard)
+        let analyticsService = AnalyticsService.live(optOutStore: analyticsOptOutStore)
+
         return AppEnvironment(
             sessionStore: sessionStore, api: api, modelContainer: modelContainer,
-            cacheStore: cacheStore, syncEngine: syncEngine, sharedCacheFiles: sharedCacheFiles)
+            cacheStore: cacheStore, syncEngine: syncEngine,
+            analyticsOptOutStore: analyticsOptOutStore, analyticsService: analyticsService,
+            sharedCacheFiles: sharedCacheFiles)
     }
 
     /// Preview/test composition root: `StubSocialsAPI`, in-memory SwiftData, ephemeral Keychain
@@ -113,9 +124,14 @@ public final class AppEnvironment {
         )
         let sharedCacheFiles = SharedCacheFiles(containerURL: FileManager.default.temporaryDirectory)
 
+        let analyticsOptOutStore = AnalyticsOptOutStore(defaults: .init(suiteName: UUID().uuidString)!)
+        let analyticsService = AnalyticsService.noop(optOutStore: analyticsOptOutStore)
+
         return AppEnvironment(
             sessionStore: sessionStore, api: StubSocialsAPI(), modelContainer: modelContainer,
-            cacheStore: cacheStore, syncEngine: syncEngine, sharedCacheFiles: sharedCacheFiles)
+            cacheStore: cacheStore, syncEngine: syncEngine,
+            analyticsOptOutStore: analyticsOptOutStore, analyticsService: analyticsService,
+            sharedCacheFiles: sharedCacheFiles)
     }
 }
 
