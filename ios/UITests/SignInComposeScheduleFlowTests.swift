@@ -4,7 +4,7 @@ import XCTest
 /// `AppEnvironment.preview()` + `App/Testing/UITestFixtures.swift`): sign in with email, see the
 /// one seeded connected channel, open the composer from Calendar's "+" button, type content, pick
 /// the channel, schedule it, and land back on Calendar with no error surfaced. The fixture values
-/// below (`"uitest@cuantolabs.com"` / `"uitest-password"` / `"UITest Channel"`) are hardcoded
+/// below (`"uitest@cuantolabs.com"` / `"uitest-password"` / `"@cuantolabs"`) are hardcoded
 /// rather than imported — this test target runs in a separate process from the App target that
 /// owns `UITestFixtures`, so they're kept in sync by hand.
 final class SignInComposeScheduleFlowTests: XCTestCase {
@@ -37,7 +37,7 @@ final class SignInComposeScheduleFlowTests: XCTestCase {
 
         // See the seeded connected channel on the Channels tab.
         UITestKit.tapTab(app, "Channels")
-        let channelRow = app.descendants(matching: .any)["UITest Channel"]
+        let channelRow = app.descendants(matching: .any)["@cuantolabs"]
         XCTAssertTrue(channelRow.waitForExistence(timeout: 10), "seeded channel visible")
 
         // Back to Calendar, open the composer.
@@ -48,7 +48,7 @@ final class SignInComposeScheduleFlowTests: XCTestCase {
 
         // The editor only renders once at least one channel is selected — pick the channel
         // chip first (see `ComposerView.content(for:)`'s "Pick at least one channel" gate).
-        let channelChip = app.buttons["UITest Channel"]
+        let channelChip = app.buttons["@cuantolabs"]
         XCTAssertTrue(channelChip.waitForExistence(timeout: 10), "composer channel chip")
         channelChip.tap()
 

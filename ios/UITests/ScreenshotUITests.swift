@@ -64,7 +64,7 @@ final class ScreenshotUITests: XCTestCase {
         UITestKit.shot("01-calendar", dir: dir)
 
         relaunch(tab: "channels", expectedNavBar: "Channels")
-        XCTAssertTrue(app.descendants(matching: .any)["UITest Channel"].waitForExistence(timeout: 15),
+        XCTAssertTrue(app.descendants(matching: .any)["@cuantolabs"].waitForExistence(timeout: 15),
                       "seeded channel on Channels tab")
         UITestKit.shot("02-channels", dir: dir)
 
@@ -73,7 +73,7 @@ final class ScreenshotUITests: XCTestCase {
         XCTAssertTrue(newPost.waitForExistence(timeout: 15), "Calendar new-post button")
         newPost.tap()
 
-        let channelChip = app.buttons["UITest Channel"]
+        let channelChip = app.buttons["@cuantolabs"]
         XCTAssertTrue(channelChip.waitForExistence(timeout: 20), "composer channel chip")
         channelChip.tap()
         let editor = app.textViews["Global post content"]

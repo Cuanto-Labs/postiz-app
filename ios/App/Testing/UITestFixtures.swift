@@ -10,7 +10,7 @@ import UIKit
 enum UITestFixtures {
     static let email = "uitest@cuantolabs.com"
     static let password = "uitest-password"
-    static let channelName = "UITest Channel"
+    static let channelName = "@cuantolabs"
     static let instagramChannelName = "Cuanto Labs"
     static let linkedInChannelName = "Cuanto Labs Co."
 
@@ -52,7 +52,7 @@ enum UITestFixtures {
         UserDefaultsDraftStore().clearDraft()
 
         let channel = ChannelDTO(
-            id: "c1", internalId: "c1", name: channelName, identifier: "uitest-channel",
+            id: "c1", internalId: "c1", name: channelName, identifier: "x",
             picture: nil, disabled: false, refreshNeeded: false, inBetweenSteps: false,
             display: nil, type: "x", customer: nil,
             limits: ChannelLimits(maxCharacters: nil, editor: nil))

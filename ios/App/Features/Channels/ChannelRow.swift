@@ -18,7 +18,10 @@ struct ChannelRow: View {
             AsyncImage(url: channel.picture.flatMap(URL.init(string:))) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
-                Circle().fill(.secondary.opacity(0.2))
+                // Brand mark rather than a flat grey disc: most connected channels come back
+                // with no `picture`, and a list of identical grey circles gives no clue which
+                // row is which network.
+                ProviderBadge(identifier: channel.identifier, size: 40)
             }
             .frame(width: 40, height: 40)
             .clipShape(Circle())
