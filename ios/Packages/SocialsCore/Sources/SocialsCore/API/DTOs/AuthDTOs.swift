@@ -261,12 +261,21 @@ public struct LoginRequest: Sendable, Codable, Equatable {
 public struct RegisterRequest: Sendable, Codable, Equatable {
     public let email: String
     public let password: String
+    public let company: String
+    public let provider: String
+    public let inviteCode: String?
     public let deviceId: String
     public let deviceName: String?
 
-    public init(email: String, password: String, deviceId: String, deviceName: String?) {
+    public init(
+        email: String, password: String, company: String = "", provider: String = "LOCAL",
+        inviteCode: String? = nil, deviceId: String, deviceName: String?
+    ) {
         self.email = email
         self.password = password
+        self.company = company
+        self.provider = provider
+        self.inviteCode = inviteCode
         self.deviceId = deviceId
         self.deviceName = deviceName
     }

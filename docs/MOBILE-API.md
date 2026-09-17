@@ -54,9 +54,73 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `GET` | `/mobile/v1/ai/credits?type=ai_images\|ai_videos` | — (bearer) | `{ credits: number }` | remaining generation credits for the current billing month; `type` defaults to `ai_images`; `SubscriptionService.checkCredits(org, type)` — `FREE` tier always `{ credits: 0 }`; paid tiers: `pricing[tier].image_generation_count` or `.generate_videos` minus usage since the subscription's current monthly anchor date; same call web's `GET /copilot/credits` uses |
 | `POST` | `/mobile/v1/ai/image` | `MobileAiImageDto` (`prompt` 1–2000 chars) | saved media row (`MediaService.saveFile` result, e.g. `{ id, name, path, ... }`) | `CheckPolicies([Create, Sections.AI])`; when `STRIPE_PUBLISHABLE_KEY` is set and credits are exhausted → `406 { msg: 'No credits left' }` (note: diverges from the originally planned `402 { code: 'ai_credits_exhausted' }` shape — the shipped code does **not** emit `ai_credits_exhausted`); no credit check at all when Stripe is unconfigured; generates via `MediaService.generateImage(prompt, org, false)`, uploads the base64 PNG, then saves it to the media library — does not itself call `useCredit` |
 | `POST` | `/mobile/v1/ai/video` | `MobileAiVideoDto` (extends `VideoDto`: `type` — must be a registered video-provider identifier, `output: 'vertical'\|'horizontal'`, `customParams?`) | saved media row (same shape as `/ai/image`) | `CheckPolicies([Create, Sections.AI])`; delegates to `MediaService.generateVideo(org, body)`; credits checked against `ai_videos` — exhausted → `SubscriptionException` (`Sections.VIDEOS_PER_MONTH`); unknown `type` → `Error` (500); non-trial video while `org.isTrailing` → `406 'This video is not available in trial mode'`; consumes a credit via `SubscriptionService.useCredit` only once generation succeeds |
+| `GET` | `/mobile/v1/posts/list` | `GetPostsListDto` (web pagination query) | `PostsService.getPostsList` result | wraps the same paginated list endpoint as web's `GET /posts` |
+| `GET` | `/mobile/v1/posts/old?date=` | `MobileOldPostsQueryDto` (`date`) | `PostsService.getOldPosts` result | posts scheduled before `date` |
+| `GET` | `/mobile/v1/posts/find-slot` | — (bearer) | `{ date }` | next free posting slot for the org (`PostsService.findFreeDateTime`) |
+| `GET` | `/mobile/v1/posts/find-slot/:id` | — (bearer, `id` = integration id) | `{ date }` | next free posting slot for one integration |
+| `GET` | `/mobile/v1/posts/:id/statistics` | — (bearer) | `PostsService.getStatistics` result | |
+| `GET` | `/mobile/v1/posts/:id/missing` | — (bearer) | `PostsService.getMissingContent` result | |
+| `GET` | `/mobile/v1/posts/:id/comments` | — (bearer) | `{ comments: [...] }` | |
+| `POST` | `/mobile/v1/posts/:id/comments` | `MobileCommentDto` (`comment`) | `PostsService.createComment` result | |
+| `GET` | `/mobile/v1/posts/:id/preview` | — (bearer) | array of posts (`PostsService.getPostsRecursively(id, true)`) | |
+| `POST` | `/mobile/v1/posts/separate` | `MobileSeparatePostsDto` (`content`, `len`) | `PostsService.separatePosts` result | splits long content into multiple posts, same logic `ai/suggest`'s `mode: 'fit'` uses |
+| `GET` | `/mobile/v1/tags` | — (bearer) | `{ tags: [...] }` | |
+| `POST` | `/mobile/v1/tags` | `CreateTagDto` (`name`, `color`) | created tag | |
+| `PUT` | `/mobile/v1/tags/:id` | `CreateTagDto` | updated tag | |
+| `DELETE` | `/mobile/v1/tags/:id` | — (bearer) | `PostsService.deleteTag` result | |
+| `POST` | `/mobile/v1/media/information` | `SaveMediaInformationDto` (`id`, `alt`, `thumbnail?` URL, `thumbnailTimestamp?`) | `MediaService.saveMediaInformation` result | saves alt text and/or a custom video thumbnail for an already-uploaded media item |
+| `PUT` | `/mobile/v1/channels/:id/customer-name` | `MobileChannelNameDto` (`name`) | `IntegrationService.updateOnCustomerName` result | |
+| `PUT` | `/mobile/v1/channels/:id/group` | `MobileChannelGroupDto` (`group`) | `IntegrationService.updateIntegrationGroup` result | |
+| `POST` | `/mobile/v1/channels/:id/time` | `IntegrationTimeDto` (`time: { time: number }[]`) | `IntegrationService.setTimes` result | posting time table for the channel |
+| `POST` | `/mobile/v1/channels/:id/settings` | `MobileChannelSettingsDto` (`additionalSettings` — stringified JSON) | `IntegrationService.updateProviderSettings` result | provider-specific settings blob |
+| `POST` | `/mobile/v1/channels/mentions` | `IntegrationFunctionDto` (`id`, `name`, `data?`) | mentions list, filtered/deduped by `id` | searches + caches mentions for a channel; 500 `Invalid integration` if `id` doesn't resolve |
+| `POST` | `/mobile/v1/channels/function` | `IntegrationFunctionDto` (`id` = integration id, `name` = provider method name, `data?`) | provider-specific result (`any`), or `false` on a handled provider error | dispatches an arbitrary method on the connected provider's integration class; on `RefreshToken` it refreshes the token and retries once; on `Disconnect` it disables the channel and returns `false`; 500 `Invalid integration`/`Invalid provider`/`Function not found` |
+| `POST` | `/mobile/v1/channels/:id/disable` | — (bearer) | `IntegrationService.disableChannel` result | |
+| `POST` | `/mobile/v1/channels/:id/enable` | — (bearer) | `IntegrationService.enableChannel` result | subject to the plan's channel cap (`org.subscription.totalChannels` or `pricing.FREE.channel`) |
+| `GET` | `/mobile/v1/plugs` | — (bearer) | `{ plugs: [...] }` | full plug catalogue (`IntegrationManager.getAllPlugs`) |
+| `GET` | `/mobile/v1/plugs/channel/:id` | — (bearer) | `IntegrationService.getPlugsByIntegrationId` result | plugs configured for one channel |
+| `POST` | `/mobile/v1/plugs/channel/:id` | `PlugDto` (same DTO web's plug form uses) | `IntegrationService.createOrUpdatePlug` result | |
+| `PUT` | `/mobile/v1/plugs/:id/activate` | `MobilePlugActivateDto` (`status: boolean`) | `IntegrationService.changePlugActivation` result | |
+| `GET` | `/mobile/v1/analytics/channel/:integration?date=` | `MobileAnalyticsQueryDto` (`date`) | `IntegrationService.checkAnalytics` result | |
+| `GET` | `/mobile/v1/analytics/post/:postId?date=` | `MobileAnalyticsQueryDto` (`date`, coerced to number) | `PostsService.checkPostAnalytics` result | |
+| `GET` | `/mobile/v1/signatures` | — (bearer) | `SignatureService.getSignaturesByOrgId` result | |
+| `GET` | `/mobile/v1/signatures/default` | — (bearer) | default signature, or `{}` if none set | |
+| `POST` | `/mobile/v1/signatures` | `SignatureDto` (same DTO web's signature form uses) | created signature | |
+| `PUT` | `/mobile/v1/signatures/:id` | `SignatureDto` | updated signature | |
+| `DELETE` | `/mobile/v1/signatures/:id` | — (bearer) | `SignatureService.deleteSignature` result | |
+| `GET` | `/mobile/v1/sets` | — (bearer) | `SetsService.getSets` result | |
+| `POST` | `/mobile/v1/sets` | `SetsDto` (same DTO web's sets form uses) | created set | |
+| `PUT` | `/mobile/v1/sets/:id` | `SetsDto` | updated set (`{ ...body, id }`) | |
+| `DELETE` | `/mobile/v1/sets/:id` | — (bearer) | `SetsService.deleteSet` result | |
+| `GET` | `/mobile/v1/autopost` | — (bearer) | `AutopostService.getAutoposts` result | |
+| `POST` | `/mobile/v1/autopost` | `AutopostDto` (same DTO web's autopost form uses) | created autopost | `CheckPolicies([Create, Sections.WEBHOOKS])` |
+| `PUT` | `/mobile/v1/autopost/:id` | `AutopostDto` | updated autopost | |
+| `DELETE` | `/mobile/v1/autopost/:id` | — (bearer) | `AutopostService.deleteAutopost` result | |
+| `POST` | `/mobile/v1/autopost/:id/active` | `MobileAutopostActiveDto` (`active: boolean`) | `AutopostService.changeActive` result | |
+| `GET` | `/mobile/v1/notifications` | — (bearer) | `NotificationService.getMainPageCount` result | unread count for the current org/user |
+| `GET` | `/mobile/v1/notifications/list` | — (bearer) | `NotificationService.getNotifications` result | |
+| `GET` | `/mobile/v1/org/team` | — (bearer) | `OrganizationService.getTeam` result | `CheckPolicies([Create, TEAM_MEMBERS] \| [Create, ADMIN])` |
+| `POST` | `/mobile/v1/org/team` | `AddTeamMemberDto` (same DTO web's invite form uses) | `OrganizationService.inviteTeamMember` result | same policy as above |
+| `DELETE` | `/mobile/v1/org/team/:id` | — (bearer) | `OrganizationService.deleteTeamMember` result | same policy as above |
+| `GET` | `/mobile/v1/org/shortlink` | — (bearer) | `OrganizationService.getShortlinkPreference` result | |
+| `POST` | `/mobile/v1/org/shortlink` | `ShortlinkPreferenceDto` (`shortlink`) | `OrganizationService.updateShortlinkPreference` result | `CheckPolicies([Create, Sections.ADMIN])` |
+| `GET` | `/mobile/v1/org/webhooks` | — (bearer) | `WebhooksService.getWebhooks` result | |
+| `GET` | `/mobile/v1/me/personal` | — (bearer) | `UsersService.getPersonal` result | |
+| `POST` | `/mobile/v1/me/personal` | `UserDetailDto` (same DTO web's profile form uses) | `UsersService.changePersonal` result | |
+| `GET` | `/mobile/v1/me/email-notifications` | — (bearer) | `UsersService.getEmailNotifications` result | |
+| `POST` | `/mobile/v1/me/email-notifications` | `EmailNotificationsDto` (same DTO web's notifications form uses) | `UsersService.updateEmailNotifications` result | |
 
 `MobileTokens = { accessToken, refreshToken, expiresIn, sessionId }`.
 `MobileAuthResponse = MobileTokens & { user: { id, email, name?, lastName?, pictureId? }, orgs: Array<{ id, name, role, disabled }> }` (password stripped, disabled orgs filtered).
+
+## Web parity wrappers
+
+The mobile controllers under `apps/backend/src/api/routes/mobile/` (tags, media/information, channels, plugs, analytics, signatures, sets, autopost, notifications, org, me/personal) are thin 1:1 wrappers around the same services the web controllers call — no separate business logic, no separate Prisma queries. The only deliberate contract deviations from the web routes:
+
+- Resource ids that web reads off the JWT/session or a body field are mobile path params instead (e.g. channel/tag/signature/set/autopost/webhook ids as `:id`).
+- Web's raw `@Body()` primitives are replaced with `class-validator` DTOs on mobile (e.g. `MobileChannelNameDto`, `MobileChannelGroupDto`, `MobileChannelSettingsDto`, `MobilePlugActivateDto`, `MobileAutopostActiveDto`) so malformed bodies 400 before reaching the service, instead of failing inside it.
+
+Everything else — response shape, status codes, service method called — matches the web controller for the same action.
 
 ## Idempotency-Key
 

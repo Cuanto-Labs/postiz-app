@@ -119,15 +119,47 @@ public struct PostsResponse: Sendable, Codable, Equatable {
 
 // MARK: - Create / update body
 
-/// `POST /mobile/v1/posts` / `PUT /mobile/v1/posts/:group` raw body (docs/MOBILE-API.md
-/// documents only `posts[]` and `type`; per-post item shape mirrors `PostGroupDTO`).
+/// Tag reference on a create/update post body (web `CreatePostDto.tags[]`:
+/// `{ value, label }`, both required).
+public struct PostTagRef: Sendable, Codable, Equatable {
+    public let value: String
+    public let label: String
+
+    public init(value: String, label: String) {
+        self.value = value
+        self.label = label
+    }
+}
+
+/// `POST /mobile/v1/posts` / `PUT /mobile/v1/posts/:group` raw body. docs/MOBILE-API.md
+/// documents only `posts[]` and `type` for the mobile routes, but the backend validates
+/// against the web `CreatePostDto` (`libraries/nestjs-libraries/src/dtos/posts/create.post.dto.ts`),
+/// which additionally carries `order`, `shortLink`, `inter`, `republish`, `date`, and `tags`.
+/// Those extra fields are optional here so existing mobile-only callers (`type`/`posts` only)
+/// keep compiling; per-post item shape mirrors `PostGroupDTO`.
 public struct CreatePostBody: Sendable, Codable, Equatable {
     public let type: String
     public let posts: [PostGroupDTO]
+    public let order: String?
+    public let shortLink: Bool?
+    public let inter: Int?
+    public let republish: Bool?
+    public let date: String?
+    public let tags: [PostTagRef]?
 
-    public init(type: String, posts: [PostGroupDTO]) {
+    public init(
+        type: String, posts: [PostGroupDTO], order: String? = nil, shortLink: Bool? = nil,
+        inter: Int? = nil, republish: Bool? = nil, date: String? = nil,
+        tags: [PostTagRef]? = nil
+    ) {
         self.type = type
         self.posts = posts
+        self.order = order
+        self.shortLink = shortLink
+        self.inter = inter
+        self.republish = republish
+        self.date = date
+        self.tags = tags
     }
 }
 

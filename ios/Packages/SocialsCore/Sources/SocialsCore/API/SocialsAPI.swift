@@ -23,6 +23,24 @@ public protocol SocialsAPI: Sendable {
     func deleteDevice(_ id: String) async throws -> OkResponse
     func channels() async throws -> ChannelsResponse
 
+    // MARK: - Channel management (settings, lifecycle, connect, function)
+
+    func customers() async throws -> [ChannelCustomer]
+    func updateChannelCustomerName(_ id: String, body: ChannelCustomerNameRequest) async throws
+        -> OpaqueJSONResult
+    func updateChannelGroup(_ id: String, body: ChannelGroupRequest) async throws
+        -> OpaqueJSONResult
+    func setChannelTimes(_ id: String, body: ChannelTimeRequest) async throws -> OpaqueJSONResult
+    func updateChannelSettings(_ id: String, body: ChannelSettingsRequest) async throws
+        -> OpaqueJSONResult
+    func channelMentions(_ body: ChannelFunctionRequest) async throws -> ChannelMentionsResult
+    func channelFunction(_ body: ChannelFunctionRequest) async throws -> OpaqueJSONResult
+    func disableChannel(_ id: String) async throws -> OpaqueJSONResult
+    func enableChannel(_ id: String) async throws -> OpaqueJSONResult
+    func deleteChannel(_ id: String) async throws -> OpaqueJSONResult
+    func connectStart(provider: String, refresh: String?, externalUrl: String?) async throws
+        -> ChannelConnectResponse
+
     // MARK: - Posts
 
     func posts(from: String, to: String, customer: String?) async throws -> PostsResponse

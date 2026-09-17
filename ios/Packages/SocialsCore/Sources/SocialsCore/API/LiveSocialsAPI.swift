@@ -118,6 +118,67 @@ public final class LiveSocialsAPI: SocialsAPI {
         try await send(SocialsEndpoints.channels(orgId: orgProvider()))
     }
 
+    // MARK: - Channel management (settings, lifecycle, connect, function)
+
+    public func customers() async throws -> [ChannelCustomer] {
+        try await send(SocialsEndpoints.customers(orgId: orgProvider()))
+    }
+
+    public func updateChannelCustomerName(_ id: String, body: ChannelCustomerNameRequest)
+        async throws -> OpaqueJSONResult
+    {
+        try await send(
+            SocialsEndpoints.updateChannelCustomerName(id, body: body, orgId: orgProvider()))
+    }
+
+    public func updateChannelGroup(_ id: String, body: ChannelGroupRequest) async throws
+        -> OpaqueJSONResult
+    {
+        try await send(SocialsEndpoints.updateChannelGroup(id, body: body, orgId: orgProvider()))
+    }
+
+    public func setChannelTimes(_ id: String, body: ChannelTimeRequest) async throws
+        -> OpaqueJSONResult
+    {
+        try await send(SocialsEndpoints.setChannelTimes(id, body: body, orgId: orgProvider()))
+    }
+
+    public func updateChannelSettings(_ id: String, body: ChannelSettingsRequest) async throws
+        -> OpaqueJSONResult
+    {
+        try await send(SocialsEndpoints.updateChannelSettings(id, body: body, orgId: orgProvider()))
+    }
+
+    public func channelMentions(_ body: ChannelFunctionRequest) async throws
+        -> ChannelMentionsResult
+    {
+        try await send(SocialsEndpoints.channelMentions(body, orgId: orgProvider()))
+    }
+
+    public func channelFunction(_ body: ChannelFunctionRequest) async throws -> OpaqueJSONResult {
+        try await send(SocialsEndpoints.channelFunction(body, orgId: orgProvider()))
+    }
+
+    public func disableChannel(_ id: String) async throws -> OpaqueJSONResult {
+        try await send(SocialsEndpoints.disableChannel(id, orgId: orgProvider()))
+    }
+
+    public func enableChannel(_ id: String) async throws -> OpaqueJSONResult {
+        try await send(SocialsEndpoints.enableChannel(id, orgId: orgProvider()))
+    }
+
+    public func deleteChannel(_ id: String) async throws -> OpaqueJSONResult {
+        try await send(SocialsEndpoints.deleteChannel(id, orgId: orgProvider()))
+    }
+
+    public func connectStart(provider: String, refresh: String?, externalUrl: String?)
+        async throws -> ChannelConnectResponse
+    {
+        try await send(
+            SocialsEndpoints.connectChannel(
+                provider, refresh: refresh, externalUrl: externalUrl, orgId: orgProvider()))
+    }
+
     // MARK: - Posts
 
     public func posts(from: String, to: String, customer: String?) async throws -> PostsResponse

@@ -103,6 +103,100 @@ public actor StubSocialsAPI: SocialsAPI {
         return try next(&channelsResults, "channels")
     }
 
+    // MARK: - Channel management (settings, lifecycle, connect, function)
+
+    public var customersResults: [Result<[ChannelCustomer], Error>] = []
+    public private(set) var customersCallCount = 0
+    public func customers() async throws -> [ChannelCustomer] {
+        customersCallCount += 1
+        return try next(&customersResults, "customers")
+    }
+
+    public var updateChannelCustomerNameResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var updateChannelCustomerNameCalls:
+        [(id: String, body: ChannelCustomerNameRequest)] = []
+    public func updateChannelCustomerName(_ id: String, body: ChannelCustomerNameRequest)
+        async throws -> OpaqueJSONResult
+    {
+        updateChannelCustomerNameCalls.append((id: id, body: body))
+        return try next(&updateChannelCustomerNameResults, "updateChannelCustomerName")
+    }
+
+    public var updateChannelGroupResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var updateChannelGroupCalls: [(id: String, body: ChannelGroupRequest)] = []
+    public func updateChannelGroup(_ id: String, body: ChannelGroupRequest) async throws
+        -> OpaqueJSONResult
+    {
+        updateChannelGroupCalls.append((id: id, body: body))
+        return try next(&updateChannelGroupResults, "updateChannelGroup")
+    }
+
+    public var setChannelTimesResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var setChannelTimesCalls: [(id: String, body: ChannelTimeRequest)] = []
+    public func setChannelTimes(_ id: String, body: ChannelTimeRequest) async throws
+        -> OpaqueJSONResult
+    {
+        setChannelTimesCalls.append((id: id, body: body))
+        return try next(&setChannelTimesResults, "setChannelTimes")
+    }
+
+    public var updateChannelSettingsResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var updateChannelSettingsCalls:
+        [(id: String, body: ChannelSettingsRequest)] = []
+    public func updateChannelSettings(_ id: String, body: ChannelSettingsRequest) async throws
+        -> OpaqueJSONResult
+    {
+        updateChannelSettingsCalls.append((id: id, body: body))
+        return try next(&updateChannelSettingsResults, "updateChannelSettings")
+    }
+
+    public var channelMentionsResults: [Result<ChannelMentionsResult, Error>] = []
+    public private(set) var channelMentionsCalls: [ChannelFunctionRequest] = []
+    public func channelMentions(_ body: ChannelFunctionRequest) async throws
+        -> ChannelMentionsResult
+    {
+        channelMentionsCalls.append(body)
+        return try next(&channelMentionsResults, "channelMentions")
+    }
+
+    public var channelFunctionResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var channelFunctionCalls: [ChannelFunctionRequest] = []
+    public func channelFunction(_ body: ChannelFunctionRequest) async throws -> OpaqueJSONResult {
+        channelFunctionCalls.append(body)
+        return try next(&channelFunctionResults, "channelFunction")
+    }
+
+    public var disableChannelResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var disableChannelCalls: [String] = []
+    public func disableChannel(_ id: String) async throws -> OpaqueJSONResult {
+        disableChannelCalls.append(id)
+        return try next(&disableChannelResults, "disableChannel")
+    }
+
+    public var enableChannelResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var enableChannelCalls: [String] = []
+    public func enableChannel(_ id: String) async throws -> OpaqueJSONResult {
+        enableChannelCalls.append(id)
+        return try next(&enableChannelResults, "enableChannel")
+    }
+
+    public var deleteChannelResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var deleteChannelCalls: [String] = []
+    public func deleteChannel(_ id: String) async throws -> OpaqueJSONResult {
+        deleteChannelCalls.append(id)
+        return try next(&deleteChannelResults, "deleteChannel")
+    }
+
+    public var connectStartResults: [Result<ChannelConnectResponse, Error>] = []
+    public private(set) var connectStartCalls:
+        [(provider: String, refresh: String?, externalUrl: String?)] = []
+    public func connectStart(provider: String, refresh: String?, externalUrl: String?)
+        async throws -> ChannelConnectResponse
+    {
+        connectStartCalls.append((provider: provider, refresh: refresh, externalUrl: externalUrl))
+        return try next(&connectStartResults, "connectStart")
+    }
+
     // MARK: - Posts
 
     public var postsResults: [Result<PostsResponse, Error>] = []
