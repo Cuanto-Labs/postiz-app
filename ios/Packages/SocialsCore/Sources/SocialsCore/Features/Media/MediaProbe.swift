@@ -14,20 +14,22 @@ public enum MediaProbe {
         if contentType.hasPrefix("video/") {
             return await videoAttributes(id: id, data: data, contentType: contentType)
         }
-        return imageAttributes(id: id, data: data)
+        return imageAttributes(id: id, data: data, contentType: contentType)
     }
 
-    private static func imageAttributes(id: String, data: Data) -> SelectedMediaAttributes? {
+    private static func imageAttributes(id: String, data: Data, contentType: String) -> SelectedMediaAttributes? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
             let width = properties[kCGImagePropertyPixelWidth] as? Double,
             let height = properties[kCGImagePropertyPixelHeight] as? Double, width > 0, height > 0
         else {
-            return SelectedMediaAttributes(id: id, kind: .image, aspectRatio: nil, durationSeconds: nil)
+            return SelectedMediaAttributes(
+                id: id, kind: .image, aspectRatio: nil, durationSeconds: nil,
+                byteCount: data.count, mimeType: contentType)
         }
         return SelectedMediaAttributes(
             id: id, kind: .image, aspectRatio: MediaAspectRatio(width: width, height: height),
-            durationSeconds: nil)
+            durationSeconds: nil, byteCount: data.count, mimeType: contentType)
     }
 
     private static func videoAttributes(id: String, data: Data, contentType: String) async -> SelectedMediaAttributes?
@@ -44,7 +46,9 @@ public enum MediaProbe {
             let duration = try await asset.load(.duration).seconds
             let tracks = try await asset.loadTracks(withMediaType: .video)
             guard let track = tracks.first else {
-                return SelectedMediaAttributes(id: id, kind: .video, aspectRatio: nil, durationSeconds: duration)
+                return SelectedMediaAttributes(
+                    id: id, kind: .video, aspectRatio: nil, durationSeconds: duration,
+                    byteCount: data.count, mimeType: contentType)
             }
             let size = try await track.load(.naturalSize)
             let transform = try await track.load(.preferredTransform)
@@ -52,13 +56,17 @@ public enum MediaProbe {
             let width = abs(transformed.width)
             let height = abs(transformed.height)
             guard width > 0, height > 0 else {
-                return SelectedMediaAttributes(id: id, kind: .video, aspectRatio: nil, durationSeconds: duration)
+                return SelectedMediaAttributes(
+                    id: id, kind: .video, aspectRatio: nil, durationSeconds: duration,
+                    byteCount: data.count, mimeType: contentType)
             }
             return SelectedMediaAttributes(
                 id: id, kind: .video, aspectRatio: MediaAspectRatio(width: width, height: height),
-                durationSeconds: duration)
+                durationSeconds: duration, byteCount: data.count, mimeType: contentType)
         } catch {
-            return SelectedMediaAttributes(id: id, kind: .video, aspectRatio: nil, durationSeconds: nil)
+            return SelectedMediaAttributes(
+                id: id, kind: .video, aspectRatio: nil, durationSeconds: nil,
+                byteCount: data.count, mimeType: contentType)
         }
     }
 }

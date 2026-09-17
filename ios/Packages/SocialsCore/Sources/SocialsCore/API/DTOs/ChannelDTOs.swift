@@ -25,13 +25,48 @@ public struct ChannelCustomer: Sendable, Codable, Equatable {
     }
 }
 
+/// `limits.media` on a channel — the server's own `getMediaLimits(providerIdentifier)`
+/// (`libraries/nestjs-libraries/src/mobile/media/media-limits.ts`), sent verbatim per channel by
+/// `mobile-channels.controller.ts`. Decoding it means the app validates against the deployed
+/// backend's numbers instead of a client copy that silently drifts; `MediaLimits`' hardcoded
+/// table is only the offline fallback for a channel the server didn't annotate.
+public struct ChannelMediaLimits: Sendable, Codable, Equatable {
+    public let maxImages: Int?
+    public let maxVideos: Int?
+    public let maxImageBytes: Int?
+    public let maxVideoBytes: Int?
+    public let maxVideoSeconds: Double?
+    public let imageMimes: [String]?
+    public let videoMimes: [String]?
+    /// Wire form is the server's string list, e.g. `["1:1", "4:5", "1.91:1"]`.
+    public let aspectRatios: [String]?
+
+    public init(
+        maxImages: Int? = nil, maxVideos: Int? = nil, maxImageBytes: Int? = nil,
+        maxVideoBytes: Int? = nil, maxVideoSeconds: Double? = nil, imageMimes: [String]? = nil,
+        videoMimes: [String]? = nil, aspectRatios: [String]? = nil
+    ) {
+        self.maxImages = maxImages
+        self.maxVideos = maxVideos
+        self.maxImageBytes = maxImageBytes
+        self.maxVideoBytes = maxVideoBytes
+        self.maxVideoSeconds = maxVideoSeconds
+        self.imageMimes = imageMimes
+        self.videoMimes = videoMimes
+        self.aspectRatios = aspectRatios
+    }
+}
+
 public struct ChannelLimits: Sendable, Codable, Equatable {
     public let maxCharacters: Int?
     public let editor: String?
+    /// `nil` when talking to a backend older than the `limits.media` addition.
+    public let media: ChannelMediaLimits?
 
-    public init(maxCharacters: Int?, editor: String?) {
+    public init(maxCharacters: Int?, editor: String?, media: ChannelMediaLimits? = nil) {
         self.maxCharacters = maxCharacters
         self.editor = editor
+        self.media = media
     }
 }
 

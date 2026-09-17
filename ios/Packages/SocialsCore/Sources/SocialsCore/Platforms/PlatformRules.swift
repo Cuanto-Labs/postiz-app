@@ -34,9 +34,22 @@ public struct PlatformLimits: Sendable, Equatable {
 public enum PlatformRules {
     public static func limits(
         for identifier: String,
-        serverLimits: (maxCharacters: Int, editor: String)?
+        serverLimits: (maxCharacters: Int, editor: String)?,
+        serverMedia: ChannelMediaLimits? = nil
     ) -> PlatformLimits {
-        let base = table[identifier] ?? defaultLimits
+        var base = table[identifier] ?? defaultLimits
+        // `limits.media` is the deployed backend's own `getMediaLimits`, so its counts win over
+        // the table copy — that drift is exactly how the table said LinkedIn took 20 images.
+        if let serverMedia {
+            base = PlatformLimits(
+                maxCharacters: base.maxCharacters,
+                maxImages: serverMedia.maxImages ?? base.maxImages,
+                maxVideos: serverMedia.maxVideos ?? base.maxVideos,
+                mediaRequired: base.mediaRequired,
+                supportsMentions: base.supportsMentions,
+                editor: base.editor
+            )
+        }
         guard let serverLimits else { return base }
         return PlatformLimits(
             maxCharacters: serverLimits.maxCharacters,
@@ -59,12 +72,13 @@ public enum PlatformRules {
     )
 
     static let table: [String: PlatformLimits] = [
+        // maxImages tracks the server's `MEDIA_LIMITS.linkedin` (9), not LinkedIn's raw API cap.
         "linkedin": PlatformLimits(
-            maxCharacters: 3000, maxImages: 20, maxVideos: 1,
+            maxCharacters: 3000, maxImages: 9, maxVideos: 1,
             mediaRequired: false, supportsMentions: true, editor: "text"
         ),
         "linkedin-page": PlatformLimits(
-            maxCharacters: 3000, maxImages: 20, maxVideos: 1,
+            maxCharacters: 3000, maxImages: 9, maxVideos: 1,
             mediaRequired: false, supportsMentions: true, editor: "text"
         ),
         "x": PlatformLimits(

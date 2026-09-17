@@ -14,6 +14,15 @@ public struct MediaAspectRatio: Sendable, Equatable {
 
     var ratio: Double { height == 0 ? 0 : width / height }
 
+    /// Parses the server's wire form (`"1:1"`, `"4:5"`, `"1.91:1"`, `"9:16"`). Returns `nil` on
+    /// anything else so an unrecognized entry is ignored rather than silently blocking every post.
+    public init?(wire: String) {
+        let parts = wire.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]), w > 0, h > 0
+        else { return nil }
+        self.init(width: w, height: h)
+    }
+
     /// Canonical label for violation messages, e.g. `"16:9"`. Snaps to the nearest well-known
     /// ratio within 2% so a slightly-off decode still reads as a recognizable crop name.
     public var label: String {
@@ -41,12 +50,19 @@ public struct SelectedMediaAttributes: Sendable, Equatable {
     public let kind: Kind
     public let aspectRatio: MediaAspectRatio?
     public let durationSeconds: Double?
+    public let byteCount: Int?
+    public let mimeType: String?
 
-    public init(id: String, kind: Kind, aspectRatio: MediaAspectRatio?, durationSeconds: Double?) {
+    public init(
+        id: String, kind: Kind, aspectRatio: MediaAspectRatio?, durationSeconds: Double?,
+        byteCount: Int? = nil, mimeType: String? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.aspectRatio = aspectRatio
         self.durationSeconds = durationSeconds
+        self.byteCount = byteCount
+        self.mimeType = mimeType
     }
 }
 
@@ -75,9 +91,34 @@ public struct MediaTechnicalLimits: Sendable, Equatable {
     /// `nil` means "no duration cap".
     public let maxVideoSeconds: Double?
 
-    public init(aspectRatios: [MediaAspectRatio], maxVideoSeconds: Double?) {
+    /// `nil` means "no byte cap known".
+    public let maxImageBytes: Int?
+    public let maxVideoBytes: Int?
+    /// Empty means "no MIME restriction".
+    public let imageMimes: [String]
+    public let videoMimes: [String]
+
+    public init(
+        aspectRatios: [MediaAspectRatio], maxVideoSeconds: Double?, maxImageBytes: Int? = nil,
+        maxVideoBytes: Int? = nil, imageMimes: [String] = [], videoMimes: [String] = []
+    ) {
         self.aspectRatios = aspectRatios
         self.maxVideoSeconds = maxVideoSeconds
+        self.maxImageBytes = maxImageBytes
+        self.maxVideoBytes = maxVideoBytes
+        self.imageMimes = imageMimes
+        self.videoMimes = videoMimes
+    }
+
+    /// Adopts the limits the server sent with the channel (`ChannelDTO.limits.media`), so the app
+    /// enforces the deployed backend's numbers rather than its own copy of the table.
+    public init(serverLimits: ChannelMediaLimits) {
+        self.aspectRatios = (serverLimits.aspectRatios ?? []).compactMap(MediaAspectRatio.init(wire:))
+        self.maxVideoSeconds = serverLimits.maxVideoSeconds
+        self.maxImageBytes = serverLimits.maxImageBytes
+        self.maxVideoBytes = serverLimits.maxVideoBytes
+        self.imageMimes = serverLimits.imageMimes ?? []
+        self.videoMimes = serverLimits.videoMimes ?? []
     }
 }
 
@@ -115,9 +156,11 @@ public enum MediaLimits {
     /// Checks every item in `media` against `providerIdentifier`'s technical limits, returning
     /// one violation per failing rule per item.
     public static func violations(
-        for media: [SelectedMediaAttributes], providerIdentifier: String
+        for media: [SelectedMediaAttributes], providerIdentifier: String,
+        serverLimits: ChannelMediaLimits? = nil
     ) -> [MediaLimitViolation] {
-        guard let limits = table[providerIdentifier] else { return [] }
+        let resolved = serverLimits.map(MediaTechnicalLimits.init(serverLimits:)) ?? table[providerIdentifier]
+        guard let limits = resolved else { return [] }
         var out: [MediaLimitViolation] = []
         let displayName = Self.displayName(providerIdentifier)
 
@@ -145,8 +188,38 @@ public enum MediaLimits {
                             "\(displayName) videos max out at \(Int(maxSeconds))s — this is \(Int(duration.rounded()))s."
                     ))
             }
+
+            let allowedMimes = item.kind == .video ? limits.videoMimes : limits.imageMimes
+            if !allowedMimes.isEmpty, let mime = item.mimeType, !allowedMimes.contains(mime) {
+                out.append(
+                    MediaLimitViolation(
+                        mediaID: item.id, providerIdentifier: providerIdentifier,
+                        message:
+                            "\(displayName) doesn't accept \(mime) — use \(joinedList(allowedMimes.map(shortMime)))."
+                    ))
+            }
+
+            let maxBytes = item.kind == .video ? limits.maxVideoBytes : limits.maxImageBytes
+            if let maxBytes, maxBytes > 0, let bytes = item.byteCount, bytes > maxBytes {
+                out.append(
+                    MediaLimitViolation(
+                        mediaID: item.id, providerIdentifier: providerIdentifier,
+                        message:
+                            "\(displayName) caps this file at \(megabytes(maxBytes)) — this is \(megabytes(bytes))."
+                    ))
+            }
         }
         return out
+    }
+
+    /// `"image/jpeg"` -> `"JPEG"`, so the message names formats the way a person would.
+    static func shortMime(_ mime: String) -> String {
+        (mime.split(separator: "/").last.map(String.init) ?? mime).uppercased()
+    }
+
+    static func megabytes(_ bytes: Int) -> String {
+        let mb = Double(bytes) / 1_048_576
+        return mb >= 10 ? "\(Int(mb.rounded()))MB" : String(format: "%.1fMB", mb)
     }
 
     /// `["a", "b", "c"]` -> `"a, b or c"`, mirrors how the violation messages read the allowed list.

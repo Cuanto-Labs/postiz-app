@@ -188,7 +188,39 @@ public final class ComposerViewModel {
     /// tied to the offending item's id — see ``MediaLimits``.
     public func mediaLimitViolations(for channel: ChannelDTO) -> [MediaLimitViolation] {
         let attributes = draft(for: channel.internalId).media.compactMap { mediaAttributesByID[$0.id] }
-        return MediaLimits.violations(for: attributes, providerIdentifier: channel.identifier)
+        return MediaLimits.violations(
+            for: attributes, providerIdentifier: channel.identifier,
+            serverLimits: channel.limits.media)
+    }
+
+    /// Count/required-media violations for `channel`: how many photos and videos the provider
+    /// takes, and whether it refuses a text-only post. Counts come from the channel's
+    /// `limits.media` when the server sent it, else ``PlatformRules``' table.
+    public func mediaCountErrors(for channel: ChannelDTO) -> [String] {
+        let limits = PlatformRules.limits(
+            for: channel.identifier, serverLimits: nil, serverMedia: channel.limits.media)
+        let media = draft(for: channel.internalId).media
+        let images = media.filter { kind(of: $0) == .image }.count
+        let videos = media.count - images
+        let name = MediaLimits.displayName(channel.identifier)
+
+        var errors: [String] = []
+        if limits.mediaRequired, media.isEmpty {
+            errors.append("\(name) needs at least one photo or video.")
+        }
+        if images > limits.maxImages {
+            errors.append(
+                limits.maxImages == 0
+                    ? "\(name) doesn't take photos."
+                    : "\(name) takes \(limits.maxImages) photos per post — this has \(images).")
+        }
+        if videos > limits.maxVideos {
+            errors.append(
+                limits.maxVideos == 0
+                    ? "\(name) doesn't take video."
+                    : "\(name) takes \(limits.maxVideos) video per post — this has \(videos).")
+        }
+        return errors
     }
 
     /// Settings-vs-media cross-field violations for `channel` — see ``ProviderCrossFieldValidator``.
@@ -222,7 +254,9 @@ public final class ComposerViewModel {
             if content.count > limit {
                 errors.append(.overCharLimit(channelId: channel.internalId, limit: limit))
             }
-            if !mediaLimitViolations(for: channel).isEmpty {
+            if !mediaCountErrors(for: channel).isEmpty
+                || !mediaLimitViolations(for: channel).isEmpty
+            {
                 errors.append(.mediaLimitViolation(channelId: channel.internalId))
             }
             if !crossFieldErrors(for: channel).isEmpty {

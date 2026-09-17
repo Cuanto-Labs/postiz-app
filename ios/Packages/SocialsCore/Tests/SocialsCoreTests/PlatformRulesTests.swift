@@ -17,7 +17,7 @@ struct PlatformRulesTests {
 
         let linkedin = PlatformRules.limits(for: "linkedin", serverLimits: nil)
         #expect(linkedin.maxCharacters == 3000)
-        #expect(linkedin.maxImages == 20)
+        #expect(linkedin.maxImages == 9)  // matches MEDIA_LIMITS.linkedin server-side
 
         let facebook = PlatformRules.limits(for: "facebook", serverLimits: nil)
         #expect(facebook.maxCharacters == 63206)

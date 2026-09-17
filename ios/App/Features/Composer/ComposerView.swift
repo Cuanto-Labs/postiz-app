@@ -321,16 +321,21 @@ struct ComposerView: View {
         }
     }
 
-    /// Cross-field errors that aren't tied to one media item (e.g. "carousel needs 2+ images") —
+    /// Whole-channel problems — media counts, required media, and cross-field rules (e.g. "carousel
+    /// needs 2+ images").
     /// per-item aspect-ratio/duration violations already render inline in `MediaTrayView`, next
     /// to the offending thumbnail. Never a generic whole-post banner: scoped to this one channel.
     @ViewBuilder
     private func channelViolations(for channel: ChannelDTO, viewModel: ComposerViewModel) -> some View {
-        let errors = viewModel.crossFieldErrors(for: channel)
-        if !errors.isEmpty {
+        // Count/required-media problems ("Instagram needs at least one photo") read the same way
+        // as the cross-field ones, so they share this list rather than a second surface.
+        let messages =
+            viewModel.mediaCountErrors(for: channel)
+            + viewModel.crossFieldErrors(for: channel).map(\.message)
+        if !messages.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(errors.enumerated()), id: \.offset) { _, error in
-                    Text(error.message)
+                ForEach(Array(messages.enumerated()), id: \.offset) { _, message in
+                    Text(message)
                         .typeRole(.caption)
                         .foregroundStyle(Color.token(.destructive, in: theme))
                 }
