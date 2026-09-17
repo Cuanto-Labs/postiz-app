@@ -1,3 +1,4 @@
+import Foundation
 import SocialsCore
 import SwiftUI
 
@@ -46,8 +47,24 @@ struct MainTabView: View {
     /// surface `unreadCount` as a tab badge, mirroring how every other tab's screen owns its
     /// view model independently.
     @State private var badgeViewModel: NotificationsViewModel?
-    @State private var selectedTab: MainTab = .calendar
+    @State private var selectedTab: MainTab = MainTabView.initialTab()
     @State private var morePath = NavigationPath()
+
+    /// `-uiTestTab <name>` (`ScreenshotUITests`) picks which tab a stub-mode relaunch lands on
+    /// directly — tapping a tab-bar button reports a `{-1,-1}` hit point on this app, so the
+    /// screenshot harness relaunches per tab instead of tapping. Inert outside `-uiTestStub`.
+    private static func initialTab() -> MainTab {
+        guard ProcessInfo.processInfo.arguments.contains("-uiTestStub"),
+            let raw = UITestFixtures.launchArgValue("-uiTestTab")
+        else { return .calendar }
+        switch raw {
+        case "channels": return .channels
+        case "media": return .media
+        case "notifications": return .notifications
+        case "more": return .more
+        default: return .calendar
+        }
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {

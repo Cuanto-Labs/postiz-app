@@ -121,6 +121,12 @@ public final class AppEnvironment {
         // scripted responses instead of `StubSocialsAPI`'s bare defaults.
         if ProcessInfo.processInfo.arguments.contains("-uiTestStub") {
             await UITestFixtures.seed(api)
+            // `-uiTestTab <name>` (`ScreenshotUITests`) relaunches the app to land on a specific
+            // tab deterministically — sign in directly rather than re-driving `SignInView`'s
+            // form on every relaunch.
+            if UITestFixtures.launchArgValue("-uiTestTab") != nil {
+                await UITestFixtures.signInDirectly(sessionStore)
+            }
         }
         let syncEngine = SyncEngine(
             outbox: outbox,

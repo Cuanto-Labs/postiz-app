@@ -1,5 +1,6 @@
 import Foundation
 import SocialsCore
+import UIKit
 
 /// Deterministic fixtures for the `-uiTestStub` launch path (see `AppEnvironment.preview()`).
 /// Seeds a `StubSocialsAPI` with just enough scripted responses to drive
@@ -10,18 +11,45 @@ enum UITestFixtures {
     static let email = "uitest@cuantolabs.com"
     static let password = "uitest-password"
     static let channelName = "UITest Channel"
+    static let instagramChannelName = "Cuanto Labs"
+    static let linkedInChannelName = "Cuanto Labs Co."
+
+    /// Shared sign-in payload for both the scripted `/auth/login` response and
+    /// `signInDirectly(_:)`'s bypass path — one source of truth for the fixture user/org.
+    static var authResponse: MobileAuthResponse {
+        let user = MobileUser(id: "u1", email: email, name: "UI Test", lastName: nil, pictureId: nil)
+        let org = MobileOrg(id: "org1", name: "UI Test Org", role: "OWNER", disabled: false)
+        return MobileAuthResponse(
+            accessToken: "uitest-access-token", refreshToken: "uitest-refresh-token",
+            expiresIn: 3600, sessionId: "uitest-session", user: user, orgs: [org])
+    }
+
+    /// Value following `flag` in the process's launch arguments (e.g. `-uiTestTab channels` ->
+    /// `"channels"` for `flag == "-uiTestTab"`), or `nil` if the flag wasn't passed.
+    static func launchArgValue(_ flag: String) -> String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: flag), index + 1 < args.count else { return nil }
+        return args[index + 1]
+    }
+
+    /// Signs the stub session in directly, bypassing `SignInView` — used by `-uiTestTab`
+    /// relaunches (`ScreenshotUITests`) so switching tabs via a fresh process launch doesn't mean
+    /// re-driving the sign-in form every time.
+    static func signInDirectly(_ sessionStore: SessionStore) async {
+        try? await sessionStore.signIn(authResponse)
+    }
 
     /// Seeds the scripted responses `SignInComposeScheduleFlowTests` needs and marks onboarding
     /// as already seen, so a fresh sign-in lands straight on `MainTabView` instead of
     /// `OnboardingView`.
     static func seed(_ api: StubSocialsAPI) async {
         UserDefaults.standard.set(true, forKey: "com.cuantolabs.socials.hasSeenOnboarding")
-
-        let user = MobileUser(id: "u1", email: email, name: "UI Test", lastName: nil, pictureId: nil)
-        let org = MobileOrg(id: "org1", name: "UI Test Org", role: "OWNER", disabled: false)
-        let auth = MobileAuthResponse(
-            accessToken: "uitest-access-token", refreshToken: "uitest-refresh-token",
-            expiresIn: 3600, sessionId: "uitest-session", user: user, orgs: [org])
+        // `UserDefaultsDraftStore` persists to the same on-disk `UserDefaults.standard` key across
+        // every app launch, including a *previous* `-uiTestStub` run's leftover composer draft —
+        // without this, a stale draft from an earlier screenshot/test run bleeds into this one's
+        // "just sign in, pick one channel" scenarios (confirmed: extra channels showing selected
+        // that this run never picked). Every stub launch starts the composer from a clean slate.
+        UserDefaultsDraftStore().clearDraft()
 
         let channel = ChannelDTO(
             id: "c1", internalId: "c1", name: channelName, identifier: "uitest-channel",
@@ -29,16 +57,38 @@ enum UITestFixtures {
             display: nil, type: "x", customer: nil,
             limits: ChannelLimits(maxCharacters: nil, editor: nil))
 
+        // Instagram + LinkedIn, with `limits.media` populated the way the server sends it
+        // (`ChannelMediaLimits`) — exercises `MediaTrayView`/`ChannelPreviewCard` for real
+        // multi-channel, real-media composer screenshots instead of the single text-only channel
+        // above.
+        let instagramChannel = ChannelDTO(
+            id: "c2", internalId: "c2", name: instagramChannelName, identifier: "instagram",
+            picture: nil, disabled: false, refreshNeeded: false, inBetweenSteps: false,
+            display: nil, type: "instagram", customer: nil,
+            limits: ChannelLimits(
+                maxCharacters: nil, editor: nil,
+                media: ChannelMediaLimits(
+                    maxImages: 10, maxVideos: 1, maxVideoSeconds: 900,
+                    aspectRatios: ["1:1", "4:5", "1.91:1"])))
+        let linkedInChannel = ChannelDTO(
+            id: "c3", internalId: "c3", name: linkedInChannelName, identifier: "linkedin",
+            picture: nil, disabled: false, refreshNeeded: false, inBetweenSteps: false,
+            display: nil, type: "linkedin", customer: nil,
+            limits: ChannelLimits(
+                maxCharacters: nil, editor: nil,
+                media: ChannelMediaLimits(maxImages: 9, maxVideos: 1, maxVideoSeconds: 600)))
+
         let post = PostGroupDTO(
             id: "p1", group: "g1", publishDate: nil, status: "QUEUE", integration: nil, content: nil)
 
-        await api.setLoginResults([.success(auth)])
-        // Two scripted responses: the Channels tab's own `ChannelsViewModel` load and the
-        // composer's independent `loadChannels(into:)` each consume one from the queue.
-        await api.setChannelsResults([
-            .success(ChannelsResponse(channels: [channel])),
-            .success(ChannelsResponse(channels: [channel])),
-        ])
+        await api.setLoginResults([.success(authResponse)])
+        // Every screen that loads channels within one process (Channels tab, the composer's own
+        // independent `loadChannels(into:)`, plus the extra `-uiTestTab`/`-uiTestMedia` relaunches
+        // `ScreenshotUITests` now drives) each consume one from the queue — 4 comfortably covers
+        // any single launch's load(s) without changing the FIFO-exhaustion behavior other tests
+        // rely on.
+        let channelsResponse = ChannelsResponse(channels: [channel, instagramChannel, linkedInChannel])
+        await api.setChannelsResults(Array(repeating: .success(channelsResponse), count: 4))
         await api.setCreatePostResults([.success(post)])
 
         // Empty-but-successful responses for every other screen `MainTabView` can reach, so a
@@ -67,10 +117,74 @@ enum UITestFixtures {
         // Shared between the AI image and AI video screens (the stub doesn't branch on `type`).
         await api.setAICreditsResults(
             Array(repeating: .success(AICreditsResponse(credits: 10)), count: 8))
-        let personalDetails = PersonalDetails(id: user.id, name: "UI Test", bio: nil)
+        let personalDetails = PersonalDetails(id: authResponse.user.id, name: "UI Test", bio: nil)
         await api.setPersonalDetailsResults(Array(repeating: .success(personalDetails), count: 4))
         await api.setUpdatePersonalDetailsResults(
             Array(repeating: .success(personalDetails), count: 4))
+    }
+
+    // MARK: - Composer media fixture (`-uiTestMedia`)
+
+    /// Selects Instagram + LinkedIn and attaches one fixture image straight into the global draft
+    /// plus the upload tray — no real upload (`UploadQueue.seedCompleted`), no binary asset in
+    /// git (the pixel data is drawn in-process via `UIGraphicsImageRenderer` at exactly the size
+    /// that either passes or trips Instagram's aspect-ratio rule). Drives `-uiTestMedia
+    /// valid|violation` (`ScreenshotUITests`); no-op unless both that and `-uiTestStub` are set.
+    static func seedComposerMediaIfNeeded(into model: ComposerViewModel, uploadQueue: UploadQueue) {
+        guard ProcessInfo.processInfo.arguments.contains("-uiTestStub"),
+            let raw = launchArgValue("-uiTestMedia"),
+            let mode = ComposerMediaFixture(rawValue: raw)
+        else { return }
+
+        // Start from a clean slate: `UserDefaultsDraftStore` persists across relaunches, and this
+        // fixture always wants exactly Instagram + LinkedIn selected with exactly one attachment.
+        model.clearDraft()
+        for identifier in ["instagram", "linkedin"] {
+            if let channel = model.channels.first(where: { $0.identifier == identifier }) {
+                model.toggleChannel(channel)
+            }
+        }
+
+        let size = mode.pixelSize
+        let mediaId = "uitest-media-\(mode.rawValue)"
+        let pngData = Self.fixtureImage(size: size)
+        let media = MediaDTO(
+            id: mediaId, name: "fixture-\(mode.rawValue).png", originalName: nil,
+            path: "uitest://fixture-\(mode.rawValue).png", thumbnail: nil, alt: nil,
+            thumbnailTimestamp: nil, status: "ready", processingError: nil)
+        let attributes = SelectedMediaAttributes(
+            id: mediaId, kind: .image,
+            aspectRatio: MediaAspectRatio(width: size.width, height: size.height),
+            durationSeconds: nil, byteCount: pngData.count, mimeType: "image/png")
+
+        model.attachMediaToGlobal(media, attributes: attributes)
+        uploadQueue.seedCompleted(id: mediaId, fileName: media.name, media: media)
+    }
+
+    /// A drawn solid-colour PNG at `size` — cheap, deterministic, and needs no binary asset
+    /// checked into git.
+    private static func fixtureImage(size: CGSize) -> Data {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { _ in
+            UIColor.systemTeal.setFill()
+            UIRectFill(CGRect(origin: .zero, size: size))
+        }
+        return image.pngData() ?? Data()
+    }
+}
+
+/// Which fixture image `-uiTestMedia` attaches: `.valid` passes every seeded channel's aspect
+/// check, `.violation` is a 16:9 crop that trips Instagram's (`aspectRatios: ["1:1","4:5",
+/// "1.91:1"]`) but not LinkedIn's (no aspect restriction).
+enum ComposerMediaFixture: String {
+    case valid
+    case violation
+
+    var pixelSize: CGSize {
+        switch self {
+        case .valid: return CGSize(width: 1080, height: 1080)
+        case .violation: return CGSize(width: 1920, height: 1080)
+        }
     }
 }
 

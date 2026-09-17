@@ -37,7 +37,7 @@ struct MediaTrayView: View {
     @State private var pickerSelection: [PhotosPickerItem] = []
     @State private var showLibraryPicker = false
     @State private var thumbnails: [String: UIImage] = [:]
-    @State private var probedAttributes: [String: SelectedMediaAttributes] = [:]
+    @State private var probedAttributes: [String: SelectedMediaAttributes]
     @ScaledMetric(relativeTo: .footnote) private var thumbnailSize: CGFloat = 64
     @ScaledMetric(relativeTo: .caption) private var cellWidth: CGFloat = 96
     let mediaLibraryViewModel: MediaLibraryViewModel
@@ -52,6 +52,12 @@ struct MediaTrayView: View {
         incomingAIMedia: AIMediaResult? = nil,
         aiHandoffNamespace: Namespace.ID? = nil,
         providerIdentifiers: [String] = [],
+        /// Seeds `probedAttributes` for items already sitting in `uploadQueue` at construction
+        /// time (keyed by `UploadItem.id`, same key space as `SelectedMediaAttributes.id` for
+        /// items seeded via `UploadQueue.seedCompleted`) — otherwise a pre-attached item (test
+        /// fixtures, `UploadQueue.seedCompleted`) would show no inline violation text since
+        /// `probedAttributes` is normally only populated by this view's own picker flow.
+        initialProbedAttributes: [String: SelectedMediaAttributes] = [:],
         mediaLibraryViewModel: MediaLibraryViewModel
     ) {
         self.uploadQueue = uploadQueue
@@ -60,6 +66,7 @@ struct MediaTrayView: View {
         self.incomingAIMedia = incomingAIMedia
         self.aiHandoffNamespace = aiHandoffNamespace
         self.providerIdentifiers = providerIdentifiers
+        self._probedAttributes = State(initialValue: initialProbedAttributes)
         self.mediaLibraryViewModel = mediaLibraryViewModel
     }
 

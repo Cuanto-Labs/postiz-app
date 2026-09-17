@@ -26,6 +26,11 @@ final class ScreenshotUITests: XCTestCase {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     }
 
+    override func tearDown() {
+        app.terminate()
+        super.tearDown()
+    }
+
     func testWalkthrough() {
         app.launch()
         XCTAssertTrue(app.staticTexts["Sign in"].firstMatch.waitForExistence(timeout: 30), "launch screen")
@@ -55,16 +60,12 @@ final class ScreenshotUITests: XCTestCase {
         XCTAssertTrue(calendarTab.waitForExistence(timeout: 20), "Calendar tab after sign-in")
         UITestKit.shot("01-calendar", dir: dir)
 
-        // Visit Channels before the composer, in the same order as
-        // SignInComposeScheduleFlowTests: the composer's channel picker renders from the
-        // channel list the Channels tab loads, so opening the composer on a cold cache
-        // leaves it with no chip to tap.
-        tapTab("Channels", index: 1)
+        relaunch(tab: "channels", expectedNavBar: "Channels")
         XCTAssertTrue(app.descendants(matching: .any)["UITest Channel"].waitForExistence(timeout: 15),
                       "seeded channel on Channels tab")
         UITestKit.shot("02-channels", dir: dir)
 
-        tapTab("Calendar", index: 0)
+        relaunch(tab: "calendar", expectedNavBar: "Calendar")
         let newPost = app.buttons["calendar.newPost"]
         XCTAssertTrue(newPost.waitForExistence(timeout: 15), "Calendar new-post button")
         newPost.tap()
@@ -86,28 +87,55 @@ final class ScreenshotUITests: XCTestCase {
         app.buttons["Confirm schedule"].tap()
         XCTAssertTrue(newPost.waitForExistence(timeout: 20), "back on Calendar after scheduling")
 
-        for (tabName, index, shotName) in [("Media", 2, "05-media"),
-                                           ("Notifications", 3, "06-notifications")] {
-            tapTab(tabName, index: index)
-            UITestKit.shot(shotName, dir: dir)
-        }
+        // MediaLibraryView sets its own `.navigationTitle("Media Library")`, which wins over
+        // MainTabView's outer "Media" on the same NavigationStack.
+        relaunch(tab: "media", expectedNavBar: "Media Library")
+        UITestKit.shot("05-media", dir: dir)
+
+        relaunch(tab: "notifications", expectedNavBar: "Notifications")
+        UITestKit.shot("06-notifications", dir: dir)
+
+        // Hero composer shot: Instagram + LinkedIn selected, one valid 1:1 image already
+        // attached — exercises the multi-channel picker, the media tray, and both providers'
+        // `ChannelPreviewCard`s with real state instead of an empty composer.
+        relaunch(tab: "calendar", expectedNavBar: "Calendar", media: "valid")
+        app.buttons["calendar.newPost"].tap()
+        // "Cuanto Labs" mirrors `UITestFixtures.instagramChannelName` — hardcoded for the same
+        // reason as the other fixture literals in this file (the UITest target can't import the
+        // App target's fixtures).
+        XCTAssertTrue(app.buttons["Cuanto Labs, selected"].waitForExistence(timeout: 20),
+                      "composer hero: Instagram chip selected")
+        UITestKit.shot("08-composer-media", dir: dir)
+
+        // Same seed, a 16:9 image instead — trips Instagram's aspect-ratio rule, so the tray
+        // shows the inline violation blocking the post.
+        relaunch(tab: "calendar", expectedNavBar: "Calendar", media: "violation")
+        app.buttons["calendar.newPost"].tap()
+        XCTAssertTrue(app.buttons["Cuanto Labs, selected"].waitForExistence(timeout: 20),
+                      "composer violation: Instagram chip selected")
+        XCTAssertTrue(
+            app.staticTexts["Instagram needs a 1:1, 4:5 or 1.91:1 crop — this is 16:9."]
+                .waitForExistence(timeout: 15), "Instagram aspect-ratio violation text")
+        UITestKit.shot("09-composer-violation", dir: dir)
     }
 
-    /// TabView tab-bar buttons report a `{-1,-1}` hit point on this app, so both `.tap()` and
-    /// the element's own centre coordinate are silently swallowed (confirmed: the tab stayed on
-    /// Calendar while the shot was taken). The bottom bar's own frame is sound, so tap the
-    /// horizontal slice belonging to the tab's index instead — five equal tabs, centre of the
-    /// nth fifth — and verify the switch actually happened via the destination's nav bar.
-    private func tapTab(_ name: String, index: Int, of count: Int = 5) {
-        let bar = app.tabBars.firstMatch
-        guard bar.waitForExistence(timeout: 15) else {
-            XCTFail("tab bar missing")
-            return
+    /// Fully relaunches the app into `tab` via `-uiTestTab` instead of tapping the tab bar:
+    /// `TabView`'s tab-bar buttons report a `{-1,-1}` hit point on this app, so both `.tap()` and
+    /// the element's own coordinate are silently swallowed. `-uiTestTab` also signs the stub
+    /// session in directly (see `AppEnvironment.preview()`), so the relaunch lands straight on
+    /// `expectedNavBar` without re-driving the sign-in form. Asserts the destination nav bar so a
+    /// wrong frame fails the test instead of silently saving the wrong screen.
+    private func relaunch(tab: String, expectedNavBar: String, media: String? = nil) {
+        app.terminate()
+        app = XCUIApplication()
+        var args = ["-uiTestStub", "-uiTestTab", tab]
+        if let media {
+            args += ["-uiTestMedia", media]
         }
-        let dx = (Double(index) + 0.5) / Double(count)
-        bar.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: 0.5)).tap()
-        XCTAssertTrue(app.navigationBars[name].waitForExistence(timeout: 15),
-                      "\(name) did not become the active tab")
+        app.launchArguments = args
+        app.launch()
+        XCTAssertTrue(app.navigationBars[expectedNavBar].waitForExistence(timeout: 20),
+                      "\(expectedNavBar) did not become the active tab")
     }
 
     /// Driven by `bin/ios-layout-check`. Not part of the App Store screenshot set — writes into

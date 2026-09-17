@@ -122,6 +122,13 @@ public final class UploadQueue {
         tasks[id]?.cancel()
     }
 
+    /// Seeds a pre-completed item directly into the tray, bypassing the network entirely — for
+    /// SwiftUI previews / UI-test fixtures that need a populated tray without driving a real
+    /// upload (mirrors how `upload(id:...)` already lets a caller pre-generate the item's id).
+    public func seedCompleted(id: String, fileName: String, media: MediaDTO) {
+        items.append(UploadItem(id: id, fileName: fileName, status: .completed(media)))
+    }
+
     /// Drops a finished (completed or failed) item from the tray, e.g. once the user dismisses
     /// its failure banner or it's been attached to the post. In-flight items are never removed.
     public func remove(_ id: String) {

@@ -99,9 +99,15 @@ struct ComposerView: View {
                         api: environment.api, draftStore: UserDefaultsDraftStore())
                     model.restoreDraft()
                     viewModel = model
-                    uploadQueue = UploadQueue(api: environment.api)
+                    let queue = UploadQueue(api: environment.api)
+                    uploadQueue = queue
                     mediaLibraryViewModel = MediaLibraryViewModel(api: environment.api)
                     await loadChannels(into: model)
+                    // `-uiTestMedia valid|violation` (`ScreenshotUITests`): seeds Instagram +
+                    // LinkedIn selected with a fixture image already attached, so the App Store
+                    // screenshot set exercises the real tray/preview UI instead of an empty
+                    // composer. No-op outside `-uiTestStub`.
+                    UITestFixtures.seedComposerMediaIfNeeded(into: model, uploadQueue: queue)
                 }
             }
         }
@@ -248,6 +254,7 @@ struct ComposerView: View {
                             viewModel.attachMediaToGlobal(media, attributes: attributes)
                         },
                         providerIdentifiers: viewModel.selectedChannels.map(\.identifier),
+                        initialProbedAttributes: viewModel.mediaAttributesByID,
                         mediaLibraryViewModel: mediaLibraryViewModel)
                 }
             }
@@ -306,6 +313,7 @@ struct ComposerView: View {
                         viewModel.attachMedia(media, attributes: attributes, toChannel: channel.internalId)
                     },
                     providerIdentifiers: [channel.identifier],
+                    initialProbedAttributes: viewModel.mediaAttributesByID,
                     mediaLibraryViewModel: mediaLibraryViewModel)
             }
 
