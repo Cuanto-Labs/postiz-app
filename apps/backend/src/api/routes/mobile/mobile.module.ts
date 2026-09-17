@@ -10,6 +10,7 @@ import { MobilePushController } from '@gitroom/backend/api/routes/mobile/mobile-
 import { MobileMediaController } from '@gitroom/backend/api/routes/mobile/mobile-media.controller';
 import { MobileAccountController } from '@gitroom/backend/api/routes/mobile/mobile-account.controller';
 import { MobileAiController } from '@gitroom/backend/api/routes/mobile/mobile-ai.controller';
+import { MobileTagsController } from '@gitroom/backend/api/routes/mobile/mobile-tags.controller';
 import { MobileMediaUploadService } from '@gitroom/nestjs-libraries/mobile/media/mobile-media-upload.service';
 import { MobileAccountService } from '@gitroom/nestjs-libraries/mobile/account/mobile-account.service';
 import { AccountDeletionRepository } from '@gitroom/nestjs-libraries/mobile/account/account-deletion.repository';
@@ -33,6 +34,7 @@ const authenticatedControllers = [
   MobileMediaController,
   MobileAccountController,
   MobileAiController,
+  MobileTagsController,
 ];
 
 @Module({

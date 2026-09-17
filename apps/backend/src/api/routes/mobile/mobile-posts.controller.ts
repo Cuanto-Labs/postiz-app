@@ -21,10 +21,12 @@ import { Organization } from '@prisma/client';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import {
+  MobileOldPostsQueryDto,
   MobilePostsQueryDto,
   MobileRescheduleDto,
 } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-posts.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
+import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import {
   AuthorizationActions,
@@ -52,6 +54,39 @@ export class MobilePostsController {
         customer: query.customer,
       } as GetPostsDto),
     };
+  }
+
+  @Get('/list')
+  @ApiOperation({ summary: 'Get a paginated list of posts' })
+  async listPosts(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: GetPostsListDto
+  ) {
+    return this._postsService.getPostsList(org.id, query);
+  }
+
+  @Get('/old')
+  @ApiOperation({ summary: 'Get old posts before a given date' })
+  async oldPosts(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: MobileOldPostsQueryDto
+  ) {
+    return this._postsService.getOldPosts(org.id, query.date);
+  }
+
+  @Get('/find-slot')
+  @ApiOperation({ summary: 'Find the next free posting slot' })
+  async findSlot(@GetOrgFromRequest() org: Organization) {
+    return { date: await this._postsService.findFreeDateTime(org.id) };
+  }
+
+  @Get('/find-slot/:id')
+  @ApiOperation({ summary: 'Find the next free posting slot for an integration' })
+  async findSlotIntegration(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id?: string
+  ) {
+    return { date: await this._postsService.findFreeDateTime(org.id, id) };
   }
 
   @Get('/:group')

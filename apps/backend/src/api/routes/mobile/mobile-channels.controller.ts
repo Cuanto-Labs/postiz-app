@@ -1,4 +1,13 @@
-import { Controller, Get, HttpException, Param, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Organization } from '@prisma/client';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
@@ -11,6 +20,12 @@ import {
   AuthorizationActions,
   Sections,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
+import {
+  MobileChannelGroupDto,
+  MobileChannelNameDto,
+  MobileChannelSettingsDto,
+} from '@gitroom/nestjs-libraries/dtos/mobile/mobile-channels.dto';
 
 @ApiTags('Mobile Channels')
 @ApiBearerAuth()
@@ -63,6 +78,64 @@ export class MobileChannelsController {
         };
       }),
     };
+  }
+
+  @Get('/customers')
+  @ApiOperation({ summary: 'List distinct customer names for the org' })
+  getCustomers(@GetOrgFromRequest() org: Organization) {
+    return this._integrationService.customers(org.id);
+  }
+
+  @Put('/:id/customer-name')
+  @ApiOperation({ summary: 'Rename the customer attached to a channel' })
+  async updateOnCustomerName(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: MobileChannelNameDto
+  ) {
+    return this._integrationService.updateOnCustomerName(
+      org.id,
+      id,
+      body.name
+    );
+  }
+
+  @Put('/:id/group')
+  @ApiOperation({ summary: 'Set the group a channel belongs to' })
+  async updateIntegrationGroup(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: MobileChannelGroupDto
+  ) {
+    return this._integrationService.updateIntegrationGroup(
+      org.id,
+      id,
+      body.group
+    );
+  }
+
+  @Post('/:id/time')
+  @ApiOperation({ summary: 'Set the posting time table for a channel' })
+  async setTimes(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: IntegrationTimeDto
+  ) {
+    return this._integrationService.setTimes(org.id, id, body);
+  }
+
+  @Post('/:id/settings')
+  @ApiOperation({ summary: 'Update provider-specific settings for a channel' })
+  async updateProviderSettings(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: MobileChannelSettingsDto
+  ) {
+    return this._integrationService.updateProviderSettings(
+      org.id,
+      id,
+      body.additionalSettings
+    );
   }
 
   @Get('/connect/:provider')

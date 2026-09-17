@@ -20,3 +20,8 @@ export class MobileRescheduleDto {
   @IsIn(['schedule', 'update'])
   action?: 'schedule' | 'update';
 }
+
+export class MobileOldPostsQueryDto {
+  @IsDateString()
+  date: string;
+}

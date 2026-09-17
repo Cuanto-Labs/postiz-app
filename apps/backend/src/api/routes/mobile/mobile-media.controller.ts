@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   Param,
@@ -12,6 +13,7 @@ import { Organization } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { MobileMediaUploadService } from '@gitroom/nestjs-libraries/mobile/media/mobile-media-upload.service';
+import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import {
   MobileMediaAbortUploadDto,
   MobileMediaCompleteUploadDto,
@@ -93,6 +95,28 @@ export class MobileMediaController {
     @GetOrgFromRequest() org: Organization,
     @Query() query: MobileMediaListQueryDto
   ) {
-    return this._mediaService.getMedia(org.id, query.page as number);
+    return this._mediaService.getMedia(
+      org.id,
+      query.page as number,
+      query.search
+    );
+  }
+
+  @Delete('/:id')
+  @ApiOperation({ summary: 'Delete a media item' })
+  async deleteMedia(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._mediaService.deleteMedia(org.id, id);
+  }
+
+  @Post('/information')
+  @ApiOperation({ summary: 'Save media alt text / thumbnail information' })
+  async saveMediaInformation(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: SaveMediaInformationDto
+  ) {
+    return this._mediaService.saveMediaInformation(org.id, body);
   }
 }

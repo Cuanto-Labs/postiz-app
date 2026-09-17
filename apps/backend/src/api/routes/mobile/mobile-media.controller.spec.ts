@@ -59,6 +59,8 @@ describe('MobileMediaController', () => {
       saveUploadedFile: jest.fn(),
       getMediaStatus: jest.fn(),
       getMedia: jest.fn(),
+      deleteMedia: jest.fn(),
+      saveMediaInformation: jest.fn(),
     };
 
     const controller = new MobileMediaController(
@@ -217,8 +219,48 @@ describe('MobileMediaController', () => {
 
     const result = await controller.list(org as any, { page: 2 } as any);
 
-    expect(mediaService.getMedia).toHaveBeenCalledWith(org.id, 2);
+    expect(mediaService.getMedia).toHaveBeenCalledWith(org.id, 2, undefined);
     expect(result).toEqual([{ id: 'media-1' }]);
+  });
+
+  it('list forwards the search query to MediaService.getMedia', async () => {
+    const { controller, mediaService } = makeController();
+    mediaService.getMedia.mockResolvedValue([{ id: 'media-1' }]);
+
+    const result = await controller.list(org as any, {
+      page: 2,
+      search: 'logo',
+    } as any);
+
+    expect(mediaService.getMedia).toHaveBeenCalledWith(org.id, 2, 'logo');
+    expect(result).toEqual([{ id: 'media-1' }]);
+  });
+
+  it('deleteMedia delegates to MediaService.deleteMedia', async () => {
+    const { controller, mediaService } = makeController();
+    mediaService.deleteMedia.mockResolvedValue({ id: 'media-1' });
+
+    const result = await controller.deleteMedia(org as any, 'media-1');
+
+    expect(mediaService.deleteMedia).toHaveBeenCalledWith(org.id, 'media-1');
+    expect(result).toEqual({ id: 'media-1' });
+  });
+
+  it('saveMediaInformation delegates to MediaService.saveMediaInformation', async () => {
+    const { controller, mediaService } = makeController();
+    const body = { id: 'media-1', alt: 'a photo' };
+    mediaService.saveMediaInformation.mockResolvedValue({ id: 'media-1' });
+
+    const result = await controller.saveMediaInformation(
+      org as any,
+      body as any
+    );
+
+    expect(mediaService.saveMediaInformation).toHaveBeenCalledWith(
+      org.id,
+      body
+    );
+    expect(result).toEqual({ id: 'media-1' });
   });
 
   it('MobileModule includes MobileMediaController and MobileMediaUploadService', () => {

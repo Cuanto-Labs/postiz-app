@@ -58,4 +58,8 @@ export class MobileMediaListQueryDto {
   @IsOptional()
   @IsInt()
   page?: number;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

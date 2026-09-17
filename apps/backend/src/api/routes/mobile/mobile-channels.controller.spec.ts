@@ -38,6 +38,11 @@ describe('MobileChannelsController', () => {
   const makeController = () => {
     const integrationService = {
       getIntegrationsList: jest.fn(),
+      customers: jest.fn(),
+      updateOnCustomerName: jest.fn(),
+      updateIntegrationGroup: jest.fn(),
+      setTimes: jest.fn(),
+      updateProviderSettings: jest.fn(),
     };
     const integrationManager = {
       getSocialIntegration: jest.fn(),
@@ -159,6 +164,87 @@ describe('MobileChannelsController', () => {
         },
       ],
     });
+  });
+
+  it('customers delegates to IntegrationService.customers(org.id)', async () => {
+    const { controller, integrationService } = makeController();
+    integrationService.customers.mockResolvedValue([{ customer: 'acme' }]);
+
+    const result = await controller.getCustomers(org as any);
+
+    expect(integrationService.customers).toHaveBeenCalledWith(org.id);
+    expect(result).toEqual([{ customer: 'acme' }]);
+  });
+
+  it('updateOnCustomerName delegates with org.id, id, name', async () => {
+    const { controller, integrationService } = makeController();
+    integrationService.updateOnCustomerName.mockResolvedValue({ id: 'int-1' });
+
+    const result = await controller.updateOnCustomerName(
+      org as any,
+      'int-1',
+      { name: 'Acme Corp' }
+    );
+
+    expect(integrationService.updateOnCustomerName).toHaveBeenCalledWith(
+      org.id,
+      'int-1',
+      'Acme Corp'
+    );
+    expect(result).toEqual({ id: 'int-1' });
+  });
+
+  it('updateIntegrationGroup delegates with org.id, id, group', async () => {
+    const { controller, integrationService } = makeController();
+    integrationService.updateIntegrationGroup.mockResolvedValue({
+      id: 'int-1',
+    });
+
+    const result = await controller.updateIntegrationGroup(
+      org as any,
+      'int-1',
+      { group: 'team-a' }
+    );
+
+    expect(integrationService.updateIntegrationGroup).toHaveBeenCalledWith(
+      org.id,
+      'int-1',
+      'team-a'
+    );
+    expect(result).toEqual({ id: 'int-1' });
+  });
+
+  it('setTimes delegates with org.id, id, time body', async () => {
+    const { controller, integrationService } = makeController();
+    const body = { time: [{ time: 630 }] };
+    integrationService.setTimes.mockResolvedValue({ id: 'int-1' });
+
+    const result = await controller.setTimes(org as any, 'int-1', body as any);
+
+    expect(integrationService.setTimes).toHaveBeenCalledWith(
+      org.id,
+      'int-1',
+      body
+    );
+    expect(result).toEqual({ id: 'int-1' });
+  });
+
+  it('updateProviderSettings delegates with org.id, id, additionalSettings', async () => {
+    const { controller, integrationService } = makeController();
+    integrationService.updateProviderSettings.mockResolvedValue(undefined);
+
+    const result = await controller.updateProviderSettings(
+      org as any,
+      'int-1',
+      { additionalSettings: '[]' }
+    );
+
+    expect(integrationService.updateProviderSettings).toHaveBeenCalledWith(
+      org.id,
+      'int-1',
+      '[]'
+    );
+    expect(result).toBeUndefined();
   });
 
   describe('connect', () => {

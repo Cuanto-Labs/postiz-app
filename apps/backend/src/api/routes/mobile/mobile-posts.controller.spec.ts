@@ -31,6 +31,9 @@ describe('MobilePostsController', () => {
     const postsService = {
       getPostsMinified: jest.fn(),
       getPostsByGroup: jest.fn(),
+      getPostsList: jest.fn(),
+      getOldPosts: jest.fn(),
+      findFreeDateTime: jest.fn(),
       validatePosts: jest.fn().mockResolvedValue([validRow]),
       mapTypeToPost: jest.fn().mockImplementation((body) => body),
       createPost: jest.fn().mockResolvedValue([{ id: 'post-1' }]),
@@ -65,6 +68,82 @@ describe('MobilePostsController', () => {
       customer: 'cust-1',
     });
     expect(result).toEqual({ posts: [{ id: 'post-1' }] });
+  });
+
+  it('declares list/old/find-slot routes before the /:group route', () => {
+    const names = Object.getOwnPropertyNames(
+      MobilePostsController.prototype
+    );
+    const idx = (name: string) => names.indexOf(name);
+
+    expect(idx('listPosts')).toBeGreaterThan(-1);
+    expect(idx('oldPosts')).toBeGreaterThan(-1);
+    expect(idx('findSlot')).toBeGreaterThan(-1);
+    expect(idx('findSlotIntegration')).toBeGreaterThan(-1);
+    expect(idx('detail')).toBeGreaterThan(-1);
+
+    expect(idx('listPosts')).toBeLessThan(idx('detail'));
+    expect(idx('oldPosts')).toBeLessThan(idx('detail'));
+    expect(idx('findSlot')).toBeLessThan(idx('detail'));
+    expect(idx('findSlotIntegration')).toBeLessThan(idx('detail'));
+  });
+
+  it('listPosts delegates to getPostsList', async () => {
+    const { controller, postsService } = makeController();
+    const listResult = { posts: [{ id: 'post-1' }], total: 1 };
+    postsService.getPostsList.mockResolvedValue(listResult);
+
+    const result = await controller.listPosts(org as any, {
+      page: 0,
+      limit: 20,
+    } as any);
+
+    expect(postsService.getPostsList).toHaveBeenCalledWith('org-1', {
+      page: 0,
+      limit: 20,
+    });
+    expect(result).toEqual(listResult);
+  });
+
+  it('oldPosts delegates to getOldPosts', async () => {
+    const { controller, postsService } = makeController();
+    postsService.getOldPosts.mockResolvedValue([{ id: 'post-1' }]);
+
+    const result = await controller.oldPosts(org as any, {
+      date: '2026-01-01',
+    } as any);
+
+    expect(postsService.getOldPosts).toHaveBeenCalledWith(
+      'org-1',
+      '2026-01-01'
+    );
+    expect(result).toEqual([{ id: 'post-1' }]);
+  });
+
+  it('findSlot delegates to findFreeDateTime', async () => {
+    const { controller, postsService } = makeController();
+    postsService.findFreeDateTime.mockResolvedValue('2026-01-02T00:00:00Z');
+
+    const result = await controller.findSlot(org as any);
+
+    expect(postsService.findFreeDateTime).toHaveBeenCalledWith('org-1');
+    expect(result).toEqual({ date: '2026-01-02T00:00:00Z' });
+  });
+
+  it('findSlotIntegration delegates to findFreeDateTime with an id', async () => {
+    const { controller, postsService } = makeController();
+    postsService.findFreeDateTime.mockResolvedValue('2026-01-02T00:00:00Z');
+
+    const result = await controller.findSlotIntegration(
+      org as any,
+      'integration-1'
+    );
+
+    expect(postsService.findFreeDateTime).toHaveBeenCalledWith(
+      'org-1',
+      'integration-1'
+    );
+    expect(result).toEqual({ date: '2026-01-02T00:00:00Z' });
   });
 
   it('detail delegates to getPostsByGroup', async () => {
