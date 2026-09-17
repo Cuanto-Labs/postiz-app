@@ -34,6 +34,16 @@ function makeOrg(id: string, role: 'SUPERADMIN' | 'USER') {
   return { id, name: `org-${id}`, users: [{ role, disabled: false }] };
 }
 
+function asyncIterableOf<T>(items: T[]) {
+  return {
+    [Symbol.asyncIterator]: async function* () {
+      for (const item of items) {
+        yield item;
+      }
+    },
+  };
+}
+
 function makeDeps() {
   const organizationRepository = {
     getOrgsByUserId: jest.fn(),
@@ -62,10 +72,17 @@ function makeDeps() {
     hasProvider: jest.fn().mockReturnValue(true),
     sendEmail: jest.fn().mockResolvedValue(undefined),
   };
-  const workflowHandle = { terminate: jest.fn().mockResolvedValue(undefined) };
+  const workflowHandle = {
+    terminate: jest.fn().mockResolvedValue(undefined),
+    describe: jest.fn().mockResolvedValue({ status: { name: 'RUNNING' } }),
+  };
+  const workflowList = jest.fn().mockReturnValue(asyncIterableOf([]));
   const temporalService = {
     client: {
       getWorkflowHandle: jest.fn().mockResolvedValue(workflowHandle),
+      getRawClient: jest.fn().mockReturnValue({
+        workflow: { list: workflowList },
+      }),
     },
   };
 
@@ -89,6 +106,7 @@ function makeDeps() {
     emailService,
     temporalService,
     workflowHandle,
+    workflowList,
   };
 }
 
@@ -105,15 +123,20 @@ describe('MobileAccountService', () => {
     deps.accountDeletionRepository.listRunningPostIds.mockResolvedValue([
       { id: 'p1' },
     ]);
+    deps.workflowList.mockReturnValue(
+      asyncIterableOf([{ workflowId: 'post_p1_abc123' }])
+    );
 
     await deps.service.deleteAccount('user1', 'user@example.com');
 
+    expect(deps.workflowList).toHaveBeenCalledWith({
+      query: 'postId="p1" AND ExecutionStatus="Running"',
+    });
     expect(deps.temporalService.client.getWorkflowHandle).toHaveBeenCalledWith(
-      'post_p1'
+      'post_p1_abc123'
     );
-    expect(deps.workflowHandle.terminate).toHaveBeenCalledWith(
-      'account deleted'
-    );
+    expect(deps.workflowHandle.describe).toHaveBeenCalled();
+    expect(deps.workflowHandle.terminate).toHaveBeenCalledWith();
     expect(
       deps.integrationRepository.deleteIntegrationsForAccount
     ).toHaveBeenCalledWith('org1');
@@ -183,6 +206,9 @@ describe('MobileAccountService', () => {
     deps.accountDeletionRepository.listRunningPostIds.mockResolvedValue([
       { id: 'p1' },
     ]);
+    deps.workflowList.mockReturnValue(
+      asyncIterableOf([{ workflowId: 'post_p1' }])
+    );
     deps.temporalService.client.getWorkflowHandle.mockRejectedValue(
       new Error('temporal down')
     );

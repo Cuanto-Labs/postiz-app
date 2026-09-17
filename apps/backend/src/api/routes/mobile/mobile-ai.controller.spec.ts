@@ -49,6 +49,7 @@ describe('MobileAiController', () => {
     };
     const mobileAiService = {
       suggest: jest.fn(),
+      requireConsent: jest.fn().mockResolvedValue(undefined),
     };
     const subscriptionService = {
       checkCredits: jest.fn(),
@@ -133,7 +134,9 @@ describe('MobileAiController', () => {
     subscriptionService.checkCredits.mockResolvedValue({ credits: 5 });
     const org = { id: 'org-1' };
 
-    const result = await controller.getCredits(org as any, 'ai_videos');
+    const result = await controller.getCredits(org as any, {
+      type: 'ai_videos',
+    } as any);
 
     expect(subscriptionService.checkCredits).toHaveBeenCalledWith(
       org,
@@ -147,7 +150,7 @@ describe('MobileAiController', () => {
     subscriptionService.checkCredits.mockResolvedValue({ credits: 3 });
     const org = { id: 'org-1' };
 
-    await controller.getCredits(org as any, undefined as any);
+    await controller.getCredits(org as any, {} as any);
 
     expect(subscriptionService.checkCredits).toHaveBeenCalledWith(
       org,
@@ -155,17 +158,38 @@ describe('MobileAiController', () => {
     );
   });
 
+  it('POST /image requires AI consent before checking credits', async () => {
+    const { controller, mobileAiService, subscriptionService } =
+      makeController();
+    mobileAiService.requireConsent.mockRejectedValue(
+      new (require('@nestjs/common').HttpException)(
+        { msg: 'AI consent required' },
+        403
+      )
+    );
+    const org = { id: 'org-1' };
+
+    await expect(
+      controller.generateImage(user as any, org as any, { prompt: 'a cat' })
+    ).rejects.toMatchObject({ status: 403 });
+
+    expect(mobileAiService.requireConsent).toHaveBeenCalledWith(user.id);
+    expect(subscriptionService.checkCredits).not.toHaveBeenCalled();
+  });
+
   it('POST /image checks credits, generates and saves the image', async () => {
-    const { controller, subscriptionService, mediaService } = makeController();
+    const { controller, mobileAiService, subscriptionService, mediaService } =
+      makeController();
     subscriptionService.checkCredits.mockResolvedValue({ credits: 2 });
     mediaService.generateImage.mockResolvedValue('base64data');
     mediaService.saveFile.mockResolvedValue({ id: 'media-1' });
     const org = { id: 'org-1' };
 
-    const result = await controller.generateImage(org as any, {
+    const result = await controller.generateImage(user as any, org as any, {
       prompt: 'a cat',
     });
 
+    expect(mobileAiService.requireConsent).toHaveBeenCalledWith(user.id);
     expect(subscriptionService.checkCredits).toHaveBeenCalledWith(
       org,
       'ai_images'
@@ -183,14 +207,59 @@ describe('MobileAiController', () => {
     expect(result).toEqual({ id: 'media-1' });
   });
 
+  it('POST /image throws HTTP 402 with ai_credits_exhausted when credits are depleted', async () => {
+    const { controller, subscriptionService } = makeController();
+    const previousKey = process.env.STRIPE_PUBLISHABLE_KEY;
+    process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test';
+    subscriptionService.checkCredits.mockResolvedValue({ credits: 0 });
+    const org = { id: 'org-1' };
+
+    try {
+      await expect(
+        controller.generateImage(user as any, org as any, {
+          prompt: 'a cat',
+        })
+      ).rejects.toMatchObject({
+        status: 402,
+        response: { code: 'ai_credits_exhausted', msg: 'No credits left' },
+      });
+    } finally {
+      process.env.STRIPE_PUBLISHABLE_KEY = previousKey;
+    }
+  });
+
+  it('POST /video requires AI consent before delegating', async () => {
+    const { controller, mobileAiService, mediaService } = makeController();
+    mobileAiService.requireConsent.mockRejectedValue(
+      new (require('@nestjs/common').HttpException)(
+        { msg: 'AI consent required' },
+        403
+      )
+    );
+    const org = { id: 'org-1' };
+    const body = { type: 'kling', output: 'vertical', customParams: {} };
+
+    await expect(
+      controller.generateVideo(user as any, org as any, body as any)
+    ).rejects.toMatchObject({ status: 403 });
+
+    expect(mobileAiService.requireConsent).toHaveBeenCalledWith(user.id);
+    expect(mediaService.generateVideo).not.toHaveBeenCalled();
+  });
+
   it('POST /video delegates to MediaService.generateVideo', async () => {
-    const { controller, mediaService } = makeController();
+    const { controller, mobileAiService, mediaService } = makeController();
     mediaService.generateVideo.mockResolvedValue({ id: 'media-2' });
     const org = { id: 'org-1' };
     const body = { type: 'kling', output: 'vertical', customParams: {} };
 
-    const result = await controller.generateVideo(org as any, body as any);
+    const result = await controller.generateVideo(
+      user as any,
+      org as any,
+      body as any
+    );
 
+    expect(mobileAiService.requireConsent).toHaveBeenCalledWith(user.id);
     expect(mediaService.generateVideo).toHaveBeenCalledWith(org, body);
     expect(result).toEqual({ id: 'media-2' });
   });

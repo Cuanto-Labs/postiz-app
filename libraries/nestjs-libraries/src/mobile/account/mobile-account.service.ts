@@ -63,10 +63,26 @@ export class MobileAccountService {
       ]);
       for (const post of posts) {
         try {
-          const handle = await this._temporalService.client.getWorkflowHandle(
-            `post_${post.id}`
-          );
-          await handle.terminate('account deleted');
+          const workflows = this._temporalService.client
+            .getRawClient()
+            ?.workflow.list({
+              query: `postId="${post.id}" AND ExecutionStatus="Running"`,
+            });
+
+          for await (const executionInfo of workflows) {
+            try {
+              const workflow =
+                await this._temporalService.client.getWorkflowHandle(
+                  executionInfo.workflowId
+                );
+              if (
+                workflow &&
+                (await workflow.describe()).status.name !== 'TERMINATED'
+              ) {
+                await workflow.terminate();
+              }
+            } catch (err) {}
+          }
         } catch (err) {
           this._logger.error(
             `Failed to terminate post workflow ${post.id}`,

@@ -8,6 +8,7 @@ import {
   MobileAiSuggestDto,
 } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-ai.dto';
 import {
+  MobileAiCreditsQueryDto,
   MobileAiImageDto,
   MobileAiVideoDto,
 } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-ai-generate.dto';
@@ -71,24 +72,33 @@ export class MobileAiController {
   @ApiOperation({ summary: 'Get remaining AI image/video generation credits' })
   getCredits(
     @GetOrgFromRequest() org: Organization,
-    @Query('type') type: 'ai_images' | 'ai_videos'
+    @Query() query: MobileAiCreditsQueryDto
   ) {
-    return this._subscriptionService.checkCredits(org, type || 'ai_images');
+    return this._subscriptionService.checkCredits(
+      org,
+      query.type || 'ai_images'
+    );
   }
 
   @Post('/image')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @ApiOperation({ summary: 'Generate an AI image and save it to the media library' })
   async generateImage(
+    @GetUserFromRequest() user: any,
     @GetOrgFromRequest() org: Organization,
     @Body() body: MobileAiImageDto
   ) {
+    await this._mobileAiService.requireConsent(user.id);
+
     const total = await this._subscriptionService.checkCredits(
       org,
       'ai_images'
     );
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      throw new HttpException({ msg: 'No credits left' }, 406);
+      throw new HttpException(
+        { code: 'ai_credits_exhausted', msg: 'No credits left' },
+        402
+      );
     }
 
     const output =
@@ -103,9 +113,12 @@ export class MobileAiController {
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @ApiOperation({ summary: 'Generate an AI video and save it to the media library' })
   async generateVideo(
+    @GetUserFromRequest() user: any,
     @GetOrgFromRequest() org: Organization,
     @Body() body: MobileAiVideoDto
   ) {
+    await this._mobileAiService.requireConsent(user.id);
+
     return this._mediaService.generateVideo(org, body);
   }
 }
