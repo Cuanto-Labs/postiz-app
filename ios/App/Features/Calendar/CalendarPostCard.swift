@@ -10,6 +10,10 @@ struct CalendarPostCard: View {
     let status: String?
     let channelName: String?
     let channelPicture: String?
+    /// Postiz provider identifier for the posting channel — drives the brand mark shown when the
+    /// channel has no picture (or it hasn't loaded), so a week of posts doesn't read as a column
+    /// of identical grey dots.
+    var channelIdentifier: String? = nil
     let content: PostContentValue?
     /// Card-menu actions (preview link, duplicate, delete) — mirrors web's calendar post
     /// dropdown in `calendar.tsx` (`duplicatePost`/`deletePost`/preview link actions). `nil`
@@ -27,11 +31,15 @@ struct CalendarPostCard: View {
         HStack(spacing: 8) {
             AsyncImage(url: channelPicture.flatMap(URL.init(string:))) { image in
                 image.resizable().scaledToFill()
+                    .frame(width: 24, height: 24)
+                    .clipShape(Circle())
             } placeholder: {
-                Circle().fill(.secondary.opacity(0.2))
+                if let channelIdentifier {
+                    ProviderBadge(identifier: channelIdentifier, size: 24)
+                } else {
+                    Circle().fill(.secondary.opacity(0.2)).frame(width: 24, height: 24)
+                }
             }
-            .frame(width: 24, height: 24)
-            .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(Self.previewText(content))

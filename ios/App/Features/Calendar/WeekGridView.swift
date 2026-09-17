@@ -49,6 +49,7 @@ struct WeekGridView: View {
                     CalendarPostCard(
                         publishDate: post.publishDate, status: post.status,
                         channelName: post.integration?.name, channelPicture: post.integration?.picture,
+                        channelIdentifier: post.integration?.providerIdentifier,
                         content: post.content,
                         onPreview: post.group.map { group in { Task { await viewModel.loadPreview(group: group) } } },
                         onDuplicate: { Task { await viewModel.duplicate(post) } },

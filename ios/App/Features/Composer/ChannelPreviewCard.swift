@@ -57,13 +57,18 @@ struct ChannelPreviewCard: View {
 
     private var header: some View {
         HStack(spacing: theme.spacing.xs) {
-            AsyncImage(url: channel.picture.flatMap(URL.init)) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                Color.token(.muted, in: theme)
+            ZStack(alignment: .bottomTrailing) {
+                AsyncImage(url: channel.picture.flatMap(URL.init)) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Circle().fill(ProviderIdentity.color(for: channel.identifier).opacity(0.25))
+                }
+                .frame(width: avatarSize, height: avatarSize)
+                .clipShape(Circle())
+
+                ProviderBadge(identifier: channel.identifier, size: 12)
+                    .offset(x: 2, y: 2)
             }
-            .frame(width: avatarSize, height: avatarSize)
-            .clipShape(Circle())
 
             Text(channel.name)
                 .typeRole(.footnote)
@@ -72,23 +77,47 @@ struct ChannelPreviewCard: View {
         }
     }
 
+    /// The draft's first media item rendered at `ratio`, or the empty-state frame when there is
+    /// none. Preview cards used to fill a flat grey rectangle whether or not media was attached,
+    /// which is what made every card read as an empty box in the screenshot run.
+    @ViewBuilder
+    private func mediaFrame(ratio: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: theme.radius.sm)
+            .fill(Color.token(.muted, in: theme))
+            .aspectRatio(ratio, contentMode: .fit)
+            .overlay {
+                if let first = draft.media.first, let url = URL(string: first.path) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        ProgressView().tint(Color.token(.mutedForeground, in: theme))
+                    }
+                    .clipped()
+                } else {
+                    Image(systemName: "photo")
+                        .foregroundStyle(Color.token(.mutedForeground, in: theme))
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.sm))
+    }
+
+    /// Caption line: the draft's text, or a dimmed placeholder so the card still shows its shape
+    /// before anything is typed.
+    @ViewBuilder
+    private func caption(_ text: String) -> some View {
+        Text(text.isEmpty ? "Your caption will appear here" : text)
+            .typeRole(.caption)
+            .foregroundStyle(
+                text.isEmpty
+                    ? Color.token(.mutedForeground, in: theme) : Color.token(.cardForeground, in: theme))
+    }
+
     // MARK: - Instagram: aspect-framed media + Instagram's caption truncation (~125 chars + "more")
 
     private var instagramBody: some View {
         VStack(alignment: .leading, spacing: theme.spacing.xs) {
-            RoundedRectangle(cornerRadius: theme.radius.sm)
-                .fill(Color.token(.muted, in: theme))
-                .aspectRatio(instagramFrameRatio, contentMode: .fit)
-                .overlay {
-                    if draft.media.isEmpty {
-                        Image(systemName: "photo")
-                            .foregroundStyle(Color.token(.mutedForeground, in: theme))
-                    }
-                }
-
-            Text(instagramTruncated(debouncedContent))
-                .typeRole(.caption)
-                .foregroundStyle(Color.token(.cardForeground, in: theme))
+            mediaFrame(ratio: instagramFrameRatio)
+            caption(instagramTruncated(debouncedContent))
         }
     }
 
@@ -109,14 +138,10 @@ struct ChannelPreviewCard: View {
 
     private var linkedInBody: some View {
         VStack(alignment: .leading, spacing: theme.spacing.xs) {
-            Text(linkedInFolded(debouncedContent))
-                .typeRole(.caption)
-                .foregroundStyle(Color.token(.cardForeground, in: theme))
+            caption(linkedInFolded(debouncedContent))
 
             if !draft.media.isEmpty {
-                RoundedRectangle(cornerRadius: theme.radius.sm)
-                    .fill(Color.token(.muted, in: theme))
-                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                mediaFrame(ratio: 16.0 / 9.0)
             }
         }
     }
@@ -130,9 +155,13 @@ struct ChannelPreviewCard: View {
     // MARK: - Generic fallback for every other provider
 
     private var genericBody: some View {
-        Text(debouncedContent)
-            .typeRole(.caption)
-            .foregroundStyle(Color.token(.cardForeground, in: theme))
-            .lineLimit(4)
+        VStack(alignment: .leading, spacing: theme.spacing.xs) {
+            caption(debouncedContent)
+                .lineLimit(4)
+
+            if !draft.media.isEmpty {
+                mediaFrame(ratio: 1)
+            }
+        }
     }
 }

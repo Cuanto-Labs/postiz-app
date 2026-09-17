@@ -1,3 +1,4 @@
+import CuantoUI
 import SocialsCore
 import SwiftUI
 
@@ -15,6 +16,7 @@ struct ComposerEditorPane: View {
     var copilotViewModel: CopilotViewModel?
     var applySuggestion: ((String) -> Void)?
 
+    @Environment(\.cuantoTheme) private var theme
     @State private var showCopilot = false
 
     var body: some View {
@@ -28,10 +30,22 @@ struct ComposerEditorPane: View {
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: content)
+                    // Without this the editor paints its own opaque background over the
+                    // placeholder underneath it, so an empty composer showed a blank slab with no
+                    // hint that it was a text field at all.
+                    .scrollContentBackground(.hidden)
                     .frame(minHeight: 140)
                     .accessibilityLabel(accessibilityLabel)
                     .accessibilityIdentifier(accessibilityLabel)
             }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.token(.card, in: theme))
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.sm)
+                    .strokeBorder(Color.token(.border, in: theme), lineWidth: 1)
+            )
             HStack {
                 if let copilotViewModel, applySuggestion != nil {
                     Button {

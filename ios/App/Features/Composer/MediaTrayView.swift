@@ -111,6 +111,8 @@ struct MediaTrayView: View {
                     }
                     .animation(SocialsMotion.entrance, value: uploadQueue.items.map(\.id))
                 }
+
+                violationList
             }
         }
         .sheet(isPresented: $showLibraryPicker) {
@@ -177,14 +179,6 @@ struct MediaTrayView: View {
                 .lineLimit(1)
                 .frame(maxWidth: 96, alignment: .leading)
 
-            ForEach(violations(for: item.id)) { violation in
-                Text(violation.message)
-                    .typeRole(.caption)
-                    .foregroundStyle(Color.token(.destructive, in: theme))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 96, alignment: .leading)
-            }
-
             if case .failed(let message) = item.status {
                 Text(message)
                     .typeRole(.caption)
@@ -209,13 +203,40 @@ struct MediaTrayView: View {
     private func thumbnailBase(for item: UploadItem) -> some View {
         if let uiImage = thumbnails[item.id] {
             Image(uiImage: uiImage).resizable().scaledToFill()
-        } else {
-            ZStack {
-                Color.token(.muted, in: theme)
-                Image(systemName: "video.fill")
-                    .foregroundStyle(Color.token(.mutedForeground, in: theme))
+        } else if let url = remoteThumbnailURL(for: item) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                kindPlaceholder(for: item)
             }
+        } else {
+            kindPlaceholder(for: item)
         }
+    }
+
+    /// Media that never passed through this view's picker (library picks, `seedCompleted`, AI
+    /// results) has no local `UIImage` — its bytes live on the server, so the thumbnail comes from
+    /// the completed `MediaDTO`.
+    private func remoteThumbnailURL(for item: UploadItem) -> URL? {
+        guard case .completed(let media) = item.status else { return nil }
+        return URL(string: media.thumbnail ?? media.path)
+    }
+
+    /// Fallback glyph while there is no image to show. It follows the item's actual kind — a
+    /// blanket `video.fill` labelled every photo in the tray as a video.
+    private func kindPlaceholder(for item: UploadItem) -> some View {
+        ZStack {
+            Color.token(.muted, in: theme)
+            Image(systemName: isVideo(item) ? "video.fill" : "photo.fill")
+                .foregroundStyle(Color.token(.mutedForeground, in: theme))
+        }
+    }
+
+    private func isVideo(_ item: UploadItem) -> Bool {
+        if let kind = probedAttributes[item.id]?.kind { return kind == .video }
+        if let mime = probedAttributes[item.id]?.mimeType { return mime.hasPrefix("video/") }
+        let ext = (item.fileName as NSString).pathExtension.lowercased()
+        return ["mov", "mp4", "m4v", "webm", "avi"].contains(ext)
     }
 
     @ViewBuilder
@@ -257,6 +278,38 @@ struct MediaTrayView: View {
     private func progressValue(for item: UploadItem) -> Double {
         if case .uploading(let progress) = item.status { return progress }
         return 0
+    }
+
+    /// Technical violations for everything in the tray, listed full-width under the thumbnail row
+    /// and naming the file they belong to. They used to render inside each 96pt cell, where
+    /// "Instagram needs a 1:1, 4:5 or 1.91:1 crop — this is 16:9." wrapped across four lines.
+    @ViewBuilder
+    private var violationList: some View {
+        let entries = uploadQueue.items.flatMap { item in
+            violations(for: item.id).map { (item: item, violation: $0) }
+        }
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: theme.spacing.xs) {
+                ForEach(entries, id: \.violation.id) { entry in
+                    HStack(alignment: .firstTextBaseline, spacing: theme.spacing.xs) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        // The offending file is only worth naming when there's more than one
+                        // thumbnail to tell apart. The message itself stays its own element so it
+                        // reads (and is queryable) verbatim.
+                        if uploadQueue.items.count > 1 {
+                            Text(entry.item.fileName)
+                                .lineLimit(1)
+                                .foregroundStyle(Color.token(.mutedForeground, in: theme))
+                        }
+                        Text(entry.violation.message)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .typeRole(.caption)
+                    .foregroundStyle(Color.token(.destructive, in: theme))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
     }
 
     private func violations(for itemId: String) -> [MediaLimitViolation] {

@@ -133,8 +133,14 @@ public final class ComposerViewModel {
 
     // MARK: - Char limits
 
+    /// Server-supplied `maxCharacters` wins; otherwise the provider's own limit from
+    /// `PlatformRules` — falling straight through to `defaultCharLimit` showed "0/100,000" on a
+    /// post going to Instagram (2,200) and LinkedIn (3,000), which is no limit at all.
     public func charLimit(for channel: ChannelDTO) -> Int {
-        channel.limits.maxCharacters ?? Self.defaultCharLimit
+        if let serverMax = channel.limits.maxCharacters { return serverMax }
+        return PlatformRules.limits(
+            for: channel.identifier, serverLimits: nil, serverMedia: channel.limits.media
+        ).maxCharacters
     }
 
     public func charCount(for channel: ChannelDTO) -> Int {

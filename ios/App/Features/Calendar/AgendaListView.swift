@@ -28,6 +28,7 @@ struct AgendaListView: View {
                     CalendarPostCard(
                         publishDate: post.publishDate, status: post.status,
                         channelName: post.integration?.name, channelPicture: post.integration?.picture,
+                        channelIdentifier: post.integration?.providerIdentifier,
                         content: post.content)
                 }
                 .listStyle(.plain)
@@ -50,6 +51,7 @@ struct AgendaListView: View {
                     CalendarPostCard(
                         publishDate: post.publishDate, status: post.state,
                         channelName: post.integration?.name, channelPicture: post.integration?.picture,
+                        channelIdentifier: post.integration?.providerIdentifier,
                         content: post.content)
                 }
                 .listStyle(.plain)
