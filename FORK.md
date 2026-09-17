@@ -100,11 +100,14 @@ don't exist upstream, so it costs nothing at merge time:
 
 - `apps/backend/src/api/routes/mobile/` — controllers, middleware, oauth service, gate spec
 - `libraries/nestjs-libraries/src/mobile/` — auth/token services, session repository
+- `libraries/nestjs-libraries/src/mobile/push/` — `PushDevice` repository, `PushService`, `ApnsClient`
 - `libraries/nestjs-libraries/src/dtos/mobile/` — request DTOs
 - `scripts/mobile-gate.sh` — CI gate (prisma validate + scoped tsc + mobile jest)
 
 The only upstream touch-points, and the only places a merge can conflict:
 
 - `apps/backend/src/app.module.ts` — imports `MobileModule`
-- `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — `User.mobileSessions` relation plus the appended mobile-session models; also `Organization.idempotencyKeys` relation and the `IdempotencyKey` model, added by the `20260917000000_idempotency_key` migration
-- `.env.example` — the `MOBILE_*` / `APPLE_APP_BUNDLE_ID` block
+- `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — `User.mobileSessions` relation plus the appended mobile-session models; also `Organization.idempotencyKeys` relation and the `IdempotencyKey` model, added by the `20260917000000_idempotency_key` migration; also `PushDevice` model plus the `User.pushDevices` relation, added by the `20260918000000_push_device` migration
+- `libraries/nestjs-libraries/src/database/prisma/notifications/notification.service.ts` — the `PushService.notifyFromNotification` fan-out line in `inAppNotification`
+- `libraries/nestjs-libraries/src/database/prisma/database.module.ts` — providers for `PushDeviceRepository`, `ApnsClient`, `PushService`
+- `.env.example` — the `MOBILE_*` / `APPLE_APP_BUNDLE_ID` block, and the `APNS_*` block

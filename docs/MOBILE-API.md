@@ -36,6 +36,10 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `PUT` | `/mobile/v1/posts/:group` | raw body (`posts[]`, `type` defaults to `update`) | updated post group | same validation as create; optional `Idempotency-Key` header |
 | `PATCH` | `/mobile/v1/posts/:group/date` | `MobileRescheduleDto` (`date` ISO date, `action?: 'schedule'\|'update'`) | `{ group, date }` | reschedules every root post (no `parentPostId`) in the group; 404 if group doesn't exist |
 | `DELETE` | `/mobile/v1/posts/:group` | — (bearer) | `{ ok: true }` | deletes the post group |
+| `PUT` | `/mobile/v1/push/devices` | `MobilePushDeviceDto` (`apnsToken`, `environment: 'sandbox'\|'production'`, `bundleId?`, `locale?`, `timezone?`, `prefs?`) | `{ device }` | upsert by `apnsToken` |
+| `DELETE` | `/mobile/v1/push/devices/:token` | — (bearer) | `{ ok: true }` | unregisters the device, idempotent |
+| `GET` | `/mobile/v1/push/prefs?token=` | `MobilePushPrefsQueryDto` (`token`) | `{ prefs }` | 404 unknown token |
+| `PUT` | `/mobile/v1/push/prefs` | `MobilePushPrefsDto` (`apnsToken`, `prefs`) | `{ prefs }` | 400 unknown pref key |
 
 `MobileTokens = { accessToken, refreshToken, expiresIn, sessionId }`.
 `MobileAuthResponse = MobileTokens & { user: { id, email, name?, lastName?, pictureId? }, orgs: Array<{ id, name, role, disabled }> }` (password stripped, disabled orgs filtered).
@@ -49,11 +53,21 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 - Same key + different payload → `422 { msg: 'Idempotency-Key reused with a different payload' }`.
 - Stored in the `IdempotencyKey` table (`libraries/nestjs-libraries/src/mobile/idempotency.repository.ts`); a concurrent duplicate write is swallowed (Prisma `P2002`), not treated as an error.
 
+## Push
+
+- Prefs keys: `post.published`, `post.failed`, `channel.reconnect_needed` — default on; set `false` to opt out.
+- APNs categories: `POST_PUBLISHED`, `POST_FAILED`, `CHANNEL_RECONNECT` (one per prefs key, `CATEGORY_BY_KIND` in `push.service.ts`).
+- Payload shape: `{ aps: { alert: { title, body }, sound, category, thread-id }, kind, link }`.
+- `environment` on the device record (`sandbox`/`production`) selects the APNs host per device at send time.
+- `410`/`BadDeviceToken`/`Unregistered` from APNs → the device's `disabledAt` is set and it's dropped from future sends.
+- `429`/`5xx` from APNs → 3 attempts with exponential backoff (`500ms * 2^attempt`); still failing after 3 → the send for that device is marked failed.
+- Push is fired from `NotificationService.inAppNotification` (`PushService.notifyFromNotification`), so the web notification feed and push stay in step — no separate push-only code path.
+- No push is sent when `APNS_KEY_ID`/`APNS_TEAM_ID`/`APNS_PRIVATE_KEY` are unset (`ApnsClient` returns `not_configured`).
+
 ## Pending (later milestones, not yet implemented)
 
 - `GET /mobile/v1/channels/connect/:provider`
 - `POST /mobile/v1/media/uploads`
-- `PUT|DELETE /mobile/v1/push/devices*`, `GET|PUT /mobile/v1/push/prefs`
 - `DELETE /mobile/v1/account`
 - `POST /mobile/v1/ai/*`
 
@@ -70,6 +84,10 @@ See `docs/IOS-APP-PLAN.md` §4 for the per-milestone route specs.
 - `MOBILE_SUPPORT_URL` — support link returned by `/mobile/v1/config`; defaults to `https://socials.cuantolabs.com/support`.
 - `MOBILE_TERMS_URL` — terms link returned by `/mobile/v1/config`; defaults to `https://socials.cuantolabs.com/terms`.
 - `MOBILE_PRIVACY_URL` — privacy link returned by `/mobile/v1/config`; defaults to `https://socials.cuantolabs.com/privacy`.
+- `APNS_KEY_ID` — APNs auth key id, minted in the Apple Developer portal; vault-only, pushed to the container via the compose env file + `--force-recreate`.
+- `APNS_TEAM_ID` — Apple Developer team id.
+- `APNS_PRIVATE_KEY` — the `.p8` PEM contents, newlines escaped as `\n`; vault-only.
+- `APNS_DEFAULT_TOPIC` — bundle id used as the default APNs topic when a device didn't send one; defaults to `com.cuantolabs.socials`.
 
 ## Gate
 
