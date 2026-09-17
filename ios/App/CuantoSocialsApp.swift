@@ -1,3 +1,4 @@
+import CuantoUI
 import Foundation
 import SocialsCore
 import SwiftUI
@@ -16,6 +17,12 @@ struct CuantoSocialsApp: App {
                     ProgressView()
                 }
             }
+            // The web product is dark-only, so the app is too — brand parity beats an
+            // appearance toggle nothing on the web side has. Widgets/share extension still
+            // follow the device via `Theme.socialsAdaptive` (ios/brand-spec.md § Appearance).
+            .cuantoTheme(.socials)
+            .preferredColorScheme(.dark)
+            .tint(Color.token(.primary, in: .socials))
             .task {
                 if environment == nil {
                     // UI tests launch with `-uiTestStub` to get the stub API + in-memory
