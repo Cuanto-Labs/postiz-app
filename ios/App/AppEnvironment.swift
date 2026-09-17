@@ -117,6 +117,11 @@ public final class AppEnvironment {
         let cacheStore = CacheStore(modelContainer: modelContainer)
         let outbox = PendingActionOutbox(modelContainer: modelContainer)
         let api = StubSocialsAPI()
+        // UI tests launch with `-uiTestStub` (see `CuantoSocialsApp.swift`) to get deterministic
+        // scripted responses instead of `StubSocialsAPI`'s bare defaults.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestStub") {
+            await UITestFixtures.seed(api)
+        }
         let syncEngine = SyncEngine(
             outbox: outbox,
             executor: LiveActionExecutor(api: api),

@@ -30,6 +30,7 @@ struct ComposerEditorPane: View {
                 TextEditor(text: content)
                     .frame(minHeight: 140)
                     .accessibilityLabel(accessibilityLabel)
+                    .accessibilityIdentifier(accessibilityLabel)
             }
             HStack {
                 if let copilotViewModel, applySuggestion != nil {

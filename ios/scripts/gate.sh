@@ -178,6 +178,7 @@ xcodebuild test \
   CODE_SIGN_IDENTITY="" \
   -skipPackagePluginValidation \
   -only-testing:CuantoSocialsTests \
+  -only-testing:CuantoSocialsUITests \
   -parallel-testing-enabled NO \
   -maximum-concurrent-test-simulator-destinations 1 \
   -quiet >"$TEST_LOG" 2>&1 || fail_with_log "test" "$TEST_LOG"

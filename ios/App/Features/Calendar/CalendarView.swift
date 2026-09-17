@@ -10,6 +10,7 @@ struct CalendarView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel: CalendarViewModel?
     @State private var customers: [ChannelCustomer] = []
+    @State private var showComposer = false
 
     let orgId: String
 
@@ -22,6 +23,20 @@ struct CalendarView: View {
             }
         }
         .navigationTitle("Calendar")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showComposer = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("New post")
+                .accessibilityIdentifier("calendar.newPost")
+            }
+        }
+        .sheet(isPresented: $showComposer) {
+            ComposerView()
+        }
         .task {
             if viewModel == nil {
                 let model = CalendarViewModel(
