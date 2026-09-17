@@ -36,15 +36,24 @@ describe('MobileAuthController', () => {
         .fn()
         .mockResolvedValue(overrides.isAcceptable ?? true),
     };
+    const mobileOAuthService = {};
 
     const controller = new MobileAuthController(
       mobileAuthService as any,
       authService as any,
       emailService as any,
-      inviteCodesService as any
+      inviteCodesService as any,
+      mobileOAuthService as any
     );
 
-    return { controller, mobileAuthService, authService, emailService, inviteCodesService };
+    return {
+      controller,
+      mobileAuthService,
+      authService,
+      emailService,
+      inviteCodesService,
+      mobileOAuthService,
+    };
   };
 
   it('exposes the /mobile/v1/auth path', () => {

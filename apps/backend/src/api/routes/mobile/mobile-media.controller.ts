@@ -44,12 +44,14 @@ export class MobileMediaController {
       body
     );
 
-    const media = await this._mediaService.saveUploadedFile(
+    const media = (await this._mediaService.saveUploadedFile(
       org.id,
       key,
       location,
       body.originalName ?? key
-    );
+    )) as Awaited<
+      ReturnType<typeof this._mediaService.saveUploadedFile>
+    > & { processingError?: string | null };
 
     return {
       media: {
@@ -57,7 +59,7 @@ export class MobileMediaController {
         name: media.name,
         path: media.path,
         status: media.status,
-        processingError: media.processingError,
+        processingError: media.processingError ?? null,
         thumbnail: media.thumbnail,
       },
     };

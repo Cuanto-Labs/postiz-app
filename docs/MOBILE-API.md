@@ -29,7 +29,7 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `DELETE` | `/mobile/v1/devices/:id` | — (bearer) | `{ ok: true }` | 404 if session doesn't exist or belongs to another user |
 | `GET` | `/mobile/v1/me` | — (bearer) | `{ user, org, orgs, plan: { tier, options }, sessionId }` | current user, orgs, current org and plan tier + limits |
 | `GET` | `/mobile/v1/config` | — (public, no bearer) | `{ minVersion, providers: Array<{ identifier, name }>, links: { support, terms, privacy } }` | min supported app version, enabled (non-hidden) providers, support/legal links |
-| `GET` | `/mobile/v1/channels` | — (bearer) | `{ channels: Array<{ id, internalId, name, identifier, picture, disabled, refreshNeeded, inBetweenSteps, display, type, customer, limits: { maxCharacters, editor } }> }` | connected channels with status and per-platform limits |
+| `GET` | `/mobile/v1/channels` | — (bearer) | `{ channels: Array<{ id, internalId, name, identifier, picture, disabled, refreshNeeded, inBetweenSteps, display, type, customer, limits: { maxCharacters, editor, media: MediaLimits } }> }` | connected channels with status and per-platform limits; `limits.media` (`maxImages`, `maxVideos`, `maxImageBytes`, `maxVideoBytes`, `maxVideoSeconds`, `imageMimes`, `videoMimes`, `aspectRatios?`) comes from `getMediaLimits(providerIdentifier)` |
 | `GET` | `/mobile/v1/posts?from&to&customer` | `MobilePostsQueryDto` (`from`, `to` ISO dates, `customer?`) | `{ posts: [...] }` | list posts within a date window |
 | `GET` | `/mobile/v1/posts/:group` | — (bearer) | post group detail | 404 `{ msg: 'Post not found' }` if the group doesn't exist |
 | `POST` | `/mobile/v1/posts` | raw body (`posts[]`, `type`) | created post group | server-side validated (`PostValidationException` on empty content/settings/too-long unless `type: 'draft'`); optional `Idempotency-Key` header |
@@ -40,6 +40,11 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 | `DELETE` | `/mobile/v1/push/devices/:token` | — (bearer) | `{ ok: true }` | unregisters the device, idempotent |
 | `GET` | `/mobile/v1/push/prefs?token=` | `MobilePushPrefsQueryDto` (`token`) | `{ prefs }` | 404 unknown token |
 | `PUT` | `/mobile/v1/push/prefs` | `MobilePushPrefsDto` (`apnsToken`, `prefs`) | `{ prefs }` | 400 unknown pref key |
+| `POST` | `/mobile/v1/media/uploads` | `MobileMediaCreateUploadDto` (`fileName` ≤255, `contentType`, `size` int ≥1) | `CreateUploadResult` = `{ uploadId, key, partSize, parts: { partNumber, url }[], expiresAt }` | 400 `{ msg: 'Unsupported file type.' }` if extension/`contentType` mismatch or unknown ext; 400 `{ msg: 'File is too large.' }` if `size` exceeds the per-mime cap (10MB image / 1GB video) or needs more than 200 parts; part URLs are presigned R2 multipart-upload PUTs, 1h expiry |
+| `POST` | `/mobile/v1/media/uploads/complete` | `MobileMediaCompleteUploadDto` (`key`, `uploadId`, `parts: { partNumber, etag }[]`, `originalName?`) | `{ media: { id, name, path, status, processingError, thumbnail } }` | completes the R2 multipart upload, then sniffs the first ~4KB with `file-type`; mismatch vs. the extension's expected mime → 400 `{ msg: 'File contents do not match declared type.' }` and the object is deleted; on success saves the media (queues the processing workflow when configured, so `status` may come back `processing`) |
+| `POST` | `/mobile/v1/media/uploads/abort` | `MobileMediaAbortUploadDto` (`key`, `uploadId`) | `{ ok: true }` | aborts the R2 multipart upload; idempotent — an already-gone (`NoSuchUpload`) upload still returns `{ ok: true }` |
+| `GET` | `/mobile/v1/media/:id/status` | — (bearer) | `{ id, name, originalName, path, thumbnail, alt, status, processingError }` | `status` is `processing` \| `ready` \| `failed`; poll until it leaves `processing`; 404 `{ msg: 'Media not found' }` if the id doesn't exist (or belongs to another org) |
+| `GET` | `/mobile/v1/media?page=` | `MobileMediaListQueryDto` (`page?` int) | `{ pages, results: Array<{ id, name, originalName, path, thumbnail, alt, thumbnailTimestamp }> }` | 18 per page; excludes media still `processing` |
 
 `MobileTokens = { accessToken, refreshToken, expiresIn, sessionId }`.
 `MobileAuthResponse = MobileTokens & { user: { id, email, name?, lastName?, pictureId? }, orgs: Array<{ id, name, role, disabled }> }` (password stripped, disabled orgs filtered).
@@ -66,10 +71,23 @@ Backend surface consumed by the iOS app. Fork-only — none of this exists upstr
 - Push is fired from `NotificationService.inAppNotification` (`PushService.notifyFromNotification`), so the web notification feed and push stay in step — no separate push-only code path. The call is fire-and-forget (`void ... .catch(() => {})`): it never delays or blocks the email/workflow path that follows.
 - No push is sent when `APNS_KEY_ID`/`APNS_TEAM_ID`/`APNS_PRIVATE_KEY` are unset (`ApnsClient` returns `not_configured`).
 
+## Media upload
+
+Client flow for `POST /mobile/v1/posts` attachments:
+
+1. `POST /mobile/v1/media/uploads` with `fileName`, `contentType`, `size` → get back `uploadId`, `key`, `partSize` (8MB), and one presigned R2 `parts[].url` per part (1h expiry, `MAX_PART_COUNT = 200`).
+2. `PUT` each part's bytes straight to its presigned URL and capture the response `ETag` header for every part.
+3. `POST /mobile/v1/media/uploads/complete` with `key`, `uploadId`, and `parts: [{ partNumber, etag }]` (plus optional `originalName`) to finish the multipart upload. The server sniffs the uploaded bytes and 400s if they don't match the extension's declared mime.
+4. Poll `GET /mobile/v1/media/:id/status` until `status` is `ready` (usable) or `failed` (`processingError` set) — normalizable video/image types are queued into a processing workflow and stay `processing` until that finishes; types with no processor configured resolve immediately.
+5. `POST /mobile/v1/media/uploads/abort` with `key`, `uploadId` to cancel an in-progress multipart upload (e.g. the client gave up before `complete`).
+
+Allowed mimes (by file extension): `.jpg`/`.jpeg` → `image/jpeg`, `.png` → `image/png`, `.gif` → `image/gif`, `.webp` → `image/webp`, `.avif` → `image/avif`, `.mp4` → `video/mp4`, and `.mov` → `video/quicktime` when a media processor is configured (`UploadFactory.processorEnabled()`). Size caps: 10MB for images, 1GB for video (`getMaxSize`).
+
+Per-provider posting limits (`limits.media` on `GET /mobile/v1/channels`) narrow counts/duration/aspect-ratio on top of the global upload caps above — see `getMediaLimits`/`MEDIA_LIMITS` in `libraries/nestjs-libraries/src/mobile/media/media-limits.ts`.
+
 ## Pending (later milestones, not yet implemented)
 
 - `GET /mobile/v1/channels/connect/:provider`
-- `POST /mobile/v1/media/uploads`
 - `DELETE /mobile/v1/account`
 - `POST /mobile/v1/ai/*`
 
@@ -90,6 +108,10 @@ See `docs/IOS-APP-PLAN.md` §4 for the per-milestone route specs.
 - `APNS_TEAM_ID` — Apple Developer team id.
 - `APNS_PRIVATE_KEY` — the `.p8` PEM contents, newlines escaped as `\n`; vault-only.
 - `APNS_DEFAULT_TOPIC` — bundle id used as the default APNs topic when a device didn't send one; defaults to `com.cuantolabs.socials`.
+- `CLOUDFLARE_ACCOUNT_ID` — R2 account id used to build the S3-compatible endpoint (`https://<id>.r2.cloudflarestorage.com`) for mobile media uploads.
+- `CLOUDFLARE_ACCESS_KEY` / `CLOUDFLARE_SECRET_ACCESS_KEY` — R2 S3 API credentials used to presign multipart upload/part URLs; vault-only.
+- `CLOUDFLARE_BUCKETNAME` — R2 bucket the mobile upload service writes to.
+- `CLOUDFLARE_BUCKET_URL` — public base URL prefixed onto the object key to build the media `location` returned on upload complete.
 
 ## Gate
 
