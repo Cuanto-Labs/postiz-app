@@ -4,6 +4,7 @@ import { Organization } from '@prisma/client';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
+import { getMediaLimits } from '@gitroom/nestjs-libraries/mobile/media/media-limits';
 
 @ApiTags('Mobile Channels')
 @ApiBearerAuth()
@@ -51,6 +52,7 @@ export class MobileChannelsController {
               ? findIntegration.maxLength(verified)
               : null,
             editor: findIntegration ? findIntegration.editor : null,
+            media: getMediaLimits(p.providerIdentifier),
           },
         };
       }),

@@ -98,7 +98,11 @@ describe('MobileChannelsController', () => {
           display: 'my-profile',
           type: 'social',
           customer: null,
-          limits: { maxCharacters: 280, editor: 'normal' },
+          limits: {
+            maxCharacters: 280,
+            editor: 'normal',
+            media: expect.objectContaining({ maxImages: expect.any(Number) }),
+          },
         },
       ],
     });
@@ -142,7 +146,11 @@ describe('MobileChannelsController', () => {
           display: null,
           type: 'social',
           customer: null,
-          limits: { maxCharacters: null, editor: null },
+          limits: {
+            maxCharacters: null,
+            editor: null,
+            media: expect.objectContaining({ maxImages: expect.any(Number) }),
+          },
         },
       ],
     });
