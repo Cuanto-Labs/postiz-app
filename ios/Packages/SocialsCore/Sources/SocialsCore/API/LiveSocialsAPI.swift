@@ -217,6 +217,115 @@ public final class LiveSocialsAPI: SocialsAPI {
         try await send(SocialsEndpoints.deletePost(group, orgId: orgProvider()))
     }
 
+    // MARK: - Posts extras
+
+    public func postsList(page: Int?, limit: Int?) async throws -> PostsListResponse {
+        try await send(PostsExtrasEndpoints.list(page: page, limit: limit, orgId: orgProvider()))
+    }
+
+    public func oldPosts(date: String) async throws -> OldPostsResponse {
+        try await send(PostsExtrasEndpoints.old(date: date, orgId: orgProvider()))
+    }
+
+    public func findSlot(integrationId: String?) async throws -> FindSlotResponse {
+        if let integrationId {
+            return try await send(
+                PostsExtrasEndpoints.findSlot(integrationId: integrationId, orgId: orgProvider()))
+        }
+        return try await send(PostsExtrasEndpoints.findSlot(orgId: orgProvider()))
+    }
+
+    public func statistics(id: String) async throws -> OpaqueJSONResult {
+        try await send(PostsExtrasEndpoints.statistics(id: id, orgId: orgProvider()))
+    }
+
+    public func comments(id: String) async throws -> PostCommentsResponse {
+        try await send(PostsExtrasEndpoints.comments(id: id, orgId: orgProvider()))
+    }
+
+    public func addComment(id: String, comment: String) async throws -> PostCommentDTO {
+        let endpoint = try PostsExtrasEndpoints.createComment(
+            id: id, comment: comment, orgId: await orgProvider())
+        return try await send(endpoint)
+    }
+
+    public func preview(id: String) async throws -> PostPreviewResponse {
+        try await send(PostsExtrasEndpoints.preview(id: id, orgId: orgProvider()))
+    }
+
+    public func missing(id: String) async throws -> [MissingContentItemDTO] {
+        try await send(PostsExtrasEndpoints.missing(id: id, orgId: orgProvider()))
+    }
+
+    // MARK: - Tags
+
+    public func tags() async throws -> TagsListResponse {
+        try await send(SocialsEndpoints.tags(orgId: orgProvider()))
+    }
+
+    public func createTag(_ body: CreateTagRequest) async throws -> TagDTO {
+        try await send(SocialsEndpoints.createTag(body, orgId: await orgProvider()))
+    }
+
+    public func updateTag(_ id: String, body: CreateTagRequest) async throws -> TagDTO {
+        try await send(SocialsEndpoints.updateTag(id, body: body, orgId: await orgProvider()))
+    }
+
+    public func deleteTag(_ id: String) async throws -> TagDTO {
+        try await send(SocialsEndpoints.deleteTag(id, orgId: orgProvider()))
+    }
+
+    // MARK: - Signatures
+
+    public func signatures() async throws -> [SignatureDTO] {
+        try await send(SocialsEndpoints.signatures(orgId: orgProvider()))
+    }
+
+    public func defaultSignature() async throws -> SignatureDTO {
+        try await send(SocialsEndpoints.defaultSignature(orgId: orgProvider()))
+    }
+
+    public func createSignature(_ body: SignatureRequest) async throws -> SignatureDTO {
+        try await send(SocialsEndpoints.createSignature(body, orgId: await orgProvider()))
+    }
+
+    public func updateSignature(_ id: String, body: SignatureRequest) async throws -> SignatureDTO {
+        try await send(
+            SocialsEndpoints.updateSignature(id, body: body, orgId: await orgProvider()))
+    }
+
+    public func deleteSignature(_ id: String) async throws -> SignatureDTO {
+        try await send(SocialsEndpoints.deleteSignature(id, orgId: orgProvider()))
+    }
+
+    // MARK: - Media library
+
+    public func mediaList(page: Int?) async throws -> MediaListResponse {
+        try await send(SocialsEndpoints.mediaList(page: page, orgId: orgProvider()))
+    }
+
+    public func deleteMedia(_ id: String) async throws -> OpaqueJSONResult {
+        try await send(SocialsEndpoints.deleteMedia(id, orgId: orgProvider()))
+    }
+
+    public func saveMediaInformation(_ body: MediaInformationRequest) async throws
+        -> OpaqueJSONResult
+    {
+        try await send(SocialsEndpoints.saveMediaInformation(body, orgId: await orgProvider()))
+    }
+
+    public func createUpload(_ body: MediaCreateUploadRequest) async throws
+        -> MediaCreateUploadResponse
+    {
+        try await send(SocialsEndpoints.createMediaUpload(body, orgId: await orgProvider()))
+    }
+
+    public func completeUpload(_ body: MediaCompleteUploadRequest) async throws
+        -> MediaCompleteUploadResponse
+    {
+        try await send(SocialsEndpoints.completeMediaUpload(body, orgId: await orgProvider()))
+    }
+
     // MARK: - Push
 
     public func upsertPushDevice(_ body: PushDeviceUpsert) async throws -> PushDeviceResponse {

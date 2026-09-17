@@ -248,6 +248,176 @@ public actor StubSocialsAPI: SocialsAPI {
         return try next(&deletePostResults, "deletePost")
     }
 
+    // MARK: - Posts extras
+
+    public var postsListResults: [Result<PostsListResponse, Error>] = []
+    public private(set) var postsListCalls: [(page: Int?, limit: Int?)] = []
+    public func postsList(page: Int?, limit: Int?) async throws -> PostsListResponse {
+        postsListCalls.append((page: page, limit: limit))
+        return try next(&postsListResults, "postsList")
+    }
+
+    public var oldPostsResults: [Result<OldPostsResponse, Error>] = []
+    public private(set) var oldPostsCalls: [String] = []
+    public func oldPosts(date: String) async throws -> OldPostsResponse {
+        oldPostsCalls.append(date)
+        return try next(&oldPostsResults, "oldPosts")
+    }
+
+    public var findSlotResults: [Result<FindSlotResponse, Error>] = []
+    public private(set) var findSlotCalls: [String?] = []
+    public func findSlot(integrationId: String?) async throws -> FindSlotResponse {
+        findSlotCalls.append(integrationId)
+        return try next(&findSlotResults, "findSlot")
+    }
+
+    public var statisticsResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var statisticsCalls: [String] = []
+    public func statistics(id: String) async throws -> OpaqueJSONResult {
+        statisticsCalls.append(id)
+        return try next(&statisticsResults, "statistics")
+    }
+
+    public var commentsResults: [Result<PostCommentsResponse, Error>] = []
+    public private(set) var commentsCalls: [String] = []
+    public func comments(id: String) async throws -> PostCommentsResponse {
+        commentsCalls.append(id)
+        return try next(&commentsResults, "comments")
+    }
+
+    public var addCommentResults: [Result<PostCommentDTO, Error>] = []
+    public private(set) var addCommentCalls: [(id: String, comment: String)] = []
+    public func addComment(id: String, comment: String) async throws -> PostCommentDTO {
+        addCommentCalls.append((id: id, comment: comment))
+        return try next(&addCommentResults, "addComment")
+    }
+
+    public var previewResults: [Result<PostPreviewResponse, Error>] = []
+    public private(set) var previewCalls: [String] = []
+    public func preview(id: String) async throws -> PostPreviewResponse {
+        previewCalls.append(id)
+        return try next(&previewResults, "preview")
+    }
+
+    public var missingResults: [Result<[MissingContentItemDTO], Error>] = []
+    public private(set) var missingCalls: [String] = []
+    public func missing(id: String) async throws -> [MissingContentItemDTO] {
+        missingCalls.append(id)
+        return try next(&missingResults, "missing")
+    }
+
+    // MARK: - Tags
+
+    public var tagsResults: [Result<TagsListResponse, Error>] = []
+    public private(set) var tagsCallCount = 0
+    public func tags() async throws -> TagsListResponse {
+        tagsCallCount += 1
+        return try next(&tagsResults, "tags")
+    }
+
+    public var createTagResults: [Result<TagDTO, Error>] = []
+    public private(set) var createTagCalls: [CreateTagRequest] = []
+    public func createTag(_ body: CreateTagRequest) async throws -> TagDTO {
+        createTagCalls.append(body)
+        return try next(&createTagResults, "createTag")
+    }
+
+    public var updateTagResults: [Result<TagDTO, Error>] = []
+    public private(set) var updateTagCalls: [(id: String, body: CreateTagRequest)] = []
+    public func updateTag(_ id: String, body: CreateTagRequest) async throws -> TagDTO {
+        updateTagCalls.append((id: id, body: body))
+        return try next(&updateTagResults, "updateTag")
+    }
+
+    public var deleteTagResults: [Result<TagDTO, Error>] = []
+    public private(set) var deleteTagCalls: [String] = []
+    public func deleteTag(_ id: String) async throws -> TagDTO {
+        deleteTagCalls.append(id)
+        return try next(&deleteTagResults, "deleteTag")
+    }
+
+    // MARK: - Signatures
+
+    public var signaturesResults: [Result<[SignatureDTO], Error>] = []
+    public private(set) var signaturesCallCount = 0
+    public func signatures() async throws -> [SignatureDTO] {
+        signaturesCallCount += 1
+        return try next(&signaturesResults, "signatures")
+    }
+
+    public var defaultSignatureResults: [Result<SignatureDTO, Error>] = []
+    public private(set) var defaultSignatureCallCount = 0
+    public func defaultSignature() async throws -> SignatureDTO {
+        defaultSignatureCallCount += 1
+        return try next(&defaultSignatureResults, "defaultSignature")
+    }
+
+    public var createSignatureResults: [Result<SignatureDTO, Error>] = []
+    public private(set) var createSignatureCalls: [SignatureRequest] = []
+    public func createSignature(_ body: SignatureRequest) async throws -> SignatureDTO {
+        createSignatureCalls.append(body)
+        return try next(&createSignatureResults, "createSignature")
+    }
+
+    public var updateSignatureResults: [Result<SignatureDTO, Error>] = []
+    public private(set) var updateSignatureCalls: [(id: String, body: SignatureRequest)] = []
+    public func updateSignature(_ id: String, body: SignatureRequest) async throws
+        -> SignatureDTO
+    {
+        updateSignatureCalls.append((id: id, body: body))
+        return try next(&updateSignatureResults, "updateSignature")
+    }
+
+    public var deleteSignatureResults: [Result<SignatureDTO, Error>] = []
+    public private(set) var deleteSignatureCalls: [String] = []
+    public func deleteSignature(_ id: String) async throws -> SignatureDTO {
+        deleteSignatureCalls.append(id)
+        return try next(&deleteSignatureResults, "deleteSignature")
+    }
+
+    // MARK: - Media library
+
+    public var mediaListResults: [Result<MediaListResponse, Error>] = []
+    public private(set) var mediaListCalls: [Int?] = []
+    public func mediaList(page: Int?) async throws -> MediaListResponse {
+        mediaListCalls.append(page)
+        return try next(&mediaListResults, "mediaList")
+    }
+
+    public var deleteMediaResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var deleteMediaCalls: [String] = []
+    public func deleteMedia(_ id: String) async throws -> OpaqueJSONResult {
+        deleteMediaCalls.append(id)
+        return try next(&deleteMediaResults, "deleteMedia")
+    }
+
+    public var saveMediaInformationResults: [Result<OpaqueJSONResult, Error>] = []
+    public private(set) var saveMediaInformationCalls: [MediaInformationRequest] = []
+    public func saveMediaInformation(_ body: MediaInformationRequest) async throws
+        -> OpaqueJSONResult
+    {
+        saveMediaInformationCalls.append(body)
+        return try next(&saveMediaInformationResults, "saveMediaInformation")
+    }
+
+    public var createUploadResults: [Result<MediaCreateUploadResponse, Error>] = []
+    public private(set) var createUploadCalls: [MediaCreateUploadRequest] = []
+    public func createUpload(_ body: MediaCreateUploadRequest) async throws
+        -> MediaCreateUploadResponse
+    {
+        createUploadCalls.append(body)
+        return try next(&createUploadResults, "createUpload")
+    }
+
+    public var completeUploadResults: [Result<MediaCompleteUploadResponse, Error>] = []
+    public private(set) var completeUploadCalls: [MediaCompleteUploadRequest] = []
+    public func completeUpload(_ body: MediaCompleteUploadRequest) async throws
+        -> MediaCompleteUploadResponse
+    {
+        completeUploadCalls.append(body)
+        return try next(&completeUploadResults, "completeUpload")
+    }
+
     // MARK: - Push
 
     public var upsertPushDeviceResults: [Result<PushDeviceResponse, Error>] = []

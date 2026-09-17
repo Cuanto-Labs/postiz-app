@@ -52,6 +52,41 @@ public protocol SocialsAPI: Sendable {
         -> RescheduleResponse
     func deletePost(group: String) async throws -> OkResponse
 
+    // MARK: - Posts extras
+
+    func postsList(page: Int?, limit: Int?) async throws -> PostsListResponse
+    func oldPosts(date: String) async throws -> OldPostsResponse
+    func findSlot(integrationId: String?) async throws -> FindSlotResponse
+    func statistics(id: String) async throws -> OpaqueJSONResult
+    func comments(id: String) async throws -> PostCommentsResponse
+    func addComment(id: String, comment: String) async throws -> PostCommentDTO
+    func preview(id: String) async throws -> PostPreviewResponse
+    func missing(id: String) async throws -> [MissingContentItemDTO]
+
+    // MARK: - Tags
+
+    func tags() async throws -> TagsListResponse
+    func createTag(_ body: CreateTagRequest) async throws -> TagDTO
+    func updateTag(_ id: String, body: CreateTagRequest) async throws -> TagDTO
+    func deleteTag(_ id: String) async throws -> TagDTO
+
+    // MARK: - Signatures
+
+    func signatures() async throws -> [SignatureDTO]
+    func defaultSignature() async throws -> SignatureDTO
+    func createSignature(_ body: SignatureRequest) async throws -> SignatureDTO
+    func updateSignature(_ id: String, body: SignatureRequest) async throws -> SignatureDTO
+    func deleteSignature(_ id: String) async throws -> SignatureDTO
+
+    // MARK: - Media library
+
+    func mediaList(page: Int?) async throws -> MediaListResponse
+    func deleteMedia(_ id: String) async throws -> OpaqueJSONResult
+    func saveMediaInformation(_ body: MediaInformationRequest) async throws -> OpaqueJSONResult
+    func createUpload(_ body: MediaCreateUploadRequest) async throws -> MediaCreateUploadResponse
+    func completeUpload(_ body: MediaCompleteUploadRequest) async throws
+        -> MediaCompleteUploadResponse
+
     // MARK: - Push
 
     func upsertPushDevice(_ body: PushDeviceUpsert) async throws -> PushDeviceResponse
