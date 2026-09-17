@@ -1,0 +1,12 @@
+{
+  "minVersion": "1.0.0",
+  "providers": [
+    { "identifier": "x", "name": "X" },
+    { "identifier": "linkedin", "name": "LinkedIn" }
+  ],
+  "links": {
+    "support": "https://cuantolabs.com/support",
+    "terms": "https://cuantolabs.com/terms",
+    "privacy": "https://cuantolabs.com/privacy"
+  }
+}

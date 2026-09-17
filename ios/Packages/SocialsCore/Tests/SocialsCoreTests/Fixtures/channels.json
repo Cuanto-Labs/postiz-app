@@ -1,0 +1,53 @@
+{
+  "channels": [
+    {
+      "id": "chn_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+      "internalId": "linkedin-internal-1",
+      "name": "Cuanto Labs",
+      "identifier": "linkedin",
+      "picture": "https://cdn.cuantolabs.com/channels/linkedin.png",
+      "disabled": false,
+      "refreshNeeded": false,
+      "inBetweenSteps": false,
+      "display": "Cuanto Labs",
+      "type": "page",
+      "customer": null,
+      "limits": { "maxCharacters": 3000, "editor": "html" }
+    },
+    {
+      "id": "chn_01HZX3QW7K9F0M1N2P3Q4R5S6U",
+      "internalId": "x-internal-1",
+      "name": "@cuantolabs",
+      "identifier": "x",
+      "picture": "https://cdn.cuantolabs.com/channels/x.png",
+      "disabled": false,
+      "refreshNeeded": true,
+      "inBetweenSteps": false,
+      "display": "@cuantolabs",
+      "type": "profile",
+      "customer": null,
+      "limits": { "maxCharacters": 280, "editor": "text" }
+    },
+    {
+      "id": "chn_01HZX3QW7K9F0M1N2P3Q4R5S6V",
+      "internalId": "instagram-internal-1",
+      "name": "cuantolabs",
+      "identifier": "instagram",
+      "picture": "https://cdn.cuantolabs.com/channels/instagram.png",
+      "disabled": true,
+      "refreshNeeded": false,
+      "inBetweenSteps": false,
+      "display": "cuantolabs",
+      "type": "business",
+      "customer": {
+        "id": "cus_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+        "name": "Cuanto Labs",
+        "orgId": "org_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+        "createdAt": "2026-01-05T12:00:00.000Z",
+        "updatedAt": "2026-01-05T12:00:00.000Z",
+        "deletedAt": null
+      },
+      "limits": { "maxCharacters": 2200, "editor": "html" }
+    }
+  ]
+}
