@@ -1,4 +1,11 @@
-import { IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class MobilePostsQueryDto {
   @IsDateString()
@@ -24,4 +31,13 @@ export class MobileRescheduleDto {
 export class MobileOldPostsQueryDto {
   @IsDateString()
   date: string;
+}
+
+export class MobileSeparatePostsDto {
+  @IsString()
+  content: string;
+
+  @IsNumber()
+  @Min(1)
+  len: number;
 }

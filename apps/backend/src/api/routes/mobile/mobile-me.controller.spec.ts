@@ -45,13 +45,20 @@ describe('MobileMeController', () => {
         options: { channel: 5 },
       }),
     };
+    const usersService = {
+      getPersonal: jest.fn().mockResolvedValue({ bio: 'hello' }),
+      changePersonal: jest.fn().mockResolvedValue({ bio: 'updated' }),
+      getEmailNotifications: jest.fn().mockResolvedValue({ enabled: true }),
+      updateEmailNotifications: jest.fn().mockResolvedValue({ enabled: false }),
+    };
 
     const controller = new MobileMeController(
       organizationService as any,
-      permissionsService as any
+      permissionsService as any,
+      usersService as any
     );
 
-    return { controller, organizationService, permissionsService };
+    return { controller, organizationService, permissionsService, usersService };
   };
 
   it('exposes the /mobile/v1/me path', () => {
@@ -121,5 +128,49 @@ describe('MobileMeController', () => {
     const result = await controller.me(consentedUser as any, org as any, req as any);
 
     expect(result.user.aiConsentAt).toEqual(new Date('2026-01-01'));
+  });
+
+  it('gets personal details for the current user', async () => {
+    const { controller, usersService } = makeController();
+
+    const result = await controller.getPersonal(user as any);
+
+    expect(usersService.getPersonal).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({ bio: 'hello' });
+  });
+
+  it('changes personal details for the current user', async () => {
+    const { controller, usersService } = makeController();
+    const body = { name: 'New Name' };
+
+    const result = await controller.changePersonal(user as any, body as any);
+
+    expect(usersService.changePersonal).toHaveBeenCalledWith('user-1', body);
+    expect(result).toEqual({ bio: 'updated' });
+  });
+
+  it('gets email-notification preferences for the current user', async () => {
+    const { controller, usersService } = makeController();
+
+    const result = await controller.getEmailNotifications(user as any);
+
+    expect(usersService.getEmailNotifications).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({ enabled: true });
+  });
+
+  it('updates email-notification preferences for the current user', async () => {
+    const { controller, usersService } = makeController();
+    const body = { enabled: false };
+
+    const result = await controller.updateEmailNotifications(
+      user as any,
+      body as any
+    );
+
+    expect(usersService.updateEmailNotifications).toHaveBeenCalledWith(
+      'user-1',
+      body
+    );
+    expect(result).toEqual({ enabled: false });
   });
 });

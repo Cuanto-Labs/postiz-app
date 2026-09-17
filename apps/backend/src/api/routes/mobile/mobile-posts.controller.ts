@@ -24,6 +24,7 @@ import {
   MobileOldPostsQueryDto,
   MobilePostsQueryDto,
   MobileRescheduleDto,
+  MobileSeparatePostsDto,
 } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-posts.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
@@ -102,6 +103,30 @@ export class MobilePostsController {
     }
 
     return result;
+  }
+
+  @Get('/:id/statistics')
+  @ApiOperation({ summary: 'Get statistics for a post' })
+  async getStatistics(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._postsService.getStatistics(org.id, id);
+  }
+
+  @Get('/:id/missing')
+  @ApiOperation({ summary: 'Get missing content for a post' })
+  async getMissingContent(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._postsService.getMissingContent(org.id, id);
+  }
+
+  @Post('/separate')
+  @ApiOperation({ summary: 'Split a long post into multiple posts' })
+  async separatePosts(@Body() body: MobileSeparatePostsDto) {
+    return this._postsService.separatePosts(body.content, body.len);
   }
 
   private async _validateAndCreate(org: Organization, rawBody: any) {

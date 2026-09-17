@@ -43,18 +43,26 @@ describe('MobileChannelsController', () => {
       updateIntegrationGroup: jest.fn(),
       setTimes: jest.fn(),
       updateProviderSettings: jest.fn(),
+      disableChannel: jest.fn(),
+      enableChannel: jest.fn(),
+      getPostsForChannel: jest.fn(),
+      deleteChannel: jest.fn(),
     };
     const integrationManager = {
       getSocialIntegration: jest.fn(),
       getAllowedSocialsIntegrations: jest.fn(),
     };
+    const postService = {
+      deletePost: jest.fn().mockResolvedValue(undefined),
+    };
 
     const controller = new MobileChannelsController(
       integrationService as any,
-      integrationManager as any
+      integrationManager as any,
+      postService as any
     );
 
-    return { controller, integrationService, integrationManager };
+    return { controller, integrationService, integrationManager, postService };
   };
 
   it('exposes the /mobile/v1/channels path', () => {
@@ -245,6 +253,90 @@ describe('MobileChannelsController', () => {
       '[]'
     );
     expect(result).toBeUndefined();
+  });
+
+  it('disableChannel delegates with org.id, id', async () => {
+    const { controller, integrationService } = makeController();
+    integrationService.disableChannel.mockResolvedValue({ id: 'int-1' });
+
+    const result = await controller.disableChannel(org as any, 'int-1');
+
+    expect(integrationService.disableChannel).toHaveBeenCalledWith(
+      org.id,
+      'int-1'
+    );
+    expect(result).toEqual({ id: 'int-1' });
+  });
+
+  describe('enableChannel', () => {
+    it('passes pricing.FREE.channel when org has no subscription', async () => {
+      const { controller, integrationService } = makeController();
+      integrationService.enableChannel.mockResolvedValue({ id: 'int-1' });
+
+      const result = await controller.enableChannel(org as any, 'int-1');
+
+      expect(integrationService.enableChannel).toHaveBeenCalledWith(
+        org.id,
+        expect.any(Number),
+        'int-1'
+      );
+      expect(result).toEqual({ id: 'int-1' });
+    });
+
+    it('passes org.subscription.totalChannels when present', async () => {
+      const { controller, integrationService } = makeController();
+      integrationService.enableChannel.mockResolvedValue({ id: 'int-1' });
+      const orgWithSub = { id: 'org-1', subscription: { totalChannels: 12 } };
+
+      await controller.enableChannel(orgWithSub as any, 'int-1');
+
+      expect(integrationService.enableChannel).toHaveBeenCalledWith(
+        orgWithSub.id,
+        12,
+        'int-1'
+      );
+    });
+  });
+
+  describe('deleteChannel', () => {
+    it('deletes each post group then deletes the channel', async () => {
+      const { controller, integrationService, postService } =
+        makeController();
+      integrationService.getPostsForChannel.mockResolvedValue([
+        { group: 'group-1' },
+        { group: 'group-2' },
+      ]);
+      integrationService.deleteChannel.mockResolvedValue({ id: 'int-1' });
+
+      const result = await controller.deleteChannel(org as any, 'int-1');
+
+      expect(integrationService.getPostsForChannel).toHaveBeenCalledWith(
+        org.id,
+        'int-1'
+      );
+      expect(postService.deletePost).toHaveBeenCalledWith(org.id, 'group-1');
+      expect(postService.deletePost).toHaveBeenCalledWith(org.id, 'group-2');
+      expect(integrationService.deleteChannel).toHaveBeenCalledWith(
+        org.id,
+        'int-1'
+      );
+      expect(result).toEqual({ id: 'int-1' });
+    });
+
+    it('skips post cleanup and still deletes the channel when there are no posts', async () => {
+      const { controller, integrationService, postService } =
+        makeController();
+      integrationService.getPostsForChannel.mockResolvedValue([]);
+      integrationService.deleteChannel.mockResolvedValue({ id: 'int-1' });
+
+      await controller.deleteChannel(org as any, 'int-1');
+
+      expect(postService.deletePost).not.toHaveBeenCalled();
+      expect(integrationService.deleteChannel).toHaveBeenCalledWith(
+        org.id,
+        'int-1'
+      );
+    });
   });
 
   describe('connect', () => {

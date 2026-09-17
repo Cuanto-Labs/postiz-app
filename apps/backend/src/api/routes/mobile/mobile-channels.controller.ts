@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   Param,
@@ -12,6 +13,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Organization } from '@prisma/client';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { getMediaLimits } from '@gitroom/nestjs-libraries/mobile/media/media-limits';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
@@ -33,7 +36,8 @@ import {
 export class MobileChannelsController {
   constructor(
     private _integrationService: IntegrationService,
-    private _integrationManager: IntegrationManager
+    private _integrationManager: IntegrationManager,
+    private _postService: PostsService
   ) {}
 
   @Get('/')
@@ -136,6 +140,48 @@ export class MobileChannelsController {
       id,
       body.additionalSettings
     );
+  }
+
+  @Post('/:id/disable')
+  @ApiOperation({ summary: 'Disable a channel' })
+  disableChannel(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._integrationService.disableChannel(org.id, id);
+  }
+
+  @Post('/:id/enable')
+  @ApiOperation({ summary: 'Enable a channel (subject to plan channel cap)' })
+  enableChannel(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._integrationService.enableChannel(
+      org.id,
+      // @ts-ignore
+      org?.subscription?.totalChannels || pricing.FREE.channel,
+      id
+    );
+  }
+
+  @Delete('/:id')
+  @ApiOperation({ summary: 'Delete a channel and clean up its posts' })
+  async deleteChannel(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    const isTherePosts = await this._integrationService.getPostsForChannel(
+      org.id,
+      id
+    );
+    if (isTherePosts.length) {
+      for (const post of isTherePosts) {
+        this._postService.deletePost(org.id, post.group).catch((err) => {});
+      }
+    }
+
+    return this._integrationService.deleteChannel(org.id, id);
   }
 
   @Get('/connect/:provider')

@@ -3,6 +3,7 @@ import { ApiModule } from '@gitroom/backend/api/api.module';
 import { MobileAuthController } from '@gitroom/backend/api/routes/mobile/mobile-auth.controller';
 import { MobileDevicesController } from '@gitroom/backend/api/routes/mobile/mobile-devices.controller';
 import { MobileChannelsController } from '@gitroom/backend/api/routes/mobile/mobile-channels.controller';
+import { MobilePlugsController } from '@gitroom/backend/api/routes/mobile/mobile-plugs.controller';
 import { MobileMeController } from '@gitroom/backend/api/routes/mobile/mobile-me.controller';
 import { MobileConfigController } from '@gitroom/backend/api/routes/mobile/mobile-config.controller';
 import { MobilePostsController } from '@gitroom/backend/api/routes/mobile/mobile-posts.controller';
@@ -29,6 +30,7 @@ const authenticatedControllers = [
   MobileDevicesController,
   MobileMeController,
   MobileChannelsController,
+  MobilePlugsController,
   MobilePostsController,
   MobilePushController,
   MobileMediaController,

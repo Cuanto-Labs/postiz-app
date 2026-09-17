@@ -39,6 +39,9 @@ describe('MobilePostsController', () => {
       createPost: jest.fn().mockResolvedValue([{ id: 'post-1' }]),
       deletePost: jest.fn().mockResolvedValue(undefined),
       changeDate: jest.fn().mockResolvedValue(undefined),
+      getStatistics: jest.fn(),
+      getMissingContent: jest.fn(),
+      separatePosts: jest.fn(),
     };
 
     const controller = new MobilePostsController(postsService as any);
@@ -282,5 +285,47 @@ describe('MobilePostsController', () => {
 
     expect(postsService.deletePost).toHaveBeenCalledWith('org-1', 'group-1');
     expect(result).toEqual({ ok: true });
+  });
+
+  it('getStatistics delegates to PostsService.getStatistics', async () => {
+    const { controller, postsService } = makeController();
+    const stats = { views: 10 };
+    postsService.getStatistics.mockResolvedValue(stats);
+
+    const result = await controller.getStatistics(org as any, 'post-1');
+
+    expect(postsService.getStatistics).toHaveBeenCalledWith('org-1', 'post-1');
+    expect(result).toEqual(stats);
+  });
+
+  it('getMissingContent delegates to PostsService.getMissingContent', async () => {
+    const { controller, postsService } = makeController();
+    const missing = { missing: ['title'] };
+    postsService.getMissingContent.mockResolvedValue(missing);
+
+    const result = await controller.getMissingContent(org as any, 'post-1');
+
+    expect(postsService.getMissingContent).toHaveBeenCalledWith(
+      'org-1',
+      'post-1'
+    );
+    expect(result).toEqual(missing);
+  });
+
+  it('separatePosts delegates to PostsService.separatePosts', async () => {
+    const { controller, postsService } = makeController();
+    const separated = ['part-1', 'part-2'];
+    postsService.separatePosts.mockResolvedValue(separated);
+
+    const result = await controller.separatePosts({
+      content: 'a very long post',
+      len: 10,
+    } as any);
+
+    expect(postsService.separatePosts).toHaveBeenCalledWith(
+      'a very long post',
+      10
+    );
+    expect(result).toEqual(separated);
   });
 });
