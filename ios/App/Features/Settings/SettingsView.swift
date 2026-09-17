@@ -201,5 +201,12 @@ struct SettingsView: View {
         .refreshable {
             await viewModel.load()
         }
+        // The floating tab bar overlays the bottom of the screen rather than reserving its own
+        // safe-area space, so the last `List` section (Privacy/App version) clips underneath it
+        // without this — mirrors `ComposerView`'s bottom action bar in reserving explicit space
+        // instead of relying on the system safe area.
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 49)
+        }
     }
 }
