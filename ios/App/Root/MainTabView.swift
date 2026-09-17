@@ -47,6 +47,12 @@ struct MainTabView: View {
     /// surface `unreadCount` as a tab badge, mirroring how every other tab's screen owns its
     /// view model independently.
     @State private var badgeViewModel: NotificationsViewModel?
+    /// Owned here rather than constructed inline in `body`: a fresh `MediaLibraryViewModel` per
+    /// render replaced the loaded one every time anything else in this view changed (the
+    /// notification badge arriving was enough), and since the view's identity never changed its
+    /// `.task` didn't re-run — the Media tab went permanently back to "No media yet."
+    @State private var mediaViewModel: MediaLibraryViewModel?
+    @State private var mediaUploadQueue: UploadQueue?
     @State private var selectedTab: MainTab = MainTabView.initialTab()
     @State private var morePath = NavigationPath()
 
@@ -95,10 +101,13 @@ struct MainTabView: View {
             .tag(MainTab.channels)
 
             NavigationStack {
-                MediaLibraryView(
-                    viewModel: MediaLibraryViewModel(api: environment.api),
-                    uploadQueue: UploadQueue(api: environment.api)
-                )
+                Group {
+                    if let mediaViewModel, let mediaUploadQueue {
+                        MediaLibraryView(viewModel: mediaViewModel, uploadQueue: mediaUploadQueue)
+                    } else {
+                        ProgressView().accessibilityLabel("Loading media")
+                    }
+                }
                 .navigationTitle("Media")
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -151,6 +160,10 @@ struct MainTabView: View {
             .tag(MainTab.more)
         }
         .task {
+            if mediaViewModel == nil {
+                mediaViewModel = MediaLibraryViewModel(api: environment.api)
+                mediaUploadQueue = UploadQueue(api: environment.api)
+            }
             if badgeViewModel == nil {
                 let model = NotificationsViewModel(api: environment.api)
                 badgeViewModel = model

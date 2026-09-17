@@ -91,7 +91,7 @@ enum UITestFixtures {
         await api.setChannelsResults(Array(repeating: .success(channelsResponse), count: 4))
         await api.setCreatePostResults([.success(post)])
 
-        // Empty-but-successful responses for every other screen `MainTabView` can reach, so a
+        // Successful responses for every other screen `MainTabView` can reach, so a
         // manual QA walkthrough never trips a `StubError.notScripted` (which every view model's
         // generic `catch` turns into a "Something went wrong" banner, or — for Notifications — a
         // full-screen error+retry state). Repeated 8x per queue: comfortably covers the
@@ -99,20 +99,31 @@ enum UITestFixtures {
         // `MainTabView` plus the Notifications screen's own load/refresh, and any manual
         // pull-to-refresh during the walkthrough, without changing `StubSocialsAPI`'s
         // FIFO-exhaustion behavior (other tests rely on that to exercise error paths).
-        await api.setPostsResults(Array(repeating: .success(PostsResponse(posts: [])), count: 8))
+        // A populated week, media library and notification list rather than empty states: these
+        // are the App Store frames, and a store listing of empty screens reads as an app with
+        // nothing in it (Guideline 2.3.3). Dates are relative to "now" so the calendar always
+        // lands on the visible week whenever the set is regenerated.
+        let scheduled = Self.scheduledWeek(
+            instagram: instagramChannel, linkedIn: linkedInChannel, other: channel)
+        await api.setPostsResults(
+            Array(repeating: .success(PostsResponse(posts: scheduled)), count: 8))
         await api.setPostsListResults(
             Array(
                 repeating: .success(
-                    PostsListResponse(posts: [], total: 0, page: 0, limit: 100, hasMore: false)),
+                    PostsListResponse(
+                        posts: scheduled.map(Self.listItem), total: scheduled.count, page: 0,
+                        limit: 100, hasMore: false)),
                 count: 8))
         await api.setMediaListResults(
-            Array(repeating: .success(MediaListResponse(pages: 1, results: [])), count: 8))
+            Array(repeating: .success(MediaListResponse(pages: 1, results: Self.mediaLibrary())), count: 8))
         await api.setNotificationsCountResults(
-            Array(repeating: .success(NotificationsCountResponse(total: 0)), count: 8))
+            Array(repeating: .success(NotificationsCountResponse(total: 3)), count: 8))
         await api.setNotificationsListResults(
             Array(
                 repeating: .success(
-                    NotificationsListResponse(lastReadNotifications: "", notifications: [])),
+                    NotificationsListResponse(
+                        lastReadNotifications: Self.iso(hoursFromNow: -30),
+                        notifications: Self.notifications())),
                 count: 8))
         // Shared between the AI image and AI video screens (the stub doesn't branch on `type`).
         await api.setAICreditsResults(
@@ -148,24 +159,116 @@ enum UITestFixtures {
         let size = mode.pixelSize
         let mediaId = "uitest-media-\(mode.rawValue)"
         let pngData = Self.fixtureImage(size: size)
+        // Written to disk and referenced by its `file://` URL: the tray thumbnail and every
+        // preview card load `MediaDTO.path` through `AsyncImage`, so an unresolvable scheme left
+        // both showing a spinner over an empty frame.
+        let fileName = "fixture-\(mode.rawValue).png"
+        let fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        try? pngData.write(to: fileURL)
         let media = MediaDTO(
-            id: mediaId, name: "fixture-\(mode.rawValue).png", originalName: nil,
-            path: "uitest://fixture-\(mode.rawValue).png", thumbnail: nil, alt: nil,
+            id: mediaId, name: fileName, originalName: nil,
+            path: fileURL.absoluteString, thumbnail: nil, alt: nil,
             thumbnailTimestamp: nil, status: "ready", processingError: nil)
         let attributes = SelectedMediaAttributes(
             id: mediaId, kind: .image,
             aspectRatio: MediaAspectRatio(width: size.width, height: size.height),
             durationSeconds: nil, byteCount: pngData.count, mimeType: "image/png")
 
+        // A written caption, not an empty editor: the App Store frames should show the composer
+        // mid-post the way a reviewer would actually see it.
+        model.setGlobalContent(
+            "Launch week recap — three cities, one deploy, zero downtime. Full write-up in the comments.")
         model.attachMediaToGlobal(media, attributes: attributes)
         uploadQueue.seedCompleted(id: mediaId, fileName: media.name, media: media)
     }
 
-    /// A drawn solid-colour PNG at `size` — cheap, deterministic, and needs no binary asset
-    /// checked into git.
+    // MARK: - Populated stub content
+
+    private static func iso(hoursFromNow hours: Double) -> String {
+        ISO8601DateFormatter().string(from: Date().addingTimeInterval(hours * 3600))
+    }
+
+    /// Posts spread across the current week — a mix of queued and published across all three stub
+    /// channels, so week/month/list views all have something to draw.
+    private static func scheduledWeek(
+        instagram: ChannelDTO, linkedIn: ChannelDTO, other: ChannelDTO
+    ) -> [PostGroupDTO] {
+        let entries:
+            [(hours: Double, channel: ChannelDTO, status: String, content: String)] = [
+                (-48, linkedIn, "PUBLISHED", "Why we rebuilt scheduling around one queue per channel."),
+                (-26, instagram, "PUBLISHED", "Studio day. Three shoots, one calendar."),
+                (3, instagram, "QUEUE", "Launch week recap — three cities, one deploy, zero downtime."),
+                (27, linkedIn, "QUEUE", "Hiring: iOS engineer who likes calendars more than meetings."),
+                (51, other, "QUEUE", "Monthly roundup goes out Friday — drafts are open for comments."),
+                (75, instagram, "QUEUE", "Behind the scenes of the new composer."),
+            ]
+        return entries.enumerated().map { index, entry in
+            PostGroupDTO(
+                id: "stub-post-\(index)", group: "stub-group-\(index)",
+                publishDate: iso(hoursFromNow: entry.hours), status: entry.status,
+                integration: PostIntegrationRef(
+                    id: entry.channel.internalId, name: entry.channel.name, picture: nil,
+                    providerIdentifier: entry.channel.identifier),
+                content: .string(entry.content))
+        }
+    }
+
+    /// The same scheduled post as the list endpoint returns it (`GET /mobile/v1/posts/list`),
+    /// so Calendar's list display mode shows the same week the grid modes do.
+    private static func listItem(_ post: PostGroupDTO) -> PostListItemDTO {
+        PostListItemDTO(
+            id: post.id, content: post.content, publishDate: post.publishDate, releaseURL: nil,
+            releaseId: nil, state: post.status, group: post.group, integration: post.integration,
+            intervalInDays: nil, creationMethod: nil)
+    }
+
+    /// Media library entries backed by the same drawn gradient as the composer fixture, written to
+    /// the temp dir so `AsyncImage` actually has bytes to render.
+    private static func mediaLibrary() -> [MediaDTO] {
+        let sizes: [(name: String, size: CGSize)] = [
+            ("launch-week-1080.png", CGSize(width: 1080, height: 1080)),
+            ("studio-day-1080x1350.png", CGSize(width: 1080, height: 1350)),
+            ("roundup-1920x1080.png", CGSize(width: 1920, height: 1080)),
+            ("hiring-1080.png", CGSize(width: 1080, height: 1080)),
+        ]
+        return sizes.enumerated().compactMap { index, entry in
+            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(entry.name)
+            try? fixtureImage(size: entry.size).write(to: url)
+            return MediaDTO(
+                id: "stub-media-\(index)", name: entry.name, originalName: entry.name,
+                path: url.absoluteString, thumbnail: url.absoluteString, alt: nil,
+                thumbnailTimestamp: nil, status: "ready", processingError: nil)
+        }
+    }
+
+    private static func notifications() -> [MobileNotification] {
+        [
+            MobileNotification(
+                content: "Your Instagram post published successfully.", createdAt: iso(hoursFromNow: -2)),
+            MobileNotification(
+                content: "LinkedIn post scheduled for tomorrow at 9:00 AM.", createdAt: iso(hoursFromNow: -8)),
+            MobileNotification(
+                content: "Cuanto Labs Co. needs to be reconnected in 7 days.",
+                createdAt: iso(hoursFromNow: -28)),
+        ]
+    }
+
+    /// A drawn brand-gradient PNG at `size` — cheap, deterministic, and needs no binary asset
+    /// checked into git. Green → indigo, the app's own primary/accent pair, so the attachment in
+    /// the store frames looks like artwork rather than a test swatch.
     private static func fixtureImage(size: CGSize) -> Data {
         let renderer = UIGraphicsImageRenderer(size: size)
-        let image = renderer.image { _ in
+        let image = renderer.image { context in
+            let colors =
+                [UIColor(red: 0.06, green: 0.73, blue: 0.51, alpha: 1).cgColor,
+                 UIColor(red: 0.39, green: 0.40, blue: 0.95, alpha: 1).cgColor] as CFArray
+            if let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1])
+            {
+                context.cgContext.drawLinearGradient(
+                    gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+                return
+            }
             UIColor.systemTeal.setFill()
             UIRectFill(CGRect(origin: .zero, size: size))
         }

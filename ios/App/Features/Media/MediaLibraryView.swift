@@ -84,12 +84,18 @@ struct MediaLibraryView: View {
     @ViewBuilder
     private func tile(for item: MediaDTO) -> some View {
         VStack(spacing: 4) {
+            // The tile used to be a flat placeholder for every item, so the library rendered as a
+            // grid of identical grey squares no matter what was in it.
             Rectangle()
                 .fill(Color.secondary.opacity(0.15))
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
-                    Image(systemName: "photo")
-                        .foregroundStyle(.secondary)
+                    AsyncImage(url: URL(string: item.thumbnail ?? item.path)) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Image(systemName: "photo")
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             Text(item.originalName ?? item.name)

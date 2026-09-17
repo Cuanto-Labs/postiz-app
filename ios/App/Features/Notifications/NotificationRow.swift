@@ -12,7 +12,11 @@ struct NotificationRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(Self.strippedHTML(notification.content))
                 .font(isUnread ? .body.bold() : .body)
-                .accessibilityLabel(isUnread ? "Unread notification" : "Notification")
+                // The label has to carry the content: a bare "Unread notification" told VoiceOver
+                // a notification existed but never what it said.
+                .accessibilityLabel(
+                    "\(isUnread ? "Unread notification" : "Notification"): \(Self.strippedHTML(notification.content))"
+                )
 
             Text(Self.displayDate(notification.createdAt))
                 .font(.caption)

@@ -58,6 +58,9 @@ final class ScreenshotUITests: XCTestCase {
 
         let calendarTab = UITestKit.tab(app, "Calendar")
         XCTAssertTrue(calendarTab.waitForExistence(timeout: 20), "Calendar tab after sign-in")
+        XCTAssertTrue(
+            app.staticTexts["Studio day. Three shoots, one calendar."].waitForExistence(timeout: 15),
+            "seeded week on Calendar")
         UITestKit.shot("01-calendar", dir: dir)
 
         relaunch(tab: "channels", expectedNavBar: "Channels")
@@ -90,9 +93,20 @@ final class ScreenshotUITests: XCTestCase {
         // MediaLibraryView sets its own `.navigationTitle("Media Library")`, which wins over
         // MainTabView's outer "Media" on the same NavigationStack.
         relaunch(tab: "media", expectedNavBar: "Media Library")
+        // Wait for seeded content, not just the nav bar: the list loads a beat after the screen
+        // appears, and shooting on the nav bar alone caught the "No media yet." empty state.
+        XCTAssertTrue(
+            app.descendants(matching: .any)["Media: launch-week-1080.png"].waitForExistence(timeout: 15),
+            "seeded media library item")
         UITestKit.shot("05-media", dir: dir)
 
         relaunch(tab: "notifications", expectedNavBar: "Notifications")
+        // `NotificationRow` labels its content element "<read state>: <content>", so match the
+        // prefix rather than the bare fixture string.
+        let seededNotification = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "Your Instagram post published")
+        ).firstMatch
+        XCTAssertTrue(seededNotification.waitForExistence(timeout: 15), "seeded notification")
         UITestKit.shot("06-notifications", dir: dir)
 
         // Hero composer shot: Instagram + LinkedIn selected, one valid 1:1 image already
