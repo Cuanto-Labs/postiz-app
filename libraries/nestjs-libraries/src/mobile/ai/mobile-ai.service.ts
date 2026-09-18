@@ -17,7 +17,7 @@ export class MobileAiService {
   }
 
   isConfigured() {
-    return !!process.env.OPENAI_API_KEY;
+    return !!(process.env.AI_TEXT_API_KEY || process.env.OPENAI_API_KEY);
   }
 
   async suggest(
@@ -51,8 +51,25 @@ export class MobileAiService {
       return [];
     }
 
-    return posts.map((post) =>
-      typeof post === 'string' ? post : post?.post ?? String(post)
-    );
+    // A provider can hand back a plain string, a { post } object, or a thread
+    // as a nested array — flatten all three into one suggestion per entry.
+    return posts
+      .map((post: any) => {
+        if (typeof post === 'string') {
+          return post;
+        }
+
+        if (Array.isArray(post)) {
+          return post
+            .map((entry: any) =>
+              typeof entry === 'string' ? entry : entry?.post ?? ''
+            )
+            .filter(Boolean)
+            .join('\n\n');
+        }
+
+        return post?.post ?? '';
+      })
+      .filter(Boolean);
   }
 }

@@ -8,6 +8,46 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
 });
 
+// Text generation may run on a different OpenAI-compatible endpoint than image
+// generation (images stay on OpenAI). Everything is env-driven so the provider
+// and model never leak to a client.
+const textModel = process.env.AI_TEXT_MODEL || 'gpt-4.1';
+const textClient = process.env.AI_TEXT_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.AI_TEXT_API_KEY,
+      baseURL: process.env.AI_TEXT_BASE_URL || 'https://api.openai.com/v1',
+    })
+  : openai;
+
+// Reasoning models spend their budget before emitting content; keep it low so a
+// suggestion request does not stall or bill for a hidden chain of thought.
+const textExtra: Record<string, any> = process.env.AI_TEXT_REASONING_EFFORT
+  ? { reasoning: { effort: process.env.AI_TEXT_REASONING_EFFORT } }
+  : {};
+
+// `n` is an OpenAI-only parameter; other providers silently return one choice.
+// Fan out the remainder so the caller always gets the variation count it asked for.
+async function chatChoices(params: any, n: number) {
+  const first = await textClient.chat.completions.create({
+    ...params,
+    ...textExtra,
+    n,
+  });
+
+  const choices = [...first.choices];
+  if (choices.length >= n) {
+    return choices;
+  }
+
+  const rest = await Promise.all(
+    Array.from({ length: n - choices.length }, () =>
+      textClient.chat.completions.create({ ...params, ...textExtra })
+    )
+  );
+
+  return [...choices, ...rest.flatMap((r: any) => r.choices)];
+}
+
 const PicturePrompt = z.object({
   prompt: z.string(),
 });
@@ -35,8 +75,8 @@ export class OpenaiService {
   async generatePromptForPicture(prompt: string) {
     return (
       (
-        await openai.chat.completions.parse({
-          model: 'gpt-4.1',
+        await textClient.chat.completions.parse({
+          model: textModel,
           messages: [
             {
               role: 'system',
@@ -56,8 +96,8 @@ export class OpenaiService {
   async generateVoiceFromText(prompt: string) {
     return (
       (
-        await openai.chat.completions.parse({
-          model: 'gpt-4.1',
+        await textClient.chat.completions.parse({
+          model: textModel,
           messages: [
             {
               role: 'system',
@@ -75,9 +115,9 @@ export class OpenaiService {
   }
 
   async generatePosts(content: string) {
-    const posts = (
-      await Promise.all([
-        openai.chat.completions.create({
+    const [singles, threads] = await Promise.all([
+      chatChoices(
+        {
           messages: [
             {
               role: 'assistant',
@@ -89,11 +129,13 @@ export class OpenaiService {
               content: content!,
             },
           ],
-          n: 5,
           temperature: 1,
-          model: 'gpt-4.1',
-        }),
-        openai.chat.completions.create({
+          model: textModel,
+        },
+        5
+      ),
+      chatChoices(
+        {
           messages: [
             {
               role: 'assistant',
@@ -105,35 +147,52 @@ export class OpenaiService {
               content: content!,
             },
           ],
-          n: 5,
           temperature: 1,
-          model: 'gpt-4.1',
-        }),
-      ])
-    ).flatMap((p) => p.choices);
+          model: textModel,
+        },
+        5
+      ),
+    ]);
 
+    // One choice is one suggestion: a single post, or a thread flattened into a
+    // single string. Callers expect strings, not the raw JSON the model emits.
     return shuffle(
-      posts.map((choice) => {
-        const { content } = choice.message;
-        const start = content?.indexOf('[')!;
-        const end = content?.lastIndexOf(']')!;
-        try {
-          return JSON.parse(
-            '[' +
-              content
-                ?.slice(start + 1, end)
-                .replace(/\n/g, ' ')
-                .replace(/ {2,}/g, ' ') +
-              ']'
-          );
-        } catch (e) {
-          return [];
-        }
-      })
+      [...singles, ...threads]
+        .map((choice: any) => {
+          const raw = choice.message?.content as string | null | undefined;
+          if (!raw) {
+            return '';
+          }
+
+          const start = raw.indexOf('[');
+          const end = raw.lastIndexOf(']');
+
+          try {
+            const parsed = JSON.parse(
+              '[' +
+                raw
+                  .slice(start + 1, end)
+                  .replace(/\n/g, ' ')
+                  .replace(/ {2,}/g, ' ') +
+                ']'
+            );
+
+            return parsed
+              .map((entry: any) =>
+                typeof entry === 'string' ? entry : entry?.post ?? ''
+              )
+              .filter(Boolean)
+              .join('\n\n');
+          } catch (e) {
+            return '';
+          }
+        })
+        .filter(Boolean)
     );
   }
+
   async extractWebsiteText(content: string) {
-    const websiteContent = await openai.chat.completions.create({
+    const websiteContent = await textClient.chat.completions.create({
       messages: [
         {
           role: 'assistant',
@@ -145,7 +204,7 @@ export class OpenaiService {
           content,
         },
       ],
-      model: 'gpt-4.1',
+      model: textModel,
     });
 
     const { content: articleContent } = websiteContent.choices[0].message;
@@ -164,8 +223,8 @@ export class OpenaiService {
 
     const posts =
       (
-        await openai.chat.completions.parse({
-          model: 'gpt-4.1',
+        await textClient.chat.completions.parse({
+          model: textModel,
           messages: [
             {
               role: 'system',
@@ -197,8 +256,8 @@ export class OpenaiService {
             try {
               return (
                 (
-                  await openai.chat.completions.parse({
-                    model: 'gpt-4.1',
+                  await textClient.chat.completions.parse({
+                    model: textModel,
                     messages: [
                       {
                         role: 'system',
@@ -233,8 +292,8 @@ export class OpenaiService {
         const message = `You are an assistant that takes a text and break it into slides, each slide should have an image prompt and voice text to be later used to generate a video and voice, image prompt should capture the essence of the slide and also have a back dark gradient on top, image prompt should not contain text in the picture, generate between 3-5 slides maximum`;
         const parse =
           (
-            await openai.chat.completions.parse({
-              model: 'gpt-4.1',
+            await textClient.chat.completions.parse({
+              model: textModel,
               messages: [
                 {
                   role: 'system',
