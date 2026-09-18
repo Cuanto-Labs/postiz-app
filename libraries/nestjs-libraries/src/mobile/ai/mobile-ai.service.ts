@@ -47,13 +47,15 @@ export class MobileAiService {
   }
 
   private normalize(posts: unknown): string[] {
-    if (!Array.isArray(posts)) {
+    // separatePosts answers with { posts }, generatePosts with a bare array.
+    const list = Array.isArray(posts) ? posts : (posts as any)?.posts;
+    if (!Array.isArray(list)) {
       return [];
     }
 
     // A provider can hand back a plain string, a { post } object, or a thread
     // as a nested array — flatten all three into one suggestion per entry.
-    return posts
+    return list
       .map((post: any) => {
         if (typeof post === 'string') {
           return post;

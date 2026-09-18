@@ -90,4 +90,36 @@ describe('MobileAiService', () => {
 
     expect(openaiService.generatePosts).not.toHaveBeenCalled();
   });
+
+  it('flattens generatePosts threads and separatePosts envelopes', async () => {
+    process.env.OPENAI_API_KEY = 'sk-test';
+    const { service, aiConsentRepository, openaiService } = makeDeps();
+    aiConsentRepository.getConsentAt.mockResolvedValue(new Date());
+    openaiService.generatePosts.mockResolvedValue([
+      'single post',
+      [{ post: 'part one' }, { post: 'part two' }],
+      { post: 'object post' },
+      '',
+    ]);
+
+    const variations = await service.suggest('user-1', {
+      content: 'hello',
+      mode: 'variations',
+    });
+    expect(variations.suggestions).toEqual([
+      'single post',
+      'part one\n\npart two',
+      'object post',
+    ]);
+
+    openaiService.separatePosts.mockResolvedValue({
+      posts: ['first', 'second'],
+    });
+    const fit = await service.suggest('user-1', {
+      content: 'hello',
+      mode: 'fit',
+      maxLength: 120,
+    });
+    expect(fit.suggestions).toEqual(['first', 'second']);
+  });
 });
