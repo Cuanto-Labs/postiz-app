@@ -322,17 +322,22 @@ struct MediaTrayView: View {
     private func uploadPicked(_ items: [PhotosPickerItem]) async {
         for item in items {
             guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-            let fileName = item.itemIdentifier ?? "upload-\(UUID().uuidString).jpg"
-            let contentType = Self.contentType(for: item, data: data)
+            // The picker's own name/type are unusable as-is (asset identifier, HEIC, QuickTime);
+            // MediaPreparer re-encodes and names the file the way the backend expects.
+            guard let prepared = await MediaPreparer.prepare(data: data, contentType: Self.contentType(for: item))
+            else { continue }
             let itemId = UUID().uuidString
 
-            if let uiImage = UIImage(data: data) {
+            if let uiImage = UIImage(data: prepared.data) {
                 thumbnails[itemId] = uiImage
             }
-            let attributes = await MediaProbe.attributes(id: itemId, data: data, contentType: contentType)
+            let attributes = await MediaProbe.attributes(
+                id: itemId, data: prepared.data, contentType: prepared.contentType)
             probedAttributes[itemId] = attributes
 
-            if let media = await uploadQueue.upload(id: itemId, data: data, fileName: fileName, contentType: contentType)
+            if let media = await uploadQueue.upload(
+                id: itemId, data: prepared.data, fileName: prepared.fileName,
+                contentType: prepared.contentType)
             {
                 let finalAttributes = attributes.map {
                     SelectedMediaAttributes(
@@ -343,7 +348,7 @@ struct MediaTrayView: View {
         }
     }
 
-    private static func contentType(for item: PhotosPickerItem, data: Data) -> String {
+    private static func contentType(for item: PhotosPickerItem) -> String {
         if let utType = item.supportedContentTypes.first, let mime = utType.preferredMIMEType {
             return mime
         }

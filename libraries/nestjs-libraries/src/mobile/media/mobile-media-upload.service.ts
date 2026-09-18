@@ -95,8 +95,17 @@ export class MobileMediaUploadService {
     contentType?: string;
     size: number;
   }): Promise<CreateUploadResult> {
-    const ext = path.extname(fileName || '').toLowerCase();
     const allowed = mobileUploadMime();
+    let ext = path.extname(fileName || '').toLowerCase();
+
+    // A client can hand over a name with no usable extension (an iOS photo picker
+    // passes the asset identifier). Fall back to the declared content type rather
+    // than rejecting an otherwise supported file.
+    if (!allowed[ext] && contentType) {
+      ext =
+        Object.keys(allowed).find((key) => allowed[key] === contentType) ?? ext;
+    }
+
     const expectedMime = allowed[ext];
     if (!expectedMime || (contentType && contentType !== expectedMime)) {
       throw new BadRequestException('Unsupported file type.');

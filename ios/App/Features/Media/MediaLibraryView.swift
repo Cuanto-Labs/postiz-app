@@ -114,9 +114,12 @@ struct MediaLibraryView: View {
     private func uploadPicked(_ items: [PhotosPickerItem]) async {
         for item in items {
             guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-            let fileName = item.itemIdentifier ?? "upload-\(UUID().uuidString).jpg"
-            let contentType = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
-            if await uploadQueue.upload(data: data, fileName: fileName, contentType: contentType)
+            // Same normalization the composer tray does: the picker hands back asset identifiers
+            // and HEIC/QuickTime payloads the backend rejects.
+            let picked = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
+            guard let prepared = await MediaPreparer.prepare(data: data, contentType: picked) else { continue }
+            if await uploadQueue.upload(
+                data: prepared.data, fileName: prepared.fileName, contentType: prepared.contentType)
                 != nil
             {
                 await viewModel.load()

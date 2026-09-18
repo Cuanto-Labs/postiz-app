@@ -1,4 +1,8 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { MobileMediaListQueryDto } from '@gitroom/nestjs-libraries/dtos/mobile/mobile-media.dto';
+import 'reflect-metadata';
 
 // mobile.module.ts pulls in ApiModule and MobileAuthController, both of which
 // transitively import the real AuthService, which pulls in nostr-tools (ESM)
@@ -261,6 +265,17 @@ describe('MobileMediaController', () => {
       body
     );
     expect(result).toEqual({ id: 'media-1' });
+  });
+
+  it('accepts ?page=2 from a query string', async () => {
+    const dto = plainToInstance(
+      MobileMediaListQueryDto,
+      { page: '2' },
+      { enableImplicitConversion: false }
+    );
+
+    expect(await validate(dto)).toEqual([]);
+    expect(dto.page).toBe(2);
   });
 
   it('MobileModule includes MobileMediaController and MobileMediaUploadService', () => {

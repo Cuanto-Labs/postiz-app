@@ -55,8 +55,12 @@ export class MobileMediaAbortUploadDto {
 }
 
 export class MobileMediaListQueryDto {
+  // Query strings are strings; without the transform this rejects every ?page=N
+  // with "page must be an integer number".
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
+  @Min(1)
   page?: number;
 
   @IsOptional()

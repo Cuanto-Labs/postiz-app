@@ -112,6 +112,24 @@ describe('MobileMediaUploadService', () => {
       ).rejects.toMatchObject({ status: 400 });
     });
 
+    it('falls back to the content type when the file name carries no extension', async () => {
+      // An iOS picker passes the PHAsset identifier ("…/L0/001") as the file name.
+      const { svc } = makeService((command: any) => {
+        if (command instanceof CreateMultipartUploadCommand) {
+          return { UploadId: 'upload-1' };
+        }
+        throw new Error('unexpected command');
+      });
+
+      const result = await svc.createUpload({
+        fileName: 'B84E8479-475C-4727-A4A4-B77AA9980897/L0/001',
+        contentType: 'image/jpeg',
+        size: 10,
+      });
+
+      expect(result.key.endsWith('.jpg')).toBe(true);
+    });
+
     it('rejects when contentType does not match the extension', async () => {
       const { svc } = makeService(() => {
         throw new Error('should not call client');
