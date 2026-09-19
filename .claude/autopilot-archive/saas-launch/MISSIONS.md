@@ -44,7 +44,7 @@ attempts: []
 
 ## M6: Go-live launch checklist
 status: DONE
-goal: Write docs/LAUNCH-CHECKLIST.md — env matrix per layer (Vercel frontend / Railway backend) with the known gaps and switches: STRIPE_PUBLISHABLE_KEY presence = billing master switch (absent ⇒ self-host free mode w/ ULTIMATE perms — permissions.service.ts:27), STRIPE_SIGNING_KEY missing on Railway (webhooks will fail), X_API_KEY/X_API_SECRET/X_URL missing while ENABLED_INTEGRATIONS includes x, MCP_URL missing on Vercel, DISABLE_REGISTRATION, FREE_GRANT_MONTHS, AGENT_PROVIDER pool, ENABLED_INTEGRATIONS filter. Plus: deploy targets (Vercel prj_CYH0IyIX346Xey72QQIl8eUl0tSn, Railway backend svc b928eea3), B2B enterprise API + OAuth apps notes, legal-template caveat (terms/privacy are templates, need attorney review).
+goal: Write docs/LAUNCH-CHECKLIST.md — env matrix per layer (Vercel frontend / deb backend) with the known gaps and switches: STRIPE_PUBLISHABLE_KEY presence = billing master switch (absent ⇒ self-host free mode w/ ULTIMATE perms — permissions.service.ts:27), STRIPE_SIGNING_KEY missing on deb (webhooks will fail), X_API_KEY/X_API_SECRET/X_URL missing while ENABLED_INTEGRATIONS includes x, MCP_URL missing on Vercel, DISABLE_REGISTRATION, FREE_GRANT_MONTHS, AGENT_PROVIDER pool, ENABLED_INTEGRATIONS filter. Plus: deploy targets (Vercel prj_CYH0IyIX346Xey72QQIl8eUl0tSn, deb backend container pz-app), B2B enterprise API + OAuth apps notes, legal-template caveat (terms/privacy are templates, need attorney review).
 acceptance: docs/LAUNCH-CHECKLIST.md exists with sections {Env matrix, Billing switch, Known gaps, Deploy targets, B2B notes, Legal caveat}; no secret VALUES in the doc.
 fails: 0
 attempts: []
@@ -57,9 +57,9 @@ acceptance: ≥4 screenshot files exist (landing+pricing × desktop+mobile) show
 fails: 0
 attempts: []
 
-## M8: Promote + deploy to production (Vercel + Railway)
+## M8: Promote + deploy to production (Vercel + deb)
 status: TODO
-goal: Runs LAST, only when M0-M7 all DONE/BLOCKED. Merge autopilot/saas-launch → dev → staging → main (merges, never force). Push dev, staging, main to `cuantolabs` remote ONLY (github.com/Cuanto-Labs/cuanto-socials; NEVER origin = upstream postiz). Then verify deploys picked up: Vercel project cuanto-socials (prj_CYH0IyIX346Xey72QQIl8eUl0tSn) shows new production deployment READY serving the marketing landing (curl https://socials.cuantolabs.com/ logged-out → 200 marketing page, /join/creators → 200); Railway backend service (project 428ac2f8, service b928eea3) redeployed successfully. Tokens: RAILWAY_TOKEN fresh from vault (local ~/.secrets copy is dead), VERCEL_WRITE_TOKEN from vault (NOT VERCEL_TOKEN). Commit author must be eliran@cuantotec.com (already set).
-acceptance: git log shows main == staging == dev tip containing all mission commits, pushed to cuantolabs remote; curl prod / returns marketing page HTML (200, no /auth redirect) and /join/creators 200; Vercel deployment state READY on latest commit SHA; Railway deployment SUCCESS on latest commit SHA.
+goal: Runs LAST, only when M0-M7 all DONE/BLOCKED. Merge autopilot/saas-launch → dev → staging → main (merges, never force). Push dev, staging, main to `cuantolabs` remote ONLY (github.com/Cuanto-Labs/cuanto-socials; NEVER origin = upstream postiz). Then verify deploys picked up: Vercel project cuanto-socials (prj_CYH0IyIX346Xey72QQIl8eUl0tSn) shows new production deployment READY serving the marketing landing (curl https://socials.cuantolabs.com/ logged-out → 200 marketing page, /join/creators → 200); deb backend container `pz-app` redeployed successfully (git pull + docker compose build/up on deb). Tokens: VERCEL_WRITE_TOKEN from vault (NOT VERCEL_TOKEN). Commit author must be eliran@cuantotec.com (already set).
+acceptance: git log shows main == staging == dev tip containing all mission commits, pushed to cuantolabs remote; curl prod / returns marketing page HTML (200, no /auth redirect) and /join/creators 200; Vercel deployment state READY on latest commit SHA; deb container `pz-app` running latest commit SHA.
 fails: 0
 attempts: []

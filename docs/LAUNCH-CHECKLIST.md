@@ -1,15 +1,15 @@
 # Launch Checklist — Cuanto Socials Go-Live
 
 Ops checklist for running this fork as production SaaS. Env var **names** only —
-no values. Rotate/set actual secrets via Vercel/Railway dashboards or vault, never
-inline in this repo.
+no values. Rotate/set actual secrets via Vercel/vault or the `~/services/postiz`
+compose env on deb, never inline in this repo.
 
 ---
 
 ## Env matrix
 
-Layer legend: **FE** = Vercel frontend (`apps/frontend`), **BE** = Railway backend
-(`apps/backend` + `apps/orchestrator`, single service per `railway.toml`).
+Layer legend: **FE** = Vercel frontend (`apps/frontend`), **BE** = deb backend
+(`apps/backend` + `apps/orchestrator`, docker container `pz-app`).
 
 ### Core / infra
 
@@ -17,7 +17,7 @@ Layer legend: **FE** = Vercel frontend (`apps/frontend`), **BE** = Railway backe
 |---|---|---|---|
 | `DATABASE_URL` | BE | Required | Postgres (Neon). `preDeployCommand` runs `prisma-db-push` on every deploy. |
 | `REDIS_URL` | BE | Required | Queue/cache backing. |
-| `TEMPORAL_ADDRESS` | BE | Required | Temporal Cloud endpoint; `start.sh` pre-resolves DNS via DoH (Railway resolver breaks on Temporal Cloud hostnames). |
+| `TEMPORAL_ADDRESS` | BE | Required | Temporal Cloud endpoint; `start.sh` pre-resolves DNS via DoH (the container's OS resolver breaks on Temporal Cloud hostnames). |
 | `RUN_ORCHESTRATOR_IN_PROCESS` | BE | Optional | `true` = single process hosts API + Temporal workers; unset = two forked processes (backend + orchestrator). |
 | `BACKEND_HEAP_MB` / `ORCHESTRATOR_HEAP_MB` | BE | Optional | `--max-old-space-size` per process; defaults 448 / 320. |
 | `JWT_SECRET` | BE + FE | Required | Must match across both layers (auth cookie verification). |
@@ -35,17 +35,17 @@ Layer legend: **FE** = Vercel frontend (`apps/frontend`), **BE** = Railway backe
 |---|---|---|---|
 | `STRIPE_PUBLISHABLE_KEY` | FE + BE | **Required for paid mode** | Presence is the billing master switch — see below. |
 | `STRIPE_SECRET_KEY` | BE | Required for paid mode | Falls back to a dummy `sk_nothing` if unset (`stripe.service.ts`). |
-| `STRIPE_SIGNING_KEY` | BE | Required for paid mode | Webhook signature verification (`stripe.controller.ts`). **Currently MISSING on Railway — see Known gaps.** |
+| `STRIPE_SIGNING_KEY` | BE | Required for paid mode | Webhook signature verification (`stripe.controller.ts`). **Currently MISSING on deb — see Known gaps.** |
 | `STRIPE_SIGNING_KEY_CONNECT` | BE | Optional | Stripe Connect webhook variant (marketplace/payout path, dormant feature). |
 | `FEE_AMOUNT` | BE | Optional | Marketplace/take-rate fee fraction. |
-| `FREE_GRANT_MONTHS` *(not an env var)* | BE | N/A | Hardcoded const in `free.tier.ts:10` (currently `3`) — months of free `STANDARD`-tier grant for new orgs. Change requires a code edit, not a Railway env var. |
+| `FREE_GRANT_MONTHS` *(not an env var)* | BE | N/A | Hardcoded const in `free.tier.ts:10` (currently `3`) — months of free `STANDARD`-tier grant for new orgs. Change requires a code edit, not an env var. |
 
 ### Social provider credentials (only needed for providers actually enabled)
 
 | Var | Layer | Required | Notes |
 |---|---|---|---|
 | `ENABLED_INTEGRATIONS` | BE | Optional | Comma-separated allow-list of provider IDs to activate (e.g. `x,linkedin,linkedin-page`). Unset = all providers active. |
-| `X_API_KEY` / `X_API_SECRET` | BE | Required if `x` enabled | Used by every X provider method (post, refresh, OAuth signing). **Currently MISSING on Railway while `x` is enabled — see Known gaps.** |
+| `X_API_KEY` / `X_API_SECRET` | BE | Required if `x` enabled | Used by every X provider method (post, refresh, OAuth signing). **Currently MISSING on deb while `x` is enabled — see Known gaps.** |
 | `X_URL` | BE | Optional | X callback base override; falls back to `FRONTEND_URL`. |
 | `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | BE | Required if LinkedIn enabled | |
 | `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | BE | Required if Facebook/Threads enabled | |
@@ -121,7 +121,7 @@ organization in this instance into unlimited self-host mode.** There is no parti
 state — it's binary per-deploy, not per-org.
 
 - [ ] Confirm `STRIPE_PUBLISHABLE_KEY` + `STRIPE_SECRET_KEY` + `STRIPE_SIGNING_KEY` are
-      all set on Railway before announcing paid plans publicly.
+      all set on deb before announcing paid plans publicly.
 - [ ] Vault status (item "Stripe — CuantoSocials", checked 2026-08-06): live publishable
       key + full TEST pair present; **live secret key and live signing secret MISSING** —
       reveal/create the live secret key in the Stripe dashboard and store it in vault,
@@ -143,20 +143,20 @@ state — it's binary per-deploy, not per-org.
 
 ## Known gaps
 
-- [ ] **`STRIPE_SIGNING_KEY` missing on Railway.** Stripe webhook signature
+- [ ] **`STRIPE_SIGNING_KEY` missing on deb.** Stripe webhook signature
       verification (`stripe.controller.ts`) will throw on every event — subscription
       state (upgrades, cancellations, payment failures) will not sync from Stripe.
       Set before enabling billing.
-- [ ] **`X_API_KEY` / `X_API_SECRET` missing on Railway** while `x` is present in
+- [ ] **`X_API_KEY` / `X_API_SECRET` missing on deb** while `x` is present in
       `ENABLED_INTEGRATIONS`. X (Twitter) connect/post/refresh will fail for any user
       attempting to link that channel. Either set the credentials or drop `x` from
       `ENABLED_INTEGRATIONS` until they're available.
 - [ ] **`MCP_URL` missing on Vercel.** MCP server URL doesn't surface to the frontend;
       MCP-based agent integrations are effectively undiscoverable/unusable from the UI
       until set.
-- [ ] **All stored `VERCEL_*` vault tokens found 403-dead (2026-07-30).** Rotate Vercel
-      and Railway deploy tokens before the next deploy — do not assume the vault copies
-      are still valid.
+- [ ] **All stored `VERCEL_*` vault tokens found 403-dead (2026-07-30).** Rotate the
+      Vercel deploy token before the next deploy — do not assume the vault copy
+      is still valid.
 - [ ] Terms/privacy pages are placeholder templates (see Legal caveat) — must be
       replaced before charging.
 - [ ] `Credits` ledger only meters `'ai_images'` — AI video generation (Veo 3) is a flat
@@ -172,19 +172,19 @@ state — it's binary per-deploy, not per-org.
 | Target | Details |
 |---|---|
 | Frontend | Vercel project `prj_CYH0IyIX346Xey72QQIl8eUl0tSn`, prod domain `socials.cuantolabs.com`. Framework `nextjs`, build `pnpm run build:frontend`, output `apps/frontend/.next` (`vercel.json`). `/api/*` rewrites to `https://api.socials.cuantolabs.com/*`. |
-| Backend | Railway project `428ac2f8`, service `b928eea3`. Nixpacks build: `pnpm install && pnpm run build:backend && pnpm run build:orchestrator && pnpm run build:workflows`. Start: `bash start.sh` (runs backend + orchestrator as two processes, or one if `RUN_ORCHESTRATOR_IN_PROCESS=true`). `preDeployCommand: pnpm run prisma-db-push` runs on every deploy — schema changes go live automatically on deploy, no separate migration gate. Compute pinned to `us-east-1` (co-located with Neon) via `railway.toml` multi-region config. |
+| Backend | Docker container `pz-app` on host deb, compose `~/stacks-postiz.compose.yml`, built from source checkout `~/services/postiz` (main branch). Deploy: `git pull` in `~/services/postiz`, then `docker compose -f ~/stacks-postiz.compose.yml build app && docker compose -f ~/stacks-postiz.compose.yml up -d app`. Start: `bash start.sh` (runs backend + orchestrator as two processes, or one if `RUN_ORCHESTRATOR_IN_PROCESS=true`). Schema push (`prisma-db-push`) runs on container start — schema changes go live automatically, no separate migration gate. |
 | Database | Neon Postgres, `aws-us-east-1`, via `DATABASE_URL`. |
 | Remote | Push to the `cuantolabs` remote (`github.com/Cuanto-Labs/cuanto-socials`) — **never** `origin` (upstream `gitroomhq/postiz-app`). |
-| Branch model | `dev` → `staging` → `main`. `main` = production, auto-deploys both Vercel + Railway. Never commit directly to `main`. |
+| Branch model | `dev` → `staging` → `main`. `main` = production; Vercel auto-deploys the frontend from `main`, deb backend deploy is manual (`git pull` + rebuild). Never commit directly to `main`. |
 
 Go-live steps:
-- [ ] Rotate Vercel + Railway deploy tokens (see Known gaps) and re-verify CI/CD can
-      still deploy before relying on either.
+- [ ] Rotate the Vercel deploy token (see Known gaps) and re-verify CI/CD can
+      still deploy before relying on it.
 - [ ] Confirm `main` branch protection / required checks before opening it to
       auto-deploy from merges.
-- [ ] Verify Railway `preDeployCommand` (`prisma-db-push`) behavior is acceptable for
-      production — it pushes schema directly, no migration history/rollback. Consider
-      switching to `prisma migrate deploy` before scaling the team past solo-founder.
+- [ ] Verify `prisma-db-push` on container start is acceptable for production — it
+      pushes schema directly, no migration history/rollback. Consider switching to
+      `prisma migrate deploy` before scaling the team past solo-founder.
 - [ ] Confirm DNS/TLS for `socials.cuantolabs.com` and `api.socials.cuantolabs.com`
       are both live and match `vercel.json` rewrite target.
 
@@ -245,5 +245,5 @@ Every claim above is grounded in a direct code read at commit time of this doc:
 `pricing.ts`, `permissions.service.ts`, `free.tier.ts`, `ai.provider.ts`,
 `stripe.service.ts`, `stripe.controller.ts`, `x.provider.ts`,
 `integration.manager.ts`, `email.service.ts`, `resend.provider.ts`, `proxy.ts`,
-`docker-compose.yaml`, `railway.toml`, `vercel.json`, `start.sh`, `LICENSE`, plus
+`docker-compose.yaml`, `vercel.json`, `start.sh`, `LICENSE`, plus
 run-state facts from `.claude/autopilot/STATE.md` and `docs/MONETIZATION.md`.

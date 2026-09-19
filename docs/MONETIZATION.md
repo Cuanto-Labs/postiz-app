@@ -46,7 +46,7 @@ moving off that square.
 |---|---|---|
 | **Influencer marketplace** | `Orders`, `OrderItems`, `Messages`, `MessagesGroup`, `PayoutProblems`, `captureId` | Buyer/seller ordering of sponsored posts with escrow + payouts. Gitroom legacy. Take-rate business, fully modelled. |
 | **Agency directory** | `SocialMediaAgency`, `SocialMediaAgencyNiche`, `approved` flag | Curated, admin-approved agency listings by niche. Listing-fee / lead-gen business. |
-| **Self-host / open-core** | AGPL-3.0 `LICENSE`, `IS_GENERAL` flag, docker-compose, Railway/Vercel configs | Managed-hosting and support revenue. |
+| **Self-host / open-core** | AGPL-3.0 `LICENSE`, `IS_GENERAL` flag, docker-compose, deb/Vercel deploy configs | Managed-hosting and support revenue. |
 
 ### Planned, high-differentiation
 `FUTURE-FEATURES.md` — AI auto-comment/auto-reply with anti-slop validator, human-in-loop,
@@ -249,7 +249,7 @@ your modified version**. Practical consequences:
 - [ ] MCP server still self-identifies as `'Postiz MCP'` (`start.mcp.ts:40`)
 
 ### Infra gaps (from `MISSIONS.md` M6, already known)
-- [ ] `STRIPE_SIGNING_KEY` missing on Railway — **webhooks fail, subscriptions won't sync**
+- [ ] `STRIPE_SIGNING_KEY` missing on deb — **webhooks fail, subscriptions won't sync**
 - [ ] `STRIPE_PUBLISHABLE_KEY` presence is the billing master switch (absent ⇒ everyone gets ULTIMATE free — `permissions.service.ts:27`)
 - [ ] `X_API_KEY` / `X_API_SECRET` missing while `x` is in `ENABLED_INTEGRATIONS`
 - [ ] `MCP_URL` missing on Vercel

@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 // Everything else that watches this backend runs at home: fleet-watchdog on the
 // Mac mini and postiz-guard.sh on deb itself. One power cut or one dead ISP link
 // takes out the service AND every watcher of it at the same time — which is the
-// shape of the failure that let the Railway backend stay down for ~2 months
+// shape of the failure that let the old backend host stay down for ~2 months
 // unnoticed. This check runs on Vercel's infrastructure, so it survives that.
 //
 // It deliberately probes BACKEND_INTERNAL_URL (the Tailscale Funnel origin)

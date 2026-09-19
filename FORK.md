@@ -41,7 +41,8 @@ Additive, so the startup `prisma db push` was safe.
    `api.socials.cuantolabs.com`.
 
 Backend hosting and ops live outside this repo — see `postiz-stack.sh` in
-`coding-scripts` and the vault note `Fleet/Postiz-Railway-to-deb-2026-08-16`.
+`coding-scripts`. Backend runs as docker container `pz-app` on host deb
+(compose `~/stacks-postiz.compose.yml`, source checkout `~/services/postiz`).
 
 ## The 6 files that conflict on every catch-up
 
