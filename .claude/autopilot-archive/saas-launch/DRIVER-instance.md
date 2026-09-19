@@ -40,6 +40,6 @@ your turn. The Stop hook will re-feed this protocol until the completion promise
 - NEVER output the promise when untrue. Escalate honestly instead.
 - No external writes (push/deploy/email/API) unless VISION.md records `--allow-external`.
   Local commits always allowed. (This run: VISION.md records external writes GRANTED —
-  scope: cuantolabs remote pushes + Vercel/Railway deploy verification ONLY, never origin.)
+  scope: cuantolabs remote pushes + Vercel/deb deploy verification ONLY, never origin.)
 - Destructive ops (schema drop, data deletion) → BLOCKED + escalate. Never unattended.
 - Secrets via ~/.secrets / vault only.
