@@ -44,7 +44,7 @@ import { TumblrProvider } from '@gitroom/nestjs-libraries/integrations/social/tu
 // When set, only those providers are instantiated and Temporal workers are registered for them.
 // Unset = all 33 providers (default, full feature set).
 //
-// Example Railway env: ENABLED_INTEGRATIONS=x,linkedin,linkedin-page
+// Example env: ENABLED_INTEGRATIONS=x,linkedin,linkedin-page
 //
 // Boot time impact: each Temporal worker = one Cloud task-queue connection (~100-200ms).
 // 33 workers → ~8s boot. 2 workers → ~2-3s boot.

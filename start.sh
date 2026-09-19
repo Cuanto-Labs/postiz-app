@@ -1,7 +1,7 @@
 #!/bin/bash
 # Temporal Cloud DNS pre-resolution.
 # The native Rust worker transport (tonic) resolves DNS synchronously via getaddrinfo.
-# Railway container's OS resolver fails for Temporal Cloud hostnames.
+# The container's OS resolver fails for Temporal Cloud hostnames.
 # Fix: use DNS-over-HTTPS (Cloudflare 1.1.1.1) — bypasses the broken OS resolver.
 # Injecting into /etc/hosts makes getaddrinfo succeed for both Rust and Node.js.
 if [ -n "$TEMPORAL_ADDRESS" ]; then

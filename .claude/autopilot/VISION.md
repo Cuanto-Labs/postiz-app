@@ -2,7 +2,7 @@
 
 **Repo:** `C:\Users\elira\coding\cuanto-socials-postiz` (Postiz fork, pnpm monorepo, Next.js frontend + NestJS backend + Temporal orchestrator)
 **Branch:** `autopilot/saas-launch` (cut from `dev`; `dev`/`staging` created off `main` per fleet branch model)
-**External writes:** GRANTED by Eliran 2026-07-30 ("deploy latest versions to main and make sure updates on vercel and railways"). Scope: push to `cuantolabs` remote (github.com/Cuanto-Labs/cuanto-socials) ONLY — NEVER push to `origin` (upstream gitroomhq/postiz-app) — plus Vercel/Railway deploy verification. Promotion path per fleet rule: autopilot branch → dev → staging → main, merges not force-push. Deploy = M8, runs LAST after build missions.
+**External writes:** GRANTED by Eliran 2026-07-30 ("deploy latest versions to main and make sure updates on vercel and railways"). Scope: push to `cuantolabs` remote (github.com/Cuanto-Labs/cuanto-socials) ONLY — NEVER push to `origin` (upstream gitroomhq/postiz-app) — plus Vercel/deb deploy verification. Promotion path per fleet rule: autopilot branch → dev → staging → main, merges not force-push. Deploy = M8, runs LAST after build missions.
 
 ## Goal
 
@@ -26,7 +26,7 @@ surfaces, and a documented go-live checklist covering the known env gaps.
 6. Public pages (/, /pricing, /join/*) export metadata (title/description/OG); no user-visible
    "Postiz" branding on any public page.
 7. `docs/LAUNCH-CHECKLIST.md` documents the go-live env matrix incl. known gaps:
-   STRIPE_SIGNING_KEY missing on Railway, X_API_KEY/X_API_SECRET missing while `x` enabled,
+   STRIPE_SIGNING_KEY missing on deb, X_API_KEY/X_API_SECRET missing while `x` enabled,
    MCP_URL missing on Vercel, STRIPE_PUBLISHABLE_KEY presence = billing on/off switch.
 8. Desktop + mobile screenshots of landing + pricing captured (fleet verification standard).
 
