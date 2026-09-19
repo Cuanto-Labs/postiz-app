@@ -2,7 +2,7 @@
 
 **Repo:** `C:\Users\elira\coding\cuanto-socials-postiz` (Postiz fork, pnpm monorepo, Next.js frontend + NestJS backend + Temporal orchestrator)
 **Branch:** `autopilot/saas-launch` (cut from `dev`; `dev`/`staging` created off `main` per fleet branch model)
-**External writes:** GRANTED by Eliran 2026-07-30 ("deploy latest versions to main and make sure updates on vercel and railways"). Scope: push to `cuantolabs` remote (github.com/Cuanto-Labs/cuanto-socials) ONLY — NEVER push to `origin` (upstream gitroomhq/postiz-app) — plus Vercel/deb deploy verification. Promotion path per fleet rule: autopilot branch → dev → staging → main, merges not force-push. Deploy = M8, runs LAST after build missions.
+**External writes:** GRANTED by Eliran 2026-07-30 ("deploy latest versions to main and make sure updates on vercel"). Scope: push to `cuantolabs` remote (github.com/Cuanto-Labs/cuanto-socials) ONLY — NEVER push to `origin` (upstream gitroomhq/postiz-app) — plus Vercel/deb deploy verification. Promotion path per fleet rule: autopilot branch → dev → staging → main, merges not force-push. Deploy = M8, runs LAST after build missions.
 
 ## Goal
 
