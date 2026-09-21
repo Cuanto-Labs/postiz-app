@@ -1,14 +1,14 @@
 name: Resolve staging conflicts
 
-# Reproduces a staging <- main merge inside the runner. If it conflicts, Claude
+# Reproduces a staging <- main merge inside the runner. If it conflicts, the merge agent
 # resolves the conflicts and creates the merge commit. Nothing is commented,
 # nothing is pushed unless the resolution passes every verification below.
 #
-# claude-code-action rejects `push` events, so detection runs on a schedule.
+# Detection runs on a schedule (kept from the push-event limitation of the previous action).
 #
 # Required secrets:
 #   STAGING_MERGE_KEY         private half of a write-enabled deploy key
-#   CLAUDE_CODE_OAUTH_TOKEN   Claude API key, despite the secret name
+#   CUANTO_AI_KEY             Cuanto AI gateway key (vault CUANTO_AI_KEY_CI), model allowlist + USD cap
 
 on:
   schedule:
@@ -72,7 +72,7 @@ jobs:
           fi
 
       # CI definitions always come from main, so conflicts under .github/ are
-      # settled here by taking main's side. This keeps Claude away from them
+      # settled here by taking main's side. This keeps the agent away from them
       # and stops this workflow from deadlocking on edits to itself: it was
       # added independently on both branches, so git sees add/add and every
       # change to it on main conflicts no matter how staging's copy looks.
@@ -107,38 +107,72 @@ jobs:
           git checkout --theirs -- pnpm-lock.yaml
           git add -- pnpm-lock.yaml
 
-      - name: Resolve with Claude
+      - name: Resolve with the merge agent
         if: steps.probe.outputs.conflicted == 'true'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_bots: "github-actions[bot]"
-          prompt: |
-            The repository is checked out on `staging`, part-way through
-            `git merge --no-ff origin/main`, and the merge has conflicts.
+        env:
+          CUANTO_AI_KEY: ${{ secrets.CUANTO_AI_KEY }}
+          OPENCODE_CONFIG: ${{ runner.temp }}/opencode.json
+          OPENCODE_DISABLE_AUTOUPDATE: "1"
+        run: |
+          npm install --global opencode-ai@1.18.31
 
-            Resolve every conflicted file so the result preserves the intent of
-            both sides. Then `git add` the resolved paths and create the merge
-            commit with:
+          # Model traffic goes through the Cuanto AI gateway (OpenAI-compatible).
+          # The config lives outside the checkout so the working tree stays clean.
+          # Edits are allowed, shell is limited to the git commands the merge needs.
+          cat > "$OPENCODE_CONFIG" <<'JSON'
+          {
+            "$schema": "https://opencode.ai/config.json",
+            "autoupdate": false,
+            "share": "disabled",
+            "provider": {
+              "cuanto": {
+                "npm": "@ai-sdk/openai-compatible",
+                "options": { "baseURL": "https://ai.cuantolabs.com/v1", "apiKey": "{env:CUANTO_AI_KEY}" },
+                "models": { "deepseek/deepseek-v4-pro": {} }
+              }
+            },
+            "permission": {
+              "edit": "allow",
+              "webfetch": "deny",
+              "bash": {
+                "*": "deny",
+                "git status*": "allow",
+                "git diff*": "allow",
+                "git log*": "allow",
+                "git show*": "allow",
+                "git ls-files*": "allow",
+                "git add*": "allow",
+                "git commit*": "allow"
+              }
+            }
+          }
+          JSON
 
-              git commit --no-edit --trailer "Resolved-by: claude-code-action"
+          cat > "$RUNNER_TEMP/merge-prompt.md" <<'PROMPT'
+          The repository is checked out on `staging`, part-way through
+          `git merge --no-ff origin/main`, and the merge has conflicts.
 
-            Constraints:
-            - Change nothing beyond what the conflict resolution requires.
-            - Do not push, switch branches, create branches, or amend history.
-            - Do not post comments, open issues, or touch any pull request.
-            - Never modify anything under `.github/`. Conflicts there are
-              already resolved and staged for you; leave them exactly as they
-              are and resolve only the remaining paths.
-            - Never modify `pnpm-lock.yaml`. It is generated, it is already
-              staged for you, and it is regenerated from `package.json` after
-              you finish. Resolve `package.json` itself normally.
-            - If a conflict is ambiguous enough that you would be guessing at
-              the correct resolution, stop without committing and explain why.
-          claude_args: |
-            --model claude-sonnet-5
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(git add:*),Bash(git commit:*)"
+          Resolve every conflicted file so the result preserves the intent of
+          both sides. Then `git add` the resolved paths and create the merge
+          commit with:
+
+            git commit --no-edit --trailer "Resolved-by: opencode"
+
+          Constraints:
+          - Change nothing beyond what the conflict resolution requires.
+          - Do not push, switch branches, create branches, or amend history.
+          - Do not post comments, open issues, or touch any pull request.
+          - Never modify anything under `.github/`. Conflicts there are
+            already resolved and staged for you; leave them exactly as they
+            are and resolve only the remaining paths.
+          - Never modify `pnpm-lock.yaml`. It is generated, it is already
+            staged for you, and it is regenerated from `package.json` after
+            you finish. Resolve `package.json` itself normally.
+          - If a conflict is ambiguous enough that you would be guessing at
+            the correct resolution, stop without committing and explain why.
+          PROMPT
+
+          opencode run --model cuanto/deepseek/deepseek-v4-pro "$(cat "$RUNNER_TEMP/merge-prompt.md")"
 
       - name: Set up Node
         if: steps.probe.outputs.conflicted == 'true'
@@ -158,7 +192,7 @@ jobs:
       - name: Rewrite the lockfile
         if: steps.probe.outputs.conflicted == 'true'
         run: |
-          # If Claude bailed out, the merge is still open. Amending here would
+          # If the merge agent bailed out, the merge is still open. Amending here would
           # rewrite staging's tip instead, so leave it for Verify to fail on.
           if git rev-parse -q --verify MERGE_HEAD >/dev/null || git ls-files -u | grep -q .; then
             echo "merge was not committed, skipping the rewrite"
