@@ -5,6 +5,7 @@ import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prism
 import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
 import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
+import { PushService } from '@gitroom/nestjs-libraries/mobile/push/push.service';
 
 export type NotificationType = 'success' | 'fail' | 'info';
 
@@ -14,7 +15,8 @@ export class NotificationService {
     private _notificationRepository: NotificationsRepository,
     private _emailService: EmailService,
     private _organizationRepository: OrganizationRepository,
-    private _temporalService: TemporalService
+    private _temporalService: TemporalService,
+    private _pushService: PushService
   ) {}
 
   getMainPageCount(organizationId: string, userId: string) {
@@ -47,6 +49,10 @@ export class NotificationService {
     type: NotificationType = 'success'
   ) {
     await this._notificationRepository.createNotification(orgId, message);
+    // fire-and-forget: mobile push must never delay email/workflow delivery
+    void this._pushService
+      .notifyFromNotification(orgId, subject, message, type)
+      .catch(() => {});
     if (!sendEmail) {
       return;
     }

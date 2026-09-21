@@ -44,6 +44,7 @@ model Organization {
   webhooks            Webhooks[]
   oauthApp            OAuthApp[]
   oauthAuthorizations OAuthAuthorization[]
+  idempotencyKeys IdempotencyKey[] // fork: mobile API
 
   @@index([apiKey])
   @@index([streakSince])
@@ -102,6 +103,7 @@ model User {
   ip                    String?
   agent                 String?
   deletedAt             DateTime?
+  aiConsentAt           DateTime? // fork: mobile API
   comments              Comments[]
   items                 ItemUser[]
   groupBuyer            MessagesGroup[]      @relation("groupBuyer")
@@ -116,6 +118,8 @@ model User {
   sendFailureEmails     Boolean              @default(true)
   sendStreakEmails      Boolean              @default(true)
   oauthAuthorizations   OAuthAuthorization[]
+  mobileSessions MobileSession[] // fork: mobile API
+  pushDevices PushDevice[] // fork: mobile API
 
   @@unique([email, providerName])
   @@index([lastReadNotifications])
@@ -254,6 +258,8 @@ model Media {
   thumbnail          String?
   alt                String?
   thumbnailTimestamp Int?
+  status             String              @default("ready")
+  processingError    String?
   organization       Organization        @relation(fields: [organizationId], references: [id])
   agencies           SocialMediaAgency[]
   userPicture        User[]
@@ -1010,4 +1016,76 @@ model Announcement {
   description String
   color       AnnouncementColor @default(INFO)
   createdAt   DateTime          @default(now())
+}
+
+model MobileSession {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId          String
+  deviceId          String
+  deviceName        String?
+  platform          String    @default("ios")
+  refreshTokenHash  String    @unique
+  previousTokenHash String?   @unique
+  createdAt         DateTime  @default(now())
+  lastUsedAt        DateTime  @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+// fork: mobile API
+model IdempotencyKey {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  key            String
+  method         String
+  path           String
+  requestHash    String
+  statusCode     Int
+  response       String
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime
+
+  @@unique([organizationId, key])
+  @@index([expiresAt])
+}
+
+// fork: mobile API
+model PushDevice {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String?
+  apnsToken      String    @unique
+  environment    String    @default("production")
+  bundleId       String
+  locale         String?
+  timezone       String?
+  prefs          Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastSeenAt     DateTime  @default(now())
+  disabledAt     DateTime?
+
+  @@index([userId])
+  @@index([organizationId])
+}
+
+// fork: mobile API
+model AccountDeletionAudit {
+  id            String   @id @default(uuid())
+  userIdHash    String
+  email         String?
+  orgIdsDeleted String[]
+  orgIdsLeft    String[]
+  source        String   @default("mobile")
+  createdAt     DateTime @default(now())
+
+  @@index([userIdHash])
+  @@index([createdAt])
 }

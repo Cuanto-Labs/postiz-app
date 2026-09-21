@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "../../libraries/nestjs-libraries/src/mobile/**/*.ts"
+  ],
+  "exclude": ["dist", "node_modules", "**/*.spec.ts"]
+}

@@ -1,0 +1,43 @@
+{
+  "posts": [
+    {
+      "id": "post_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+      "group": "grp_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+      "publishDate": "2026-09-20T14:00:00.000Z",
+      "status": "scheduled",
+      "integration": {
+        "id": "chn_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+        "name": "Cuanto Labs",
+        "picture": "https://cdn.cuantolabs.com/channels/linkedin.png",
+        "providerIdentifier": "linkedin"
+      },
+      "content": "Shipping the mobile app soon."
+    },
+    {
+      "id": "post_01HZX3QW7K9F0M1N2P3Q4R5S6U",
+      "group": "grp_01HZX3QW7K9F0M1N2P3Q4R5S6U",
+      "publishDate": "2026-09-15T10:30:00.000Z",
+      "status": "published",
+      "integration": {
+        "id": "chn_01HZX3QW7K9F0M1N2P3Q4R5S6U",
+        "name": "@cuantolabs",
+        "picture": "https://cdn.cuantolabs.com/channels/x.png",
+        "providerIdentifier": "x"
+      },
+      "content": "Live now."
+    },
+    {
+      "id": "post_01HZX3QW7K9F0M1N2P3Q4R5S6V",
+      "group": "grp_01HZX3QW7K9F0M1N2P3Q4R5S6V",
+      "publishDate": "2026-09-16T09:00:00.000Z",
+      "status": "failed",
+      "integration": {
+        "id": "chn_01HZX3QW7K9F0M1N2P3Q4R5S6V",
+        "name": "cuantolabs",
+        "picture": "https://cdn.cuantolabs.com/channels/instagram.png",
+        "providerIdentifier": "instagram"
+      },
+      "content": "Retry required: media upload rejected."
+    }
+  ]
+}

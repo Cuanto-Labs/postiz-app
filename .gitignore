@@ -65,3 +65,11 @@ apps/frontend/public/g.js
 
 .vercel
 .env*.local
+
+# iOS (xcodegen-generated project + build artifacts)
+ios/CuantoSocials.xcodeproj/
+ios/.derived/
+ios/.build/
+ios/*.log
+ios/.design/
+ios/Packages/*/.build/
