@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["8AWCD3T4B5.com.cuantolabs.socials"],
+        "components": [
+          { "/": "/m/*", "comment": "mobile bounce pages" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["8AWCD3T4B5.com.cuantolabs.socials"]
+  }
+}

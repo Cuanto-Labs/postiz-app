@@ -1,11 +1,10 @@
 /**
- * /privacy — Privacy Policy.
+ * /privacy — Privacy Policy for Cuanto Socials (web app + iOS app).
  *
- * This is a TEMPLATE (ported from the Cuanto Labs saas-starter pattern). Review
- * every section with qualified legal counsel before treating it as final,
- * especially if you operate under GDPR, CCPA, or other privacy laws. The
- * NOT-LEGAL-ADVICE banner is intentional and must not be removed without that
- * review happening first.
+ * This is the URL filed as the Privacy Policy in the App Store listing, so it
+ * must stay consistent with the App Privacy ("nutrition label") answers in
+ * App Store Connect and with `ios/AppStore/metadata.md` § App Privacy. Change
+ * one, change the others in the same pass.
  */
 
 import type { Metadata } from 'next';
@@ -21,10 +20,10 @@ const BRAND = {
   },
 };
 
-const EFFECTIVE_DATE = 'July 22, 2026';
+const EFFECTIVE_DATE = 'September 17, 2026';
 
 const PRIVACY_TITLE = `Privacy Policy · ${BRAND.name}`;
-const PRIVACY_DESCRIPTION = `Privacy Policy for ${BRAND.name} — how we collect, use, and protect your data.`;
+const PRIVACY_DESCRIPTION = `Privacy Policy for ${BRAND.name} — what the web app and the iOS app collect, why, and how to delete it.`;
 
 export const metadata: Metadata = {
   title: PRIVACY_TITLE,
@@ -45,15 +44,6 @@ export default function PrivacyPage() {
 
   return (
     <div className="mx-auto max-w-[720px] px-[16px] py-[64px] text-white">
-      {/* NOT-LEGAL-ADVICE banner — do not remove */}
-      <div className="mb-[40px] rounded-[8px] border border-amber-700 bg-amber-950/40 px-[20px] py-[16px] text-amber-200 text-[13px]">
-        <strong>Template notice.</strong> This Privacy Policy is a
-        starting-point template and is <strong>not legal advice</strong>.
-        Privacy law varies significantly by jurisdiction (GDPR, CCPA, PIPEDA,
-        etc.). Have qualified legal counsel review and adapt this document
-        before treating it as final.
-      </div>
-
       <h1 className="mb-[8px] font-bold text-[36px] tracking-tight">
         Privacy Policy
       </h1>
@@ -62,181 +52,274 @@ export default function PrivacyPage() {
         {address ? `, ${address}` : ''}
       </p>
 
-      <LegalSection title="1. Who We Are">
+      <LegalSection title="1. Scope — What This Covers">
         <p>
           {companyName}{' '}
           (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) operates{' '}
-          {name} at{' '}
+          {name}: the web app at{' '}
           <a href={url} className="underline underline-offset-2 hover:text-white">
             {url}
           </a>{' '}
-          (the &ldquo;Service&rdquo;). This Privacy Policy explains how we
-          collect, use, and share information when you use the Service.
+          and the {name} app for iOS (together, the
+          &ldquo;Service&rdquo;). The iOS app is a client for the same
+          workspace as the web app &mdash; it stores nothing on our servers
+          that the web app does not, and it requires an existing{' '}
+          {name} account.
+        </p>
+        <p>
+          This policy does not cover the social networks you connect. Once a
+          post is published to X, LinkedIn, Instagram, Facebook, Threads,
+          Mastodon, Bluesky, YouTube, TikTok, Pinterest, Reddit, Discord,
+          Slack, Telegram, or any other network you connect, that network&rsquo;s
+          own privacy policy governs it.
         </p>
       </LegalSection>
 
-      <LegalSection title="2. Information We Collect">
-        <p>We collect information you provide directly:</p>
+      <LegalSection title="2. What We Collect">
+        <p>
+          <strong>Information you give us.</strong>
+        </p>
         <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
-          <li>Account information (name, email address, password hash).</li>
-          <li>Organization details (workspace name, billing information).</li>
           <li>
-            Post content, media, and scheduling data you create in the
+            Account information &mdash; your email address, a password hash (or
+            the identifier returned by Sign in with Apple or Google if you use
+            those), and your display name.
+          </li>
+          <li>
+            Workspace information &mdash; organization name, members, and
+            billing details for paid web plans.
+          </li>
+          <li>
+            Post content &mdash; the text, images, and video you compose, the
+            per-channel overrides you set, and the times you schedule them for.
+          </li>
+          <li>Support requests and anything else you write to us.</li>
+        </ul>
+        <p>
+          <strong>Information collected automatically.</strong>
+        </p>
+        <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
+          <li>
+            Log and usage data &mdash; IP address, client type and version,
+            requests made, timestamps, and errors, used to run and debug the
             Service.
           </li>
-          <li>Communications you send us (support requests, feedback).</li>
-        </ul>
-        <p>We collect information automatically when you use the Service:</p>
-        <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
-          <li>Log data (IP address, browser type, pages visited, timestamps).</li>
-          <li>Usage data (feature interactions, session duration).</li>
-          <li>Device information (operating system, screen resolution).</li>
+          <li>
+            Device identifiers &mdash; an account identifier, a session
+            identifier per signed-in device, and (only if you allow
+            notifications) an Apple Push Notification service device token used
+            to route notifications to your phone.
+          </li>
+          <li>
+            Diagnostics &mdash; crash and error counts. These are collected on
+            our own infrastructure and are not linked to your identity.{' '}
+            {name} contains no third-party advertising or analytics SDKs, and
+            does not use the iOS advertising identifier (IDFA).
+          </li>
         </ul>
         <p>
-          When you connect a third-party account (such as LinkedIn for
-          posting, or Google for sign-in), we receive information from that
-          provider as authorized by the permissions you grant during that
-          connection — typically your profile identifier, email address, and
-          the access token needed to publish posts or verify your identity.
-          We do not receive your password for those services.
+          <strong>Information we do not collect.</strong> We do not collect
+          precise or coarse location, your contacts, health or fitness data,
+          financial data beyond what our payment processor handles for paid web
+          plans, browsing history outside the Service, or any sensitive
+          category of personal data.
         </p>
       </LegalSection>
 
-      <LegalSection title="3. How We Use Your Information">
-        <p>We use your information to:</p>
-        <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
-          <li>Provide, maintain, and improve the Service.</li>
-          <li>
-            Publish and manage posts to the third-party accounts you connect,
-            on your instruction.
-          </li>
-          <li>Process transactions and send billing-related notices.</li>
-          <li>Respond to support requests and communicate with you.</li>
-          <li>Send product updates (you may opt out of non-essential ones).</li>
-          <li>Monitor for abuse, enforce our Terms of Service, and ensure security.</li>
-          <li>Comply with legal obligations.</li>
-        </ul>
-      </LegalSection>
-
-      <LegalSection title="4. How We Share Your Information">
-        <p>We do not sell your personal data. We may share information with:</p>
-        <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
-          <li>
-            <strong>The third-party platforms you connect</strong> — content
-            you schedule is sent to LinkedIn (or other platforms you connect)
-            as directed by you.
-          </li>
-          <li>
-            <strong>Service providers</strong> — processors acting on our
-            behalf (hosting, payments, email, analytics) under
-            data-processing agreements.
-          </li>
-          <li>
-            <strong>Organization members</strong> — information visible
-            within your workspace is accessible to other members per your
-            permission settings.
-          </li>
-          <li>
-            <strong>Legal obligations</strong> — when required by law, court
-            order, or government authority; or to protect rights, property,
-            or safety.
-          </li>
-          <li>
-            <strong>Business transfers</strong> — in connection with a
-            merger, acquisition, or sale of assets, with notice to you.
-          </li>
-        </ul>
-      </LegalSection>
-
-      <LegalSection title="5. Data Retention">
+      <LegalSection title="3. Connected Social Accounts">
         <p>
-          We retain your data for as long as your account is active or as
-          needed to provide the Service. After account deletion, we retain
-          data for up to 30 days before permanent deletion, except where we
-          are required to retain it longer by law. Disconnecting a
-          third-party account revokes our stored access token for that
-          account promptly.
+          When you connect a social account, you complete that network&rsquo;s
+          own OAuth flow. We never see or store your password for it. We
+          receive and store the profile identifier, display name and avatar
+          shown in your channel list, and the access and refresh tokens needed
+          to publish on your behalf.
+        </p>
+        <p>
+          Tokens are stored encrypted and are used only to perform actions you
+          asked for: publishing a post you scheduled, and reading back the
+          engagement figures shown in the analytics screens. Disconnecting a
+          channel in the app or on the web deletes the stored tokens for it.
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Your Rights">
-        <p>Depending on your jurisdiction, you may have the right to:</p>
+      <LegalSection title="4. Photos, Camera, and Files on Your Device">
+        <p>
+          The iOS app asks for access to your photo library only when you
+          attach media to a post. Selected media is uploaded to your workspace
+          so it can be published at the scheduled time; nothing else in your
+          library is read, indexed, or uploaded. Drafts you have not sent yet
+          are kept on the device so a half-written post survives a lost signal,
+          and they sync to your workspace when you are back online.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="5. Optional AI Features">
+        <p>
+          The AI copilot, image generation, and video drafting features are off
+          until you turn them on, and each asks for consent before its first
+          use. When you use one, the prompt and the post text you are working
+          on are sent to the AI provider configured for your workspace solely
+          to generate the requested output. Declining leaves the rest of the
+          Service fully usable.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="6. Push Notifications">
+        <p>
+          Notifications are optional and off until you grant permission. They
+          are used to tell you that a post published, that one failed, or that
+          a channel needs reconnecting &mdash; each is a separate toggle in
+          Settings. Revoking the permission in iOS Settings stops them
+          immediately, and the stored device token is discarded.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="7. How We Use Your Information">
+        <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
+          <li>Run, maintain, and improve the Service.</li>
+          <li>
+            Publish your posts to the channels you connected, at the times you
+            chose.
+          </li>
+          <li>Process payments and send billing notices for paid web plans.</li>
+          <li>Answer support requests.</li>
+          <li>
+            Send service notices. Product emails are optional and you can opt
+            out of them.
+          </li>
+          <li>
+            Detect abuse, enforce our Terms of Service, and keep accounts
+            secure.
+          </li>
+          <li>Comply with the law.</li>
+        </ul>
+        <p>
+          We do not use your data, or any data from your connected accounts, to
+          track you across other companies&rsquo; apps or websites, and we do
+          not sell it.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="8. Who We Share It With">
+        <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
+          <li>
+            <strong>The networks you connect</strong> &mdash; a post goes to
+            exactly the channels you selected, when you told it to.
+          </li>
+          <li>
+            <strong>Processors acting for us</strong> &mdash; hosting,
+            transactional email, and payment processing, under
+            data-processing terms and only to the extent needed.
+          </li>
+          <li>
+            <strong>Your workspace members</strong> &mdash; posts, channels, and
+            analytics inside an organization are visible to its other members
+            per your permission settings.
+          </li>
+          <li>
+            <strong>Legal</strong> &mdash; when required by law, court order, or
+            a government authority, or to protect rights, property, or safety.
+          </li>
+          <li>
+            <strong>Business transfer</strong> &mdash; in a merger, acquisition,
+            or sale of assets, with notice to you.
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection title="9. Retention and Deleting Your Account">
+        <p>
+          We keep your data for as long as your account is active. You can
+          delete your account and all of its data from inside the iOS app
+          (Settings &rarr; Delete account) or from the web app;
+          no email to support is required. Deletion revokes your connected
+          channel tokens immediately, and the data is permanently removed
+          within 30 days except where the law requires us to keep a record
+          longer. Posts already published to a social network stay on that
+          network &mdash; delete them there.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="10. Your Rights">
+        <p>Depending on where you live, you may have the right to:</p>
         <ul className="mt-[8px] list-inside list-disc space-y-[4px]">
           <li>Access the personal data we hold about you.</li>
-          <li>Request correction of inaccurate data.</li>
-          <li>Request deletion of your data (&ldquo;right to erasure&rdquo;).</li>
-          <li>Object to or restrict processing of your data.</li>
+          <li>Correct data that is wrong.</li>
+          <li>Delete your data (&ldquo;right to erasure&rdquo;).</li>
+          <li>Object to or restrict processing.</li>
           <li>Receive your data in a portable format.</li>
-          <li>Withdraw consent where processing is based on consent, including revoking a connected account.</li>
+          <li>
+            Withdraw consent &mdash; including disconnecting a channel or
+            turning off the AI features &mdash; at any time.
+          </li>
         </ul>
         <p>
-          To exercise these rights, email us at{' '}
+          Email{' '}
           <a
             href={`mailto:${supportEmail}`}
             className="underline underline-offset-2 hover:text-white"
           >
             {supportEmail}
+          </a>{' '}
+          to exercise any of these. We respond within 30 days and may need to
+          verify your identity first.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="11. Cookies and Analytics">
+        <p>
+          The web app uses cookies that are required for sign-in and session
+          management. Product analytics are self-hosted, are not shared with
+          advertising networks, and can be turned off in Settings. The iOS app
+          uses no advertising cookies or trackers of any kind.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="12. Security">
+        <p>
+          Traffic is encrypted in transit with TLS, data is encrypted at rest,
+          and connected-account tokens are encrypted separately with restricted
+          access. You can review your signed-in devices and revoke any of them
+          from inside the app. No system is perfectly secure, so we cannot
+          promise absolute security, and we will notify affected users of a
+          breach as required by law.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="13. Children">
+        <p>
+          The Service is a business tool and is not directed to children. An
+          account requires you to be 18 or the age of majority where you live,
+          as stated in our{' '}
+          <a href="/terms" className="underline underline-offset-2 hover:text-white">
+            Terms of Service
           </a>
-          . We will respond within 30 days. We may need to verify your
-          identity before fulfilling a request.
+          . We do not knowingly collect data from children; if you believe a
+          child has given us data, contact us and we will delete it.
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Cookies">
+      <LegalSection title="14. International Transfers">
         <p>
-          We use essential cookies required for authentication and session
-          management. We may use analytics cookies to understand usage;
-          these can be opted out of via your browser settings.
-        </p>
-        <p>We do not use third-party advertising cookies.</p>
-      </LegalSection>
-
-      <LegalSection title="8. Data Security">
-        <p>
-          We implement industry-standard technical and organizational
-          measures to protect your data, including encryption in transit
-          (TLS) and at rest, and access controls, including for third-party
-          access tokens. No system is perfectly secure; we cannot guarantee
-          absolute security.
-        </p>
-        <p>We will notify affected users of a data breach as required by applicable law.</p>
-      </LegalSection>
-
-      <LegalSection title="9. Children's Privacy">
-        <p>
-          The Service is not directed to children under 13 (or the
-          applicable age of digital consent in your jurisdiction). We do not
-          knowingly collect personal data from children. If you believe a
-          child has provided us with their data, contact us and we will
-          delete it.
+          {companyName} is based in {jurisdiction}. If you use the Service from
+          elsewhere, your data is transferred to and processed in{' '}
+          {jurisdiction} or other countries where our processors operate, with
+          the safeguards applicable law requires for such transfers.
         </p>
       </LegalSection>
 
-      <LegalSection title="10. International Data Transfers">
+      <LegalSection title="15. Changes">
         <p>
-          {companyName}{' '}
-          is based in {jurisdiction}. If you access the Service from outside
-          this jurisdiction, your data may be transferred to and processed
-          in {jurisdiction}{' '}
-          or other countries. We ensure appropriate safeguards are in place
-          for such transfers as required by applicable law.
+          We may update this policy. Material changes are posted here with a
+          new effective date and, where appropriate, emailed to you or shown in
+          the app. Continuing to use the Service after a change means you
+          accept it.
         </p>
       </LegalSection>
 
-      <LegalSection title="11. Changes to This Policy">
+      <LegalSection title="16. Contact">
         <p>
-          We may update this Privacy Policy from time to time. We will
-          notify you of material changes by posting the updated policy on
-          the Service and, where appropriate, sending an email notification.
-          Your continued use of the Service after changes are posted
-          constitutes acceptance.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="12. Contact Us">
-        <p>
-          For privacy-related questions, data subject requests, or to report
-          a concern, contact us at{' '}
+          Privacy questions, data requests, or a concern to report:{' '}
           <a
             href={`mailto:${supportEmail}`}
             className="underline underline-offset-2 hover:text-white"

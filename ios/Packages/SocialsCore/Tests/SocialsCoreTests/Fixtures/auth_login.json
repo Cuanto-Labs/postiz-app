@@ -1,0 +1,17 @@
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9.mock-access-token",
+  "refreshToken": "mock-refresh-token-base64url",
+  "expiresIn": 900,
+  "sessionId": "sess_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+  "user": {
+    "id": "usr_01HZX3QW7K9F0M1N2P3Q4R5S6T",
+    "email": "eliran@cuantolabs.com",
+    "name": "Eliran",
+    "lastName": "Yihye",
+    "pictureId": "pic_01HZX3QW7K9F0M1N2P3Q4R5S6T"
+  },
+  "orgs": [
+    { "id": "org_01HZX3QW7K9F0M1N2P3Q4R5S6T", "name": "Cuanto Labs", "role": "OWNER", "disabled": false },
+    { "id": "org_01HZX3QW7K9F0M1N2P3Q4R5S6U", "name": "Archived Org", "role": "MEMBER", "disabled": true }
+  ]
+}
