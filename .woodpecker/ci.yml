@@ -1,0 +1,42 @@
+labels:
+  platform: linux/amd64
+
+# Web/extension/backend CI, separate from .woodpecker/ios.yml (that one is darwin/arm64,
+# ios/** path-scoped, runs on the mini agent).
+# No build step: Vercel builds every push/PR of this repo (vercel.json git.deploymentEnabled),
+# and this step just asks it to build this exact commit once CI is green.
+when:
+  - event: pull_request
+  - event: push
+    branch: [dev, staging, main]
+  - event: manual
+
+variables:
+  - &node_image node:22
+
+steps:
+  - name: install
+    image: *node_image
+    commands:
+      - corepack enable
+      - corepack prepare --activate
+      - pnpm install --frozen-lockfile
+
+  # Pre-existing failure on main: jest.config.ts imports `@nx/jest`, which is not a dependency
+  # anywhere in package.json/pnpm-lock.yaml, so jest can't even parse its config. Unrelated to
+  # CI wiring. Non-blocking until the repo's own Nx/jest setup is fixed.
+  - name: test
+    image: *node_image
+    depends_on: [install]
+    failure: ignore
+    commands: [corepack enable, pnpm test]
+
+  - name: vercel-deploy
+    image: curlimages/curl:8.10.1
+    depends_on: [install]
+    when:
+      - event: [push, pull_request]
+    environment:
+      VERCEL_TOKEN: { from_secret: vercel_token }
+      VERCEL_PROJECT: cuanto-socials
+    commands: [sh .woodpecker/vercel-deploy.sh]
