@@ -316,22 +316,27 @@ export class SubscriptionService {
     // Through the helper so a lapsed complimentary grant stops granting credits
     // — reading `subscriptionTier` directly ignores `cancelAt` entirely.
     const type = activeSubscriptionTier(organization) || 'FREE';
-
-    if (type === 'FREE') {
-      return { credits: 0 };
-    }
-
-    // @ts-ignore
-    let date = dayjs(organization.subscription.createdAt);
-    while (date.isBefore(dayjs())) {
-      date = date.add(1, 'month');
-    }
-
-    const checkFromMonth = date.subtract(1, 'month');
-    const imageGenerationCount =
+    const limit =
       checkType === 'ai_images'
         ? pricing[type].image_generation_count
         : pricing[type].generate_videos;
+
+    if (!limit) {
+      return { credits: 0 };
+    }
+
+    // FREE has no subscription row to anchor a billing month on, so its
+    // allowance resets on the 1st of the calendar month instead.
+    // @ts-ignore
+    const subscribedAt = organization.subscription?.createdAt;
+    let checkFromMonth = dayjs().startOf('month');
+    if (type !== 'FREE' && subscribedAt) {
+      let date = dayjs(subscribedAt);
+      while (date.isBefore(dayjs())) {
+        date = date.add(1, 'month');
+      }
+      checkFromMonth = date.subtract(1, 'month');
+    }
 
     const totalUse = await this._subscriptionRepository.getCreditsFrom(
       organization.id,
@@ -340,7 +345,7 @@ export class SubscriptionService {
     );
 
     return {
-      credits: imageGenerationCount - totalUse,
+      credits: limit - totalUse,
     };
   }
 

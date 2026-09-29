@@ -30,7 +30,7 @@ describe('MobileAiService', () => {
   });
 
   it('throws 403 and never calls OpenAI when consent is not granted', async () => {
-    process.env.OPENAI_API_KEY = 'sk-test';
+    process.env.OPENROUTER_API_KEY = 'sk-test';
     const { service, aiConsentRepository, openaiService } = makeDeps();
     aiConsentRepository.getConsentAt.mockResolvedValue(null);
 
@@ -46,7 +46,7 @@ describe('MobileAiService', () => {
   });
 
   it('calls generatePosts when consent granted and mode is variations', async () => {
-    process.env.OPENAI_API_KEY = 'sk-test';
+    process.env.OPENROUTER_API_KEY = 'sk-test';
     const { service, aiConsentRepository, openaiService } = makeDeps();
     aiConsentRepository.getConsentAt.mockResolvedValue(new Date());
     openaiService.generatePosts.mockResolvedValue([{ post: 'a' }, 'b']);
@@ -61,7 +61,7 @@ describe('MobileAiService', () => {
   });
 
   it('calls separatePosts when consent granted and mode is fit', async () => {
-    process.env.OPENAI_API_KEY = 'sk-test';
+    process.env.OPENROUTER_API_KEY = 'sk-test';
     const { service, aiConsentRepository, openaiService } = makeDeps();
     aiConsentRepository.getConsentAt.mockResolvedValue(new Date());
     openaiService.separatePosts.mockResolvedValue(['fit-post']);
@@ -76,8 +76,8 @@ describe('MobileAiService', () => {
     expect(result).toEqual({ suggestions: ['fit-post'] });
   });
 
-  it('throws 503 when OPENAI_API_KEY is unset', async () => {
-    delete process.env.OPENAI_API_KEY;
+  it('throws 503 when OPENROUTER_API_KEY is unset', async () => {
+    delete process.env.OPENROUTER_API_KEY;
     const { service, aiConsentRepository, openaiService } = makeDeps();
     aiConsentRepository.getConsentAt.mockResolvedValue(new Date());
 
@@ -92,7 +92,7 @@ describe('MobileAiService', () => {
   });
 
   it('flattens generatePosts threads and separatePosts envelopes', async () => {
-    process.env.OPENAI_API_KEY = 'sk-test';
+    process.env.OPENROUTER_API_KEY = 'sk-test';
     const { service, aiConsentRepository, openaiService } = makeDeps();
     aiConsentRepository.getConsentAt.mockResolvedValue(new Date());
     openaiService.generatePosts.mockResolvedValue([

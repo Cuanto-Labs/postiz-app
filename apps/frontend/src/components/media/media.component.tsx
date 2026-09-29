@@ -857,12 +857,12 @@ export const MultiMediaComponent: FC<{
 
               <ThirdPartyMedia allData={allData} onChange={changeMedia} />
 
-              {!!user?.tier?.ai && (
-                <>
-                  <AiImage value={text} onChange={changeMedia} />
-                  <AiVideo value={text} onChange={changeMedia} />
-                </>
+              {/* Images have their own monthly allowance (FREE included);
+                  video stays behind the paid AI flag */}
+              {(!!user?.tier?.ai || !!user?.tier?.image_generator) && (
+                <AiImage value={text} onChange={changeMedia} />
               )}
+              {!!user?.tier?.ai && <AiVideo value={text} onChange={changeMedia} />}
             </div>
           )}
           {!mediaNotAvailable && (

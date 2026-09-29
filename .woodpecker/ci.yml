@@ -31,9 +31,15 @@ steps:
     failure: ignore
     commands: [corepack enable, pnpm test]
 
+  # Blocking: mobile API, billing credits and the locked AI models.
+  - name: unit
+    image: *node_image
+    depends_on: [install]
+    commands: [corepack enable, pnpm exec jest -c jest.unit.config.cjs]
+
   - name: vercel-deploy
     image: curlimages/curl:8.10.1
-    depends_on: [install]
+    depends_on: [install, unit]
     when:
       - event: [push, pull_request]
     environment:

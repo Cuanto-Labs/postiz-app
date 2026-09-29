@@ -25,8 +25,12 @@ import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { AGENT_PROVIDERS, activeProviderConfig } from '@gitroom/nestjs-libraries/chat/load.tools.service';
+import {
+  AI_IMAGE_MODEL,
+  AI_TEXT_MODEL,
+} from '@gitroom/nestjs-libraries/chat/ai.provider';
 
-// Shared OAI-compatible client for copilot adapters — follows provider pool.
+// Shared OAI-compatible client for copilot adapters — locked to OpenRouter.
 const copilotOpenAI = new OpenAI({
   baseURL: activeProviderConfig.baseURL,
   apiKey: activeProviderConfig.apiKey,
@@ -47,7 +51,7 @@ export class CopilotController {
   @Post('/chat')
   chatAgent(@Req() req: Request, @Res() res: Response) {
     if (!activeProviderConfig.apiKey) {
-      Logger.warn(`No API key for provider ${process.env.AGENT_PROVIDER || 'opencode'}`);
+      Logger.warn('No OPENROUTER_API_KEY set; AI copilot is disabled');
       return;
     }
 
@@ -57,7 +61,7 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         openai: copilotOpenAI as any,
-        model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
+        model: activeProviderConfig.defaultModel,
       }),
     });
 
@@ -72,7 +76,7 @@ export class CopilotController {
     @GetOrgFromRequest() organization: Organization
   ) {
     if (!activeProviderConfig.apiKey) {
-      Logger.warn(`No API key for provider ${process.env.AGENT_PROVIDER || 'opencode'}`);
+      Logger.warn('No OPENROUTER_API_KEY set; AI copilot is disabled');
       return;
     }
     const mastra = await this._mastraService.mastra();
@@ -102,7 +106,7 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         openai: copilotOpenAI as any,
-        model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
+        model: activeProviderConfig.defaultModel,
       }),
     });
 
@@ -162,8 +166,8 @@ export class CopilotController {
   @Get('/providers')
   listProviders() {
     return {
-      active: process.env.AGENT_PROVIDER || 'opencode',
-      model: process.env.AGENT_MODEL || activeProviderConfig.defaultModel,
+      active: 'openrouter',
+      model: activeProviderConfig.defaultModel,
       providers: Object.entries(AGENT_PROVIDERS).map(([key, cfg]) => ({
         key,
         baseURL: cfg.baseURL,
@@ -172,19 +176,13 @@ export class CopilotController {
     };
   }
 
+  // Models are hard-locked (chat/ai.provider), so this lists what is used
+  // rather than everything the provider happens to serve.
   @Get('/models')
-  async listModels() {
-    try {
-      const res = await fetch(`${activeProviderConfig.baseURL}/models`, {
-        headers: { Authorization: `Bearer ${activeProviderConfig.apiKey}` },
-      });
-      const data = await res.json() as { data?: { id: string }[] };
-      return {
-        provider: process.env.AGENT_PROVIDER || 'opencode',
-        models: (data.data ?? []).map((m) => m.id),
-      };
-    } catch {
-      return { provider: process.env.AGENT_PROVIDER || 'opencode', models: [] };
-    }
+  listModels() {
+    return {
+      provider: 'openrouter',
+      models: [AI_TEXT_MODEL, AI_IMAGE_MODEL],
+    };
   }
 }
