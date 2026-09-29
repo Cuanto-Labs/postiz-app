@@ -7,13 +7,20 @@ import { Organization, SubscriptionTier } from '@prisma/client';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { activeSubscriptionTier } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/free.tier';
+import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
+import {
+  tierChangeEmailHtml,
+  tierChangeSubject,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/tier.change.email';
+import { describeTierChange } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/tier.diff';
 
 @Injectable()
 export class SubscriptionService {
   constructor(
     private readonly _subscriptionRepository: SubscriptionRepository,
     private readonly _integrationService: IntegrationService,
-    private readonly _organizationService: OrganizationService
+    private readonly _organizationService: OrganizationService,
+    private readonly _notificationService: NotificationService
   ) {}
 
   getSubscriptionByOrganizationId(organizationId: string) {
@@ -354,6 +361,48 @@ export class SubscriptionService {
     durationDays?: number | null,
     durationMonths?: number | null
   ) {
+    return this.applyTier({
+      orgId,
+      tier,
+      identifier: code,
+      isLifetime,
+      durationDays,
+      durationMonths,
+    });
+  }
+
+  /**
+   * The single place a comped plan is applied — code redemption, signup, and an
+   * operator acting from the admin panel all land here, so the write, the
+   * verification, and the customer email can never diverge between them.
+   *
+   * `notify` exists because an operator sometimes wants to correct a mistake
+   * without emailing the customer about it.
+   */
+  async applyTier({
+    orgId,
+    tier,
+    identifier,
+    isLifetime,
+    durationDays,
+    durationMonths,
+    notify = true,
+    reason,
+  }: {
+    orgId: string;
+    tier: SubscriptionTier;
+    identifier: string;
+    isLifetime: boolean;
+    durationDays?: number | null;
+    durationMonths?: number | null;
+    notify?: boolean;
+    reason?: string;
+  }) {
+    const code = identifier;
+    const previous = await this._subscriptionRepository.getSubscriptionByOrgId(
+      orgId
+    );
+    const from = previous?.subscriptionTier ?? null;
     // Counted from redemption, not from a fixed date, so one code behaves the
     // same whenever it is used. A lifetime grant ignores duration entirely.
     //
@@ -369,6 +418,27 @@ export class SubscriptionService {
       : null;
 
     const cancelAt = expiry ? Math.floor(expiry.valueOf() / 1000) : null;
+
+    // Enforce the new plan's limits before writing it. This is what actually
+    // takes features away on a downgrade — channels over the new cap are
+    // disabled (not deleted, so they return on an upgrade) and non-superadmin
+    // team members are switched off when the target plan has no team support.
+    // It has to run first: it derives the "from" plan from the current
+    // subscription row, which the write below replaces.
+    //
+    // The Stripe-facing `modifySubscription` is deliberately not used — a
+    // comped org usually has no Stripe customer, and that variant bails on one.
+    if (from !== tier) {
+      try {
+        await this.modifySubscriptionByOrg(
+          orgId,
+          pricing[tier].channel!,
+          tier as any
+        );
+      } catch (err) {
+        console.error('Could not apply plan limits for', orgId, err);
+      }
+    }
 
     await this.createOrUpdateSubscription(
       // Upstream added `provider` as the first argument. A comped grant touches
@@ -410,7 +480,37 @@ export class SubscriptionService {
       );
     }
 
-    return written;
+    if (notify && from !== tier) {
+      // Never let a mail failure undo a grant the customer already has. The
+      // plan is applied and verified above; this is an announcement.
+      try {
+        const payload = {
+          from,
+          to: tier as string,
+          isLifetime,
+          expiresAt: written.cancelAt,
+          reason,
+        };
+        await this._notificationService.inAppNotification(
+          orgId,
+          tierChangeSubject(payload),
+          tierChangeEmailHtml(payload),
+          true,
+          false,
+          // 'info' so it reaches people who muted success mail — a plan change
+          // is account news, not a notification about their posts.
+          'info'
+        );
+      } catch (err) {
+        console.error('Could not announce the tier change for', orgId, err);
+      }
+    }
+
+    return {
+      ...written,
+      change: describeTierChange(from, tier as string),
+      previousTier: from,
+    };
   }
 
   async addSubscription(

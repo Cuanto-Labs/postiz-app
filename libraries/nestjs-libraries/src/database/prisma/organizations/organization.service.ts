@@ -18,6 +18,14 @@ export class OrganizationService {
     private _organizationRepository: OrganizationRepository,
     private _notificationsService: NotificationService
   ) {}
+
+  /** Operator-facing org lookup by member email. Superadmin routes only. */
+  searchOrganizationsByUserEmail(email: string, take?: number) {
+    return this._organizationRepository.searchOrganizationsByUserEmail(
+      email,
+      take
+    );
+  }
   async createOrgAndUser(
     body: Omit<CreateOrgUserDto, 'providerToken'> & { providerId?: string },
     ip: string,
