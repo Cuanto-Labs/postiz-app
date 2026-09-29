@@ -101,9 +101,11 @@ export class MobileAiController {
       );
     }
 
-    const output =
-      'data:image/png;base64,' +
-      (await this._mediaService.generateImage(body.prompt, org, false));
+    const output = await this._mediaService.generateImage(
+      body.prompt,
+      org,
+      false
+    );
 
     const file = await this.storage.uploadSimple(output);
     return this._mediaService.saveFile(org.id, file.split('/').pop(), file);

@@ -1,6 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { AiConsentRepository } from '@gitroom/nestjs-libraries/mobile/ai/ai-consent.repository';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
+import { aiApiKey } from '@gitroom/nestjs-libraries/chat/ai.provider';
 
 @Injectable()
 export class MobileAiService {
@@ -17,7 +18,7 @@ export class MobileAiService {
   }
 
   isConfigured() {
-    return !!(process.env.AI_TEXT_API_KEY || process.env.OPENAI_API_KEY);
+    return !!aiApiKey();
   }
 
   async suggest(

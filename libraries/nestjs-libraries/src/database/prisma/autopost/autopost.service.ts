@@ -6,7 +6,13 @@ import { END, START, StateGraph } from '@langchain/langgraph';
 import { AutoPost, Integration } from '@prisma/client';
 import { BaseMessage } from '@langchain/core/messages';
 import striptags from 'striptags';
-import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
+import {
+  activeProviderConfig,
+  activeProviderModel,
+  generateAiImage,
+} from '@gitroom/nestjs-libraries/chat/ai.provider';
+import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { JSDOM } from 'jsdom';
 import { z } from 'zod';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
@@ -36,14 +42,10 @@ interface WorkflowChannelsState {
 }
 
 const model = new ChatOpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'gpt-4.1',
+  apiKey: activeProviderConfig.apiKey,
+  model: activeProviderModel(),
+  configuration: { baseURL: activeProviderConfig.baseURL },
   temperature: 0.7,
-});
-
-const dalle = new DallEAPIWrapper({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'chatgpt-image-latest',
 });
 
 const generateContent = z.object({
@@ -257,7 +259,11 @@ export class AutopostService {
           content: state.load.description || state.description,
         });
 
-    const image = await dalle.invoke(generatedTextToBeSentToDallE);
+    // Muse returns image bytes, not a URL — store them so the post can
+    // reference a path like any uploaded media.
+    const image = await UploadFactory.createStorage().uploadSimple(
+      await generateAiImage(generatedTextToBeSentToDallE)
+    );
 
     return { ...state, image };
   }

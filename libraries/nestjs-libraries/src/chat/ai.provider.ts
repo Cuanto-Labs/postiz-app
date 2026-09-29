@@ -1,56 +1,91 @@
 /**
- * Provider pool for the LLM-backed features — two named providers, selected
- * with AGENT_PROVIDER. Each carries its own base URL + API key so both can be
- * configured at once and swapped by changing one variable.
+ * Every AI feature runs on one provider and two models, hard-locked here.
  *
- *   AGENT_PROVIDER = opencode (default) | openai
- *   AGENT_MODEL    = model name, must exist on the *active* provider
+ *   Text:   google/gemini-3.5-flash-lite  (~$0.0002 per call, ~1s)
+ *   Images: meta/muse-image               ($0.01 per image, ~9s, WebP)
  *
- * OpenCode:  OPENCODE_BASE_URL (default https://opencode.ai/zen/v1) + OPENCODE_API_KEY
- * OpenAI:    OPENAI_BASE_URL   (default https://api.openai.com/v1)   + OPENAI_API_KEY
+ * Both go through OpenRouter with OPENROUTER_API_KEY. There is deliberately no
+ * environment override for the models or the base URL: an env var is how the
+ * generator ended up asking api.openai.com for an OpenCode model, and how a
+ * $0.17 image model could silently replace a $0.01 one. Changing a model is a
+ * code change and a deploy.
  *
- * This lives on its own, free of Mastra/LangChain imports, because both the
- * copilot (Mastra) and the post generator (LangChain) need it — and AGENT_MODEL
- * is meaningless without the base URL it belongs to. Reading the model name
- * without the matching provider is how the generator ended up asking
- * api.openai.com for an OpenCode model.
+ * The OpenRouter workspace guardrail only lets allow-listed models through
+ * (anything else is a 404 "Model blocked by guardrail"), so a new model id
+ * here also needs adding to the guardrail. Both of these were measured on
+ * 2026-09-29: gemini-3.5-flash-lite returned valid output 4/4 through both
+ * json_schema and forced tool calls.
  *
- * Picking the OpenCode default is narrower than "a model that exists". The
- * generator drives `withStructuredOutput()`, and most of the free pool rejects
- * the schema request even when plain chat and raw tool calls succeed. Measured
- * against the real endpoint: deepseek-v4-flash-free fails every method,
- * nemotron-3-ultra-free works but spends ~116s on the content step, and
- * ling-3.0-flash-free returns in ~6s for three steps — matching gpt-4.1 — but
- * only when the structured call is forced down the functionCalling path. Hence
- * `structuredOutputMethod`, which travels with the provider rather than being
- * hardcoded at each call site. Re-measure before changing either field.
- *
- * These are free models on a free gateway and they do disappear: the previous
- * default, mimo-v2.5-free, still lists in /models but returns 500 on every
- * request. If the generator or copilot starts failing, set AGENT_PROVIDER=openai
- * to move both onto the paid account without a deploy.
+ * This lives on its own, free of Mastra/LangChain imports, because the copilot
+ * (Mastra), the post generator (LangChain) and OpenaiService all need it.
  */
+export const AI_BASE_URL = 'https://openrouter.ai/api/v1';
+export const AI_TEXT_MODEL = 'google/gemini-3.5-flash-lite';
+export const AI_IMAGE_MODEL = 'meta/muse-image';
+
+export const aiApiKey = () => process.env.OPENROUTER_API_KEY || '';
+
 export const AGENT_PROVIDERS = {
-  opencode: {
-    baseURL: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
-    apiKey: process.env.OPENCODE_API_KEY || '',
-    defaultModel: 'ling-3.0-flash-free',
+  openrouter: {
+    baseURL: AI_BASE_URL,
+    apiKey: aiApiKey(),
+    defaultModel: AI_TEXT_MODEL,
     structuredOutputMethod: 'functionCalling',
-  },
-  openai: {
-    baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-    apiKey: process.env.OPENAI_API_KEY || '',
-    defaultModel: 'gpt-4o',
-    structuredOutputMethod: 'jsonSchema',
   },
 } as const;
 
-const activeProviderKey = (process.env.AGENT_PROVIDER ||
-  'opencode') as keyof typeof AGENT_PROVIDERS;
+export const activeProviderConfig = AGENT_PROVIDERS.openrouter;
 
-export const activeProviderConfig =
-  AGENT_PROVIDERS[activeProviderKey] ?? AGENT_PROVIDERS.opencode;
+/** The locked text model — AGENT_MODEL is ignored on purpose. */
+export const activeProviderModel = () => AI_TEXT_MODEL;
 
-/** Model for the active provider — never mix this with another provider's URL. */
-export const activeProviderModel = () =>
-  process.env.AGENT_MODEL || activeProviderConfig.defaultModel;
+/**
+ * Generate one image with the locked image model. Returns a `data:` URL,
+ * which `uploadSimple` accepts directly — Muse returns WebP, so the mime type
+ * has to travel with the bytes rather than being assumed to be PNG.
+ */
+export async function generateAiImage(
+  prompt: string,
+  isVertical = false
+): Promise<string> {
+  const res = await fetch(`${AI_BASE_URL}/images`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${aiApiKey()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: AI_IMAGE_MODEL,
+      prompt,
+      aspect_ratio: isVertical ? '2:3' : '1:1',
+      n: 1,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Image generation failed (${res.status}): ${(await res.text()).slice(
+        0,
+        300
+      )}`
+    );
+  }
+
+  const json = (await res.json()) as { data?: { b64_json?: string }[] };
+  const b64 = json.data?.[0]?.b64_json;
+  if (!b64) {
+    throw new Error('Image generation returned no image');
+  }
+
+  return `data:${sniffImageMime(b64)};base64,${b64}`;
+}
+
+/** Mime type from the first bytes of base64 image data. */
+export function sniffImageMime(b64: string) {
+  const head = Buffer.from(b64.slice(0, 24), 'base64');
+  if (head.subarray(0, 4).toString('ascii') === 'RIFF') return 'image/webp';
+  if (head[0] === 0x89 && head.subarray(1, 4).toString('ascii') === 'PNG')
+    return 'image/png';
+  if (head[0] === 0xff && head[1] === 0xd8) return 'image/jpeg';
+  return 'image/webp';
+}

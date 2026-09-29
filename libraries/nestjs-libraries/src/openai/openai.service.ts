@@ -3,27 +3,21 @@ import OpenAI from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
+import {
+  AI_BASE_URL,
+  AI_TEXT_MODEL,
+  aiApiKey,
+  generateAiImage,
+} from '@gitroom/nestjs-libraries/chat/ai.provider';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
+// Locked to OpenRouter + the cheap text model — see chat/ai.provider.ts. No
+// env override: the model is a code change, not a config change.
+const textClient = new OpenAI({
+  baseURL: AI_BASE_URL,
+  apiKey: aiApiKey() || 'sk-or-',
 });
-
-// Text generation may run on a different OpenAI-compatible endpoint than image
-// generation (images stay on OpenAI). Everything is env-driven so the provider
-// and model never leak to a client.
-const textModel = process.env.AI_TEXT_MODEL || 'gpt-4.1';
-const textClient = process.env.AI_TEXT_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.AI_TEXT_API_KEY,
-      baseURL: process.env.AI_TEXT_BASE_URL || 'https://api.openai.com/v1',
-    })
-  : openai;
-
-// Reasoning models spend their budget before emitting content; keep it low so a
-// suggestion request does not stall or bill for a hidden chain of thought.
-const textExtra: Record<string, any> = process.env.AI_TEXT_REASONING_EFFORT
-  ? { reasoning: { effort: process.env.AI_TEXT_REASONING_EFFORT } }
-  : {};
+const textModel = AI_TEXT_MODEL;
+const textExtra: Record<string, any> = {};
 
 // `n` is an OpenAI-only parameter; other providers silently return one choice.
 // Fan out the remainder so the caller always gets the variation count it asked for.
@@ -58,18 +52,9 @@ const VoicePrompt = z.object({
 
 @Injectable()
 export class OpenaiService {
+  /** Returns a `data:` URL from the locked image model (Muse). */
   async generateImage(prompt: string, isVertical = false) {
-    // gpt-image models always return base64 (b64_json) and do not accept the
-    // `response_format` parameter, unlike the deprecated dall-e-3.
-    const generate = (
-      await openai.images.generate({
-        prompt,
-        model: 'gpt-image-1',
-        size: isVertical ? '1024x1536' : '1024x1024',
-      })
-    ).data[0];
-
-    return generate.b64_json;
+    return generateAiImage(prompt, isVertical);
   }
 
   async generatePromptForPicture(prompt: string) {

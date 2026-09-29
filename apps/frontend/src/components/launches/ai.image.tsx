@@ -69,6 +69,15 @@ ${style}
       ).json();
       if (image) {
         onChange(image);
+      } else {
+        // The backend answers `false` when this month's image allowance is spent
+        toaster.show(
+          t(
+            'ai_image_credits_exhausted',
+            "You've used all your AI images for this month"
+          ),
+          'warning'
+        );
       }
     } catch (e) {}
     setLocked(false);

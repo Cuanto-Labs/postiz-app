@@ -443,6 +443,44 @@ export class OrganizationRepository {
     });
   }
 
+  /**
+   * Operator-facing lookup: find the organizations reachable from an email
+   * address, with just enough context to pick the right one and see what
+   * changing its plan would do. Substring match, because support tickets
+   * rarely carry the exact address.
+   */
+  searchOrganizationsByUserEmail(email: string, take = 10) {
+    return this._organization.model.organization.findMany({
+      where: {
+        users: {
+          some: { user: { email: { contains: email, mode: 'insensitive' } } },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        paymentId: true,
+        isTrailing: true,
+        createdAt: true,
+        subscription: {
+          select: {
+            subscriptionTier: true,
+            totalChannels: true,
+            isLifetime: true,
+            cancelAt: true,
+            deletedAt: true,
+          },
+        },
+        users: {
+          select: { role: true, user: { select: { email: true } } },
+        },
+        _count: { select: { Integration: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+  }
+
   getAllUsersOrgs(orgId: string) {
     return this._organization.model.organization.findUnique({
       where: {
