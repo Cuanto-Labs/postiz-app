@@ -1,0 +1,58 @@
+# Woodpecker CI (https://ci.cuantolabs.com) — iOS gate for the ios/ subtree,
+# separate from the repo's linux/amd64 CI (web/extension) so a web-only push
+# doesn't queue work on the single-capacity `mini` agent. Runs on `mini`
+# (local backend, macOS) same as shulmaker-ios/cuanto-kit/mc-companion.
+#
+# ios/Project.yml declares CuantoKit as a LOCAL package at ../../cuanto-kit
+# (i.e. one level above this repo's checkout root) — same pattern as
+# shulmaker-ios/PayloadAdminKit. SocialsCore is an in-repo package, no clone
+# needed for it.
+labels:
+  platform: darwin/arm64
+
+when:
+  - event: pull_request
+    path: ["ios/**"]
+  - event: push
+    branch: [main]
+    path: ["ios/**"]
+  - event: manual
+
+steps:
+  - name: toolchain
+    image: bash
+    environment:
+      PATH: /opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    commands:
+      - xcodebuild -version
+      - xcodegen --version
+
+  - name: fetch-kit
+    image: bash
+    environment:
+      PATH: /opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - rm -rf ../cuanto-kit
+      - >
+        git clone --depth 1
+        "https://x-access-token:$GITHUB_TOKEN@github.com/Cuanto-Labs/cuanto-kit.git"
+        ../cuanto-kit
+
+  - name: build
+    depends_on: [fetch-kit]
+    image: bash
+    environment:
+      PATH: /opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      USER: jarvis
+    commands:
+      - cd ios
+      - xcodegen generate --spec Project.yml --project .
+      - >
+        xcodebuild build
+        -project CuantoSocials.xcodeproj
+        -scheme CuantoSocials
+        -destination 'generic/platform=iOS Simulator'
+        -configuration Debug
+        CODE_SIGNING_ALLOWED=NO
