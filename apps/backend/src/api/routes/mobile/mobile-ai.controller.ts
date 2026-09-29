@@ -63,9 +63,10 @@ export class MobileAiController {
   @ApiOperation({ summary: 'Get AI suggestions for a post' })
   async suggest(
     @GetUserFromRequest() user: any,
+    @GetOrgFromRequest() org: Organization,
     @Body() body: MobileAiSuggestDto
   ) {
-    return this._mobileAiService.suggest(user.id, body);
+    return this._mobileAiService.suggest(user.id, body, org.brandVoice);
   }
 
   @Get('/credits')

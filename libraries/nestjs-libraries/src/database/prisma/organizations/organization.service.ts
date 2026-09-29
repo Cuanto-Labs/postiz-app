@@ -208,4 +208,15 @@ export class OrganizationService {
       shortlink
     );
   }
+
+  getBrandVoice(orgId: string) {
+    return this._organizationRepository.getBrandVoice(orgId);
+  }
+
+  updateBrandVoice(orgId: string, brandVoice?: string) {
+    return this._organizationRepository.updateBrandVoice(
+      orgId,
+      brandVoice?.trim() || null
+    );
+  }
 }

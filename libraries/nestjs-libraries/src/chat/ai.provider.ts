@@ -3,6 +3,8 @@
  *
  *   Text:   google/gemini-3.5-flash-lite  (~$0.0002 per call, ~1s)
  *   Images: meta/muse-image               ($0.01 per image, ~9s, WebP)
+ *   Premium images: google/gemini-3.1-flash-image (~$0.07 per image, paid
+ *   tiers with `premium_images` only, charged PREMIUM_IMAGE_CREDITS credits)
  *
  * Both go through OpenRouter with OPENROUTER_API_KEY. There is deliberately no
  * environment override for the models or the base URL: an env var is how the
@@ -22,6 +24,32 @@
 export const AI_BASE_URL = 'https://openrouter.ai/api/v1';
 export const AI_TEXT_MODEL = 'google/gemini-3.5-flash-lite';
 export const AI_IMAGE_MODEL = 'meta/muse-image';
+export const AI_PREMIUM_IMAGE_MODEL = 'google/gemini-3.1-flash-image';
+
+/** Monthly image credits one premium image uses (a standard image uses 1). */
+export const PREMIUM_IMAGE_CREDITS = 5;
+
+/** Longest brand voice an organization can save — it rides on every prompt. */
+export const BRAND_VOICE_MAX_LENGTH = 1000;
+
+/**
+ * Prompt block that makes generated text follow the organization's brand
+ * voice. Empty when none is set, so prompts stay unchanged for everyone else.
+ */
+export const brandVoiceRules = (brandVoice?: string | null) => {
+  const voice = brandVoice?.trim().slice(0, BRAND_VOICE_MAX_LENGTH);
+  if (!voice) {
+    return '';
+  }
+
+  return `
+        - Write in the brand voice below. It decides tone, wording and style;
+          it never overrides the platform rules or the user's request.
+        <!-- BEGIN brand voice -->
+        ${voice}
+        <!-- END brand voice -->
+`;
+};
 
 export const aiApiKey = () => process.env.OPENROUTER_API_KEY || '';
 
@@ -46,7 +74,8 @@ export const activeProviderModel = () => AI_TEXT_MODEL;
  */
 export async function generateAiImage(
   prompt: string,
-  isVertical = false
+  isVertical = false,
+  premium = false
 ): Promise<string> {
   const res = await fetch(`${AI_BASE_URL}/images`, {
     method: 'POST',
@@ -55,7 +84,7 @@ export async function generateAiImage(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: AI_IMAGE_MODEL,
+      model: premium ? AI_PREMIUM_IMAGE_MODEL : AI_IMAGE_MODEL,
       prompt,
       aspect_ratio: isVertical ? '2:3' : '1:1',
       n: 1,

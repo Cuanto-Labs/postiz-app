@@ -27,7 +27,8 @@ export class MobileAiService {
       content,
       mode,
       maxLength,
-    }: { content: string; mode: 'variations' | 'fit'; maxLength?: number }
+    }: { content: string; mode: 'variations' | 'fit'; maxLength?: number },
+    brandVoice?: string | null
   ): Promise<{ suggestions: string[] }> {
     await this.requireConsent(userId);
 
@@ -36,7 +37,10 @@ export class MobileAiService {
     }
 
     if (mode === 'variations') {
-      const posts = await this._openaiService.generatePosts(content);
+      const posts = await this._openaiService.generatePosts(
+        content,
+        brandVoice
+      );
       return { suggestions: this.normalize(posts) };
     }
 
