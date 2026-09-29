@@ -21,6 +21,7 @@ import handleR2Upload from '@gitroom/nestjs-libraries/upload/r2.uploader';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { streamUploadOptions } from '@gitroom/nestjs-libraries/upload/multer.stream.engine';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { PREMIUM_IMAGE_CREDITS } from '@gitroom/nestjs-libraries/chat/ai.provider';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
@@ -54,10 +55,16 @@ export class MediaController {
     @GetOrgFromRequest() org: Organization,
     @Req() req: Request,
     @Body('prompt') prompt: string,
-    isPicturePrompt = false
+    isPicturePrompt = false,
+    premium = false
   ) {
+    if (premium && !this._subscriptionService.canUsePremiumImages(org)) {
+      return false;
+    }
+
     const total = await this._subscriptionService.checkCredits(org);
-    if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
+    const cost = premium ? PREMIUM_IMAGE_CREDITS : 1;
+    if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits < cost) {
       return false;
     }
 
@@ -65,7 +72,8 @@ export class MediaController {
       output: await this._mediaService.generateImage(
         prompt,
         org,
-        isPicturePrompt
+        isPicturePrompt,
+        premium
       ),
     };
   }
@@ -74,9 +82,16 @@ export class MediaController {
   async generateImageFromText(
     @GetOrgFromRequest() org: Organization,
     @Req() req: Request,
-    @Body('prompt') prompt: string
+    @Body('prompt') prompt: string,
+    @Body('premium') premium?: boolean
   ) {
-    const image = await this.generateImage(org, req, prompt, true);
+    const image = await this.generateImage(
+      org,
+      req,
+      prompt,
+      true,
+      premium === true
+    );
     if (!image) {
       return false;
     }

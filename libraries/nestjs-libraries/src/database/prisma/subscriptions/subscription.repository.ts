@@ -304,12 +304,13 @@ export class SubscriptionRepository {
   async useCredit<T>(
     org: Organization,
     type = 'ai_images',
-    func: () => Promise<T>
+    func: () => Promise<T>,
+    amount = 1
   ) {
     const data = await this._credits.model.credits.create({
       data: {
         organizationId: org.id,
-        credits: 1,
+        credits: amount,
         type,
       },
     });

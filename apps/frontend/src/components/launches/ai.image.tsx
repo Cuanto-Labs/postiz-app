@@ -7,6 +7,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 const list = [
   'Realistic',
   'Cartoon',
@@ -36,6 +37,9 @@ const AiImageModal: FC<{
   const setLocked = useLaunchStore((p) => p.setLocked);
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState(list[0]);
+  const [premium, setPremium] = useState(false);
+  const user = useUser();
+  const canUsePremium = !!user?.tier?.premium_images;
 
   const generate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -64,6 +68,7 @@ ${style}
 <!-- /style -->
 
 `,
+            premium: canUsePremium && premium,
           }),
         })
       ).json();
@@ -72,17 +77,22 @@ ${style}
       } else {
         // The backend answers `false` when this month's image allowance is spent
         toaster.show(
-          t(
-            'ai_image_credits_exhausted',
-            "You've used all your AI images for this month"
-          ),
+          canUsePremium && premium
+            ? t(
+                'ai_image_premium_credits_exhausted',
+                'A premium image needs 5 credits, try Standard instead'
+              )
+            : t(
+                'ai_image_credits_exhausted',
+                "You've used all your AI images for this month"
+              ),
           'warning'
         );
       }
     } catch (e) {}
     setLocked(false);
     setLoading(false);
-  }, [prompt, style, onChange]);
+  }, [prompt, style, premium, canUsePremium, onChange]);
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -117,6 +127,36 @@ ${style}
           ))}
         </div>
       </div>
+      {canUsePremium && (
+        <div className="flex flex-col gap-[6px]">
+          <div className="text-[14px]">{t('quality', 'Quality')}</div>
+          <div className="flex flex-wrap gap-[8px]">
+            {[
+              {
+                value: false,
+                label: t('ai_image_standard', 'Standard (1 credit)'),
+              },
+              {
+                value: true,
+                label: t('ai_image_premium', 'Premium (5 credits)'),
+              },
+            ].map((p) => (
+              <div
+                key={String(p.value)}
+                onClick={() => setPremium(p.value)}
+                className={clsx(
+                  'cursor-pointer rounded-[4px] px-[10px] h-[30px] flex items-center text-[12px] border',
+                  premium === p.value
+                    ? 'bg-[#10b981] border-[#10b981] text-white'
+                    : 'bg-newColColor border-newBgLineColor'
+                )}
+              >
+                {p.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex">
         <Button type="button" onClick={generate} className="flex-1">
           {t('generate', 'Generate')}

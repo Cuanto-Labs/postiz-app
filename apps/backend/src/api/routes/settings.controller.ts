@@ -15,6 +15,7 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { AddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/add.team.member.dto';
 import { AdminAddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/admin.add.team.member.dto';
 import { ShortlinkPreferenceDto } from '@gitroom/nestjs-libraries/dtos/settings/shortlink-preference.dto';
+import { BrandVoiceDto } from '@gitroom/nestjs-libraries/dtos/settings/brand-voice.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
@@ -86,6 +87,23 @@ export class SettingsController {
     return this._organizationService.updateShortlinkPreference(
       org.id,
       body.shortlink
+    );
+  }
+
+  @Get('/brand-voice')
+  async getBrandVoice(@GetOrgFromRequest() org: Organization) {
+    return this._organizationService.getBrandVoice(org.id);
+  }
+
+  @Post('/brand-voice')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async updateBrandVoice(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: BrandVoiceDto
+  ) {
+    return this._organizationService.updateBrandVoice(
+      org.id,
+      body.brandVoice
     );
   }
 }

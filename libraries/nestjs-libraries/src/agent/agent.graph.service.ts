@@ -18,6 +18,7 @@ import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator
 import {
   activeProviderConfig,
   activeProviderModel,
+  brandVoiceRules,
   generateAiImage,
 } from '@gitroom/nestjs-libraries/chat/ai.provider';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
@@ -42,6 +43,11 @@ const structured = (schema: Parameters<typeof model.withStructuredOutput>[0]) =>
     method: activeProviderConfig.structuredOutputMethod,
   });
 
+// Prompts go through ChatPromptTemplate, so braces typed into the brand voice
+// must be escaped or they would be read as template variables
+const templateBrandVoice = (brandVoice?: string | null) =>
+  brandVoiceRules(brandVoice).replace(/[{}]/g, (brace) => brace + brace);
+
 interface WorkflowChannelsState {
   messages: BaseMessage[];
   orgId: string;
@@ -53,6 +59,7 @@ interface WorkflowChannelsState {
   date?: string;
   format: 'one_short' | 'one_long' | 'thread_short' | 'thread_long';
   tone: 'personal' | 'company';
+  brandVoice?: string | null;
   content?: {
     content: string;
     website?: string;
@@ -129,6 +136,7 @@ export class AgentGraphService {
         fresearch: null,
         format: null,
         tone: null,
+        brandVoice: null,
         question: null,
         orgId: null,
         hook: null,
@@ -234,7 +242,7 @@ export class AgentGraphService {
         - Don't be cringy
         - Use simple english
         - Make sure you add "\n" between the lines
-        - Don't take the hook from "request of the user"
+        - Don't take the hook from "request of the user"${templateBrandVoice(state.brandVoice)}
 
         <!-- BEGIN request of the user -->
         {request}
@@ -287,7 +295,7 @@ export class AgentGraphService {
         - Don't be cringy
         - Use simple english
         - The Content should not contain the hook
-        - Try to put some call to action at the end of the post
+        - Try to put some call to action at the end of the post${templateBrandVoice(state.brandVoice)}
         - Make sure you add "\n" between the lines
         - Add "\n" after every "."
         
@@ -384,7 +392,7 @@ export class AgentGraphService {
     return { date: await this._postsService.findFreeDateTime(state.orgId) };
   }
 
-  start(orgId: string, body: GeneratorDto) {
+  start(orgId: string, body: GeneratorDto, brandVoice?: string | null) {
     const state = AgentGraphService.state();
     const workflow = state
       .addNode('agent', this.startCall.bind(this))
@@ -424,6 +432,7 @@ export class AgentGraphService {
         isPicture: body.isPicture,
         format: body.format,
         tone: body.tone,
+        brandVoice,
         orgId,
       },
       {

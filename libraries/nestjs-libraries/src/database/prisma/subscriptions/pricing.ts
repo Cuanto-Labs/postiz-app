@@ -10,6 +10,8 @@ export interface PricingInnerInterface {
   ai: boolean;
   import_from_channels: boolean;
   image_generator?: boolean;
+  // Premium image model (chat/ai.provider AI_PREMIUM_IMAGE_MODEL)
+  premium_images?: boolean;
   image_generation_count: number;
   generate_videos: number;
   public_api: boolean;
@@ -87,6 +89,7 @@ export const pricing: PricingInterface = {
     ai: true,
     import_from_channels: true,
     image_generator: true,
+    premium_images: true,
     public_api: true,
     webhooks: 30,
     autoPost: true,
@@ -105,6 +108,7 @@ export const pricing: PricingInterface = {
     ai: true,
     import_from_channels: true,
     image_generator: true,
+    premium_images: true,
     public_api: true,
     webhooks: 10000,
     autoPost: true,

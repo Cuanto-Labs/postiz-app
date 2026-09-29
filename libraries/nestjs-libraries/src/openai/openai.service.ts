@@ -7,6 +7,7 @@ import {
   AI_BASE_URL,
   AI_TEXT_MODEL,
   aiApiKey,
+  brandVoiceRules,
   generateAiImage,
 } from '@gitroom/nestjs-libraries/chat/ai.provider';
 
@@ -53,8 +54,8 @@ const VoicePrompt = z.object({
 @Injectable()
 export class OpenaiService {
   /** Returns a `data:` URL from the locked image model (Muse). */
-  async generateImage(prompt: string, isVertical = false) {
-    return generateAiImage(prompt, isVertical);
+  async generateImage(prompt: string, isVertical = false, premium = false) {
+    return generateAiImage(prompt, isVertical, premium);
   }
 
   async generatePromptForPicture(prompt: string) {
@@ -99,7 +100,7 @@ export class OpenaiService {
     );
   }
 
-  async generatePosts(content: string) {
+  async generatePosts(content: string, brandVoice?: string | null) {
     const [singles, threads] = await Promise.all([
       chatChoices(
         {
@@ -107,7 +108,8 @@ export class OpenaiService {
             {
               role: 'assistant',
               content:
-                'Generate a Twitter post from the content without emojis in the following JSON format: { "post": string } put it in an array with one element',
+                'Generate a Twitter post from the content without emojis in the following JSON format: { "post": string } put it in an array with one element' +
+                brandVoiceRules(brandVoice),
             },
             {
               role: 'user',
@@ -125,7 +127,8 @@ export class OpenaiService {
             {
               role: 'assistant',
               content:
-                'Generate a thread for social media in the following JSON format: Array<{ "post": string }> without emojis',
+                'Generate a thread for social media in the following JSON format: Array<{ "post": string }> without emojis' +
+                brandVoiceRules(brandVoice),
             },
             {
               role: 'user',

@@ -2,6 +2,7 @@ import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
+import { PREMIUM_IMAGE_CREDITS } from '@gitroom/nestjs-libraries/chat/ai.provider';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
@@ -103,7 +104,8 @@ export class MediaService {
   async generateImage(
     prompt: string,
     org: Organization,
-    generatePromptFirst?: boolean
+    generatePromptFirst?: boolean,
+    premium = false
   ) {
     try {
       const generating = await this._subscriptionService.useCredit(
@@ -114,8 +116,9 @@ export class MediaService {
             prompt = await this._openAi.generatePromptForPicture(prompt);
             console.log('Prompt:', prompt);
           }
-          return this._openAi.generateImage(prompt);
-        }
+          return this._openAi.generateImage(prompt, false, premium);
+        },
+        premium ? PREMIUM_IMAGE_CREDITS : 1
       );
 
       return generating;

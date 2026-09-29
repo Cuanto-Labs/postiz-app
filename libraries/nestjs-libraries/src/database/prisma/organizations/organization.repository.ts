@@ -560,4 +560,29 @@ export class OrganizationRepository {
       },
     });
   }
+
+  getBrandVoice(orgId: string) {
+    return this._organization.model.organization.findUnique({
+      where: {
+        id: orgId,
+      },
+      select: {
+        brandVoice: true,
+      },
+    });
+  }
+
+  updateBrandVoice(orgId: string, brandVoice: string | null) {
+    return this._organization.model.organization.update({
+      where: {
+        id: orgId,
+      },
+      data: {
+        brandVoice,
+      },
+      select: {
+        brandVoice: true,
+      },
+    });
+  }
 }

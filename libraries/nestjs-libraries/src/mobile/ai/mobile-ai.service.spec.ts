@@ -51,12 +51,19 @@ describe('MobileAiService', () => {
     aiConsentRepository.getConsentAt.mockResolvedValue(new Date());
     openaiService.generatePosts.mockResolvedValue([{ post: 'a' }, 'b']);
 
-    const result = await service.suggest('user1', {
-      content: 'hello',
-      mode: 'variations',
-    });
+    const result = await service.suggest(
+      'user1',
+      {
+        content: 'hello',
+        mode: 'variations',
+      },
+      'Friendly'
+    );
 
-    expect(openaiService.generatePosts).toHaveBeenCalledWith('hello');
+    expect(openaiService.generatePosts).toHaveBeenCalledWith(
+      'hello',
+      'Friendly'
+    );
     expect(result).toEqual({ suggestions: ['a', 'b'] });
   });
 
