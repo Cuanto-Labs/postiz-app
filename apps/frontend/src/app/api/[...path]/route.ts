@@ -39,6 +39,11 @@ const STRIP_REQUEST_HEADERS = new Set([
   'transfer-encoding',
   'upgrade',
   'x-forwarded-host',
+  // Browsers advertise zstd; Cloudflare in front of the origin honors it, and
+  // undici passes zstd through undecoded — the client then got raw zstd bytes as
+  // its JSON and /launches rendered blank (2026-09-28). Dropping the header lets
+  // fetch() negotiate only the encodings it can decode.
+  'accept-encoding',
 ]);
 
 // fetch() hands back a decoded body, so the origin's encoding headers no longer
