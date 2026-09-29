@@ -61,9 +61,7 @@ export class GenerateImageTool implements AgentToolInterface {
             org
           );
 
-          const file = await this.storage.uploadSimple(
-            'data:image/png;base64,' + image
-          );
+          const file = await this.storage.uploadSimple(image);
 
           return await this._mediaService.saveFile(
             org.id,

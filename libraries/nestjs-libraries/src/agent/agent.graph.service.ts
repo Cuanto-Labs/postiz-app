@@ -5,7 +5,7 @@ import {
   ToolMessage,
 } from '@langchain/core/messages';
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import { TavilySearch } from '@langchain/tavily';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
@@ -18,6 +18,7 @@ import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator
 import {
   activeProviderConfig,
   activeProviderModel,
+  generateAiImage,
 } from '@gitroom/nestjs-libraries/chat/ai.provider';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
 
@@ -26,12 +27,7 @@ const tools = !process.env.TAVILY_API_KEY
   : [new TavilySearch({ maxResults: 3 })];
 const toolNode = new ToolNode(tools);
 
-// Text generation runs on the provider AGENT_MODEL actually belongs to. Reading
-// AGENT_MODEL while hardcoding OpenAI's endpoint sent an OpenCode model name to
-// api.openai.com, which fails with model_not_found on every generation.
-//
-// Image generation below stays on OpenAI regardless — OpenCode serves chat
-// models only, and DallEAPIWrapper needs the real images endpoint.
+// Text and images both run on the locked OpenRouter models in chat/ai.provider.
 const model = new ChatOpenAI({
   apiKey: activeProviderConfig.apiKey,
   model: activeProviderModel(),
@@ -45,11 +41,6 @@ const structured = (schema: Parameters<typeof model.withStructuredOutput>[0]) =>
   model.withStructuredOutput(schema, {
     method: activeProviderConfig.structuredOutputMethod,
   });
-
-const dalle = new DallEAPIWrapper({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'chatgpt-image-latest',
-});
 
 interface WorkflowChannelsState {
   messages: BaseMessage[];
@@ -340,7 +331,7 @@ export class AgentGraphService {
     try {
       const newContent = await Promise.all(
         (state.content || []).map(async (p) => {
-          const image = await dalle.invoke(p.prompt!);
+          const image = await generateAiImage(p.prompt!);
           return {
             ...p,
             image,

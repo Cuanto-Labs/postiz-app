@@ -62,9 +62,11 @@ export class MediaController {
     }
 
     return {
-      output:
-        'data:image/png;base64,' +
-        (await this._mediaService.generateImage(prompt, org, isPicturePrompt)),
+      output: await this._mediaService.generateImage(
+        prompt,
+        org,
+        isPicturePrompt
+      ),
     };
   }
 
