@@ -86,3 +86,44 @@ describe('SubscriptionService.checkCredits', () => {
     expect(getCreditsFrom).not.toHaveBeenCalled();
   });
 });
+
+describe('premium images', () => {
+  const useCredit = jest.fn();
+  const service = new SubscriptionService(
+    { useCredit } as any,
+    {} as any,
+    {} as any,
+    {} as any
+  );
+  const realStripe = process.env.STRIPE_PUBLISHABLE_KEY;
+  const org = (tier: string) =>
+    ({
+      id: 'org1',
+      subscription: {
+        subscriptionTier: tier,
+        cancelAt: null,
+        createdAt: dayjs().subtract(3, 'day').toDate(),
+      },
+    } as any);
+
+  beforeEach(() => {
+    process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test';
+  });
+  afterAll(() => {
+    process.env.STRIPE_PUBLISHABLE_KEY = realStripe;
+  });
+
+  it('opens premium images to PRO and ULTIMATE only', () => {
+    expect(service.canUsePremiumImages({ id: 'org1' } as any)).toBe(false);
+    expect(service.canUsePremiumImages(org('STANDARD'))).toBe(false);
+    expect(service.canUsePremiumImages(org('TEAM'))).toBe(false);
+    expect(service.canUsePremiumImages(org('PRO'))).toBe(true);
+    expect(service.canUsePremiumImages(org('ULTIMATE'))).toBe(true);
+  });
+
+  it('passes the credit amount down to the repository', async () => {
+    const func = jest.fn();
+    await service.useCredit(org('PRO'), 'ai_images', func, 5);
+    expect(useCredit).toHaveBeenCalledWith(org('PRO'), 'ai_images', func, 5);
+  });
+});

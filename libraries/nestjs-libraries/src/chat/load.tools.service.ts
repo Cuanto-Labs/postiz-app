@@ -9,6 +9,7 @@ import { Memory } from '@mastra/memory';
 import {
   activeProviderConfig,
   activeProviderModel,
+  brandVoiceRules,
 } from '@gitroom/nestjs-libraries/chat/ai.provider';
 export {
   AGENT_PROVIDERS,
@@ -66,6 +67,14 @@ export class LoadToolsService {
       description: 'Agent that helps schedule and list social media posts for users',
       instructions: ({ requestContext }) => {
         const ui: string = requestContext.get('ui' as never);
+        let brandVoice: string | undefined;
+        try {
+          brandVoice = JSON.parse(
+            (requestContext.get('organization' as never) as string) || '{}'
+          )?.brandVoice;
+        } catch {
+          brandVoice = undefined;
+        }
         return `
       Global information:
         - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
@@ -102,7 +111,7 @@ export class LoadToolsService {
       - You can create, schedule and update posts, but you CANNOT delete posts - there is no delete capability. Never offer to delete a post. If the user asks you to delete one, tell them deletion is a destructive action and they should delete it themselves in the ${BRAND_NAME} app (the calendar).
       - Between tools, we will reference things like: [output:name] and [input:name] to set the information right.
       - When outputting a date for the user, make sure it's human readable with time
-      - The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box
+      - The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box${brandVoiceRules(brandVoice)}
       ${renderArray(
         [
           'If the user confirm, ask if they would like to get a modal with populated content without scheduling the post yet or if they want to schedule it right away.',

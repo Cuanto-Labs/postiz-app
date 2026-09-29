@@ -114,9 +114,18 @@ describe('MobileAiController', () => {
     mobileAiService.suggest.mockResolvedValue({ suggestions: ['a'] });
 
     const body = { content: 'hello', mode: 'variations' as const };
-    const result = await controller.suggest(user as any, body as any);
+    const org = { id: 'org-1', brandVoice: 'Friendly' };
+    const result = await controller.suggest(
+      user as any,
+      org as any,
+      body as any
+    );
 
-    expect(mobileAiService.suggest).toHaveBeenCalledWith(user.id, body);
+    expect(mobileAiService.suggest).toHaveBeenCalledWith(
+      user.id,
+      body,
+      'Friendly'
+    );
     expect(result).toEqual({ suggestions: ['a'] });
   });
 

@@ -32,9 +32,23 @@ export class SubscriptionService {
   useCredit<T>(
     organization: Organization,
     type = 'ai_images',
-    func: () => Promise<T>
+    func: () => Promise<T>,
+    amount = 1
   ): Promise<T> {
-    return this._subscriptionRepository.useCredit(organization, type, func);
+    return this._subscriptionRepository.useCredit(
+      organization,
+      type,
+      func,
+      amount
+    );
+  }
+
+  canUsePremiumImages(organization: Organization) {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return true;
+    }
+    const tier = activeSubscriptionTier(organization) || 'FREE';
+    return !!pricing[tier]?.premium_images;
   }
 
   getCode(code: string) {

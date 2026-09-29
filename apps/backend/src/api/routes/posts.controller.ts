@@ -241,7 +241,11 @@ export class PostsController {
   ) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     try {
-      for await (const event of this._agentGraphService.start(org.id, body)) {
+      for await (const event of this._agentGraphService.start(
+        org.id,
+        body,
+        org.brandVoice
+      )) {
         res.write(JSON.stringify(event) + '\n');
       }
     } catch (err) {
