@@ -3,8 +3,9 @@
  *
  *   Text:   google/gemini-3.5-flash-lite  (~$0.0002 per call, ~1s)
  *   Images: meta/muse-image               ($0.01 per image, ~9s, WebP)
- *   Premium images: google/gemini-3.1-flash-image (~$0.07 per image, paid
- *   tiers with `premium_images` only, charged PREMIUM_IMAGE_CREDITS credits)
+ *   Premium images: same meta/muse-image, gated to paid tiers with
+ *   `premium_images` only, charged PREMIUM_IMAGE_CREDITS credits (no markup
+ *   over a standard image — there is no separate premium image model).
  *
  * Both go through OpenRouter with OPENROUTER_API_KEY. There is deliberately no
  * environment override for the models or the base URL: an env var is how the
@@ -24,10 +25,10 @@
 export const AI_BASE_URL = 'https://openrouter.ai/api/v1';
 export const AI_TEXT_MODEL = 'google/gemini-3.5-flash-lite';
 export const AI_IMAGE_MODEL = 'meta/muse-image';
-export const AI_PREMIUM_IMAGE_MODEL = 'google/gemini-3.1-flash-image';
+export const AI_PREMIUM_IMAGE_MODEL = 'meta/muse-image';
 
 /** Monthly image credits one premium image uses (a standard image uses 1). */
-export const PREMIUM_IMAGE_CREDITS = 5;
+export const PREMIUM_IMAGE_CREDITS = 1;
 
 /** Longest brand voice an organization can save — it rides on every prompt. */
 export const BRAND_VOICE_MAX_LENGTH = 1000;

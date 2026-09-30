@@ -77,15 +77,10 @@ ${style}
       } else {
         // The backend answers `false` when this month's image allowance is spent
         toaster.show(
-          canUsePremium && premium
-            ? t(
-                'ai_image_premium_credits_exhausted',
-                'A premium image needs 5 credits, try Standard instead'
-              )
-            : t(
-                'ai_image_credits_exhausted',
-                "You've used all your AI images for this month"
-              ),
+          t(
+            'ai_image_credits_exhausted',
+            "You've used all your AI images for this month"
+          ),
           'warning'
         );
       }
@@ -138,7 +133,7 @@ ${style}
               },
               {
                 value: true,
-                label: t('ai_image_premium', 'Premium (5 credits)'),
+                label: t('ai_image_premium', 'Premium (1 credit)'),
               },
             ].map((p) => (
               <div
