@@ -5,7 +5,7 @@ labels:
 # ios/** path-scoped, runs on the mini agent). Built for wall-clock time:
 #   dev push / PR / manual: install -> [test (non-blocking), unit shard 1/2, unit shard 2/2]
 #     -> vercel-deploy
-#   staging / main push:    [install, promote-gate] -> vercel-deploy
+#   staging / main push or PR: [install, promote-gate] -> vercel-deploy
 # Tests run ONCE per commit, on dev. A promotion pushes the same sha, so staging/main only
 # prove it was green (.woodpecker/promote-gate.mjs) and ship it. A sha that skipped dev fails
 # the gate: push it to dev, or start a manual pipeline on the branch (runs every gate).
@@ -21,7 +21,9 @@ variables:
   - &node_image node:22
   # Everything that tests the commit. Skipped on a staging/main push (see header).
   - &checks_when
-    - event: [pull_request, manual]
+    - event: pull_request
+      branch: { exclude: [staging, main] }
+    - event: manual
     - event: push
       branch: dev
 
@@ -29,7 +31,7 @@ steps:
   - name: promote-gate
     image: *node_image
     when:
-      - event: push
+      - event: [push, pull_request]
         branch: [staging, main]
     environment:
       GITHUB_TOKEN: { from_secret: github_token }
