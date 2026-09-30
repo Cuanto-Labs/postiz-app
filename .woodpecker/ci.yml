@@ -2,9 +2,15 @@ labels:
   platform: linux/amd64
 
 # Web/extension/backend CI, separate from .woodpecker/ios.yml (that one is darwin/arm64,
-# ios/** path-scoped, runs on the mini agent).
-# No build step: Vercel builds every push/PR of this repo (vercel.json git.deploymentEnabled),
-# and this step just asks it to build this exact commit once CI is green.
+# ios/** path-scoped, runs on the mini agent). Built for wall-clock time:
+#   dev push / PR / manual: install -> [test (non-blocking), unit shard 1/2, unit shard 2/2]
+#     -> vercel-deploy
+#   staging / main push:    [install, promote-gate] -> vercel-deploy
+# Tests run ONCE per commit, on dev. A promotion pushes the same sha, so staging/main only
+# prove it was green (.woodpecker/promote-gate.mjs) and ship it. A sha that skipped dev fails
+# the gate: push it to dev, or start a manual pipeline on the branch (runs every gate).
+# No build step: Vercel builds the exact commit the deploy step hands it (vercel.json
+# git.deploymentEnabled is off), so a CI build would only repeat that.
 when:
   - event: pull_request
   - event: push
@@ -13,8 +19,23 @@ when:
 
 variables:
   - &node_image node:22
+  # Everything that tests the commit. Skipped on a staging/main push (see header).
+  - &checks_when
+    - event: [pull_request, manual]
+    - event: push
+      branch: dev
 
 steps:
+  - name: promote-gate
+    image: *node_image
+    when:
+      - event: push
+        branch: [staging, main]
+    environment:
+      GITHUB_TOKEN: { from_secret: github_token }
+    commands: [node .woodpecker/promote-gate.mjs]
+
+  # Runs on every pipeline.
   - name: install
     image: *node_image
     commands:
@@ -27,19 +48,33 @@ steps:
   # CI wiring. Non-blocking until the repo's own Nx/jest setup is fixed.
   - name: test
     image: *node_image
+    when: *checks_when
     depends_on: [install]
     failure: ignore
     commands: [corepack enable, pnpm test]
 
-  # Blocking: mobile API, billing credits and the locked AI models.
-  - name: unit
+  # Blocking: mobile API, billing credits and the locked AI models. Two parallel shards.
+  - name: unit-1
     image: *node_image
+    when: *checks_when
     depends_on: [install]
-    commands: [corepack enable, pnpm exec jest -c jest.unit.config.cjs]
+    commands: [corepack enable, pnpm exec jest -c jest.unit.config.cjs --shard=1/2]
 
+  - name: unit-2
+    image: *node_image
+    when: *checks_when
+    depends_on: [install]
+    commands: [corepack enable, pnpm exec jest -c jest.unit.config.cjs --shard=2/2]
+
+  # Optional edges: Woodpecker drops an edge to a step its `when` filtered out, so the same
+  # list works for a dev push (unit shards) and a promotion (promote-gate only).
   - name: vercel-deploy
     image: curlimages/curl:8.10.1
-    depends_on: [install, unit]
+    depends_on:
+      - install
+      - { name: promote-gate, optional: true }
+      - { name: unit-1, optional: true }
+      - { name: unit-2, optional: true }
     when:
       - event: [push, pull_request]
     environment:
