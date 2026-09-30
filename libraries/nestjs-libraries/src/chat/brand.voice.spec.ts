@@ -36,9 +36,9 @@ describe('premium images', () => {
     global.fetch = realFetch;
   });
 
-  it('costs 5 credits on gemini-3.1-flash-image', () => {
-    expect(PREMIUM_IMAGE_CREDITS).toBe(5);
-    expect(AI_PREMIUM_IMAGE_MODEL).toBe('google/gemini-3.1-flash-image');
+  it('costs 1 credit on meta/muse-image, same as a standard image', () => {
+    expect(PREMIUM_IMAGE_CREDITS).toBe(1);
+    expect(AI_PREMIUM_IMAGE_MODEL).toBe('meta/muse-image');
   });
 
   it('asks OpenRouter for the premium model when premium is set', async () => {
