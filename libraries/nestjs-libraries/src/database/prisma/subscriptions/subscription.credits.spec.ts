@@ -123,7 +123,10 @@ describe('premium images', () => {
 
   it('passes the credit amount down to the repository', async () => {
     const func = jest.fn();
-    await service.useCredit(org('PRO'), 'ai_images', func, 5);
-    expect(useCredit).toHaveBeenCalledWith(org('PRO'), 'ai_images', func, 5);
+    // org() stamps createdAt with dayjs() on every call, so calling it twice
+    // and comparing can straddle a clock tick — call once, reuse the object.
+    const proOrg = org('PRO');
+    await service.useCredit(proOrg, 'ai_images', func, 5);
+    expect(useCredit).toHaveBeenCalledWith(proOrg, 'ai_images', func, 5);
   });
 });
