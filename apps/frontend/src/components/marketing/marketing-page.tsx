@@ -1,6 +1,7 @@
 import { MarketingNavComponent } from '@gitroom/frontend/components/marketing/marketing-nav.component';
 import { MarketingFooterComponent } from '@gitroom/frontend/components/marketing/marketing-footer.component';
 import { HeroSection } from '@gitroom/frontend/components/marketing/sections/hero.section';
+import { PromoVideoSection } from '@gitroom/frontend/components/marketing/sections/promo-video.section';
 import { SocialProofSection } from '@gitroom/frontend/components/marketing/sections/social-proof.section';
 import { FeaturesSection } from '@gitroom/frontend/components/marketing/sections/features.section';
 import { HowItWorksSection } from '@gitroom/frontend/components/marketing/sections/how-it-works.section';
@@ -18,6 +19,7 @@ export const MarketingPage = () => {
       <MarketingNavComponent />
       <main className="flex-1 flex flex-col">
         <HeroSection />
+        <PromoVideoSection />
         <SocialProofSection />
         <FeaturesSection />
         <HowItWorksSection />

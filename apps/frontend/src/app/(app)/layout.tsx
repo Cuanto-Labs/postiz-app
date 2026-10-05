@@ -57,6 +57,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             strategy="afterInteractive"
           />
         )}
+        {!!process.env.ONYXMETRIC_SITE_ID && (
+          <Script
+            src="https://analytics.onyxmetric.com/api/script.js"
+            data-site-id={process.env.ONYXMETRIC_SITE_ID}
+            strategy="lazyOnload"
+          />
+        )}
       </head>
       <ChangeDirClient />
       <body
