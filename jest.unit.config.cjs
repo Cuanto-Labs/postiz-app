@@ -11,5 +11,6 @@ module.exports = {
     ...mobile.testMatch,
     '<rootDir>/libraries/nestjs-libraries/src/chat/**/*.spec.ts',
     '<rootDir>/libraries/nestjs-libraries/src/database/prisma/subscriptions/**/*.spec.ts',
+    '<rootDir>/libraries/nestjs-libraries/src/emails/**/*.spec.ts',
   ],
 };
